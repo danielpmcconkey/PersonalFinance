@@ -76,7 +76,6 @@ namespace Lib.MonteCarlo
                 _logger.Debug(_logger.FormatHeading($"New month {_currentDate:MMM, yyyy}"));
                 _simMonthCount++;
                 decimal priceGrowthRate = 0.0M;
-                _bank.SetLongTermGrowthRate(priceGrowthRate);
 
                 if (!_isBankrupt)
                 {
@@ -100,6 +99,7 @@ namespace Lib.MonteCarlo
                     {
                         throw new InvalidDataException("_currentDate not found in _hypotheticalPrices");
                     }
+                    _bank.SetLongTermGrowthRate(priceGrowthRate);
 
                     _bank.AccrueInterest(_currentDate);
 

@@ -182,6 +182,7 @@ namespace Lib.MonteCarlo
             var daysOld = ageTimeSpan.Days;
             var age = yearsOld + (monthsOld / 12.0M) + (daysOld / 365.25M);
             var line = new ReconciliationLineItem(
+                0, // placeholder ordinal. The recon ledger will add the right value
                 currentDate, 
                 age,
                 amount, 
