@@ -52,3 +52,16 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+
+# Jetbrains
+.idea
+
+# Visual studio?
+.vs
+PersonalFinance.sln.DotSettings.user
+
+#Output
+OutputFiles
+Logs
+
