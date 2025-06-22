@@ -10,6 +10,7 @@ public class CorePackage
     public string ReconFilePath;
     public NodaTime.LocalDateTime MonteCarloSimStartDate;
     public NodaTime.LocalDateTime MonteCarloSimEndDate;
+    public decimal MonteCarloSimMaxPositionValue;
 
     public CorePackage()
     {
@@ -17,6 +18,7 @@ public class CorePackage
         ShouldRunParallel = ConfigManager.ReadBoolSetting("ShouldRunParallel");
         MonteCarloSimStartDate = ConfigManager.ReadDateSetting("MonteCarloSimStartDate");
         MonteCarloSimEndDate = ConfigManager.ReadDateSetting("MonteCarloSimEndDate");
+        MonteCarloSimMaxPositionValue = ConfigManager.ReadDecimalSetting("MonteCarloSimMaxPositionValue");
         string logDir = ConfigManager.ReadStringSetting("LogDir");
         string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
         string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";

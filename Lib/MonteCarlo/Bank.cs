@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices.JavaScript;
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 
@@ -189,6 +190,7 @@ namespace Lib.MonteCarlo
                 description, 
                 type,
                 _currentLongTermGrowthRate,
+                _currentLongRangeInvestmentCost,
                 MeasureNetWorth(currentDate).NetWorth,
                 Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM),
                 Recon_GetAssetTotalByType(McInvestmentPositionType.MID_TERM),
@@ -209,18 +211,26 @@ namespace Lib.MonteCarlo
         }
         #region public interface
 
+        /// <summary>
+        /// this is really only here to increment the _totalDebtPaidLifetime value, which is calculated 
+        /// </summary>
+        /// <param name="amount"></param>
+        /// <param name="currentDate"></param>
+        public void RecordDebtPayment(decimal amount, LocalDateTime currentDate)
+        {
+            _totalDebtPaidLifetime += amount;
+        }
         public void SetLongTermGrowthRate(decimal longTermGrowthRate)
         {
             _currentLongTermGrowthRate = longTermGrowthRate;
+            _currentLongRangeInvestmentCost +=
+                (_currentLongRangeInvestmentCost * _currentLongTermGrowthRate);
         }
-        public void AccrueInterest(LocalDateTime currentDate)
+        public void AccrueInterest_old(LocalDateTime currentDate)
         {
             decimal midTermGrowthRate = _currentLongTermGrowthRate * 0.5M;
             decimal shortTermGrowthRate = 0.0M;
 
-
-            _currentLongRangeInvestmentCost +=
-                (_currentLongRangeInvestmentCost * _currentLongTermGrowthRate);
             _currentMidRangeInvestmentCost +=
                 (_currentMidRangeInvestmentCost * midTermGrowthRate);
             _currentShortRangeInvestmentCost +=
@@ -236,8 +246,14 @@ namespace Lib.MonteCarlo
                     McInvestmentPositionType.LONG_TERM => _currentLongTermGrowthRate,
                     _ => throw new NotImplementedException(),
                 };
+// todo: delete these debug vars
+            var lt_invest_before = Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM);
+            var lt_invest_after_calc = lt_invest_before + (lt_invest_before * _currentLongTermGrowthRate);
+            var lt_value_summed_old = 0M;
+            var lt_value_summed_new = 0M;
 
-            foreach (var account in _investmentAccounts)
+            foreach (var account in _investmentAccounts
+                         .Where(x => x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE))
             {
                 // good number goes up
                 foreach (var p in account.Positions)
@@ -247,11 +263,19 @@ namespace Lib.MonteCarlo
 
                     if (p is not McInvestmentPosition) break;
                     if (!p.IsOpen) break;
+                    
                     var growthRate = getGrowthRate(p.InvenstmentPositionType);
-                    p.Price = Math.Round(p.Price + (p.Price * growthRate), 4);
+                    //p.Price = Math.Round(p.Price + (p.Price * growthRate), 4);
+                    p.Price = p.Price + (p.Price * growthRate);
 
                     decimal oldValue = oldPrice * p.Quantity;
                     decimal newValue = p.Price * p.Quantity;
+                    if (p.InvenstmentPositionType == McInvestmentPositionType.LONG_TERM && _corePackage.DebugMode)
+                    {
+                        // todo: delete this check
+                        lt_value_summed_old += oldValue;
+                        lt_value_summed_new += newValue;
+                    }
                     _totalInvestmentAccrualLifetime += (newValue - oldValue);
                     if (_corePackage.DebugMode == true)
                     {
@@ -263,6 +287,7 @@ namespace Lib.MonteCarlo
                         );
                     }
                 }
+                
             }
 
             foreach (var account in _debtAccounts)
@@ -291,6 +316,136 @@ namespace Lib.MonteCarlo
                     }
                 }
             }
+            if (_corePackage.DebugMode == true)
+            {
+                AddReconLine(
+                    currentDate,
+                    ReconciliationLineItemType.Debit,
+                    0,
+                    $"Accrue interest completed"
+                );
+            }
+            // todo: delete these debug vars
+            var lt_invest_after = Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM);
+            var lt_invest_diff = lt_invest_after - lt_invest_after_calc;
+            var lt_value_summed_diff = lt_value_summed_new - lt_value_summed_old;
+            return;
+        }
+        public void AccrueInterest(LocalDateTime currentDate)
+        {
+            const int pennyModifier = 10000; // 10.1234 => 101234
+            decimal midTermGrowthRate = _currentLongTermGrowthRate * 0.5M;
+            decimal shortTermGrowthRate = 0.0M;
+            
+            Int64 longTermRate_int = (Int64)(_currentLongTermGrowthRate * pennyModifier);
+            Int64 midTermRate_int = (Int64)(midTermGrowthRate * pennyModifier);
+            Int64 shortTermRate_int = (Int64)(shortTermGrowthRate * pennyModifier);
+            
+            Int64 longRangeInvestmentCost_int = (Int64)(_currentLongRangeInvestmentCost * pennyModifier);
+            Int64 midRangeInvestmentCost_int = (Int64)(_currentMidRangeInvestmentCost * pennyModifier);
+            Int64 shortRangeInvestmentCost_int = (Int64)(_currentShortRangeInvestmentCost * pennyModifier);
+
+            _currentMidRangeInvestmentCost +=
+                (_currentMidRangeInvestmentCost * midTermGrowthRate);
+            _currentShortRangeInvestmentCost +=
+                (_currentShortRangeInvestmentCost * shortTermGrowthRate);
+            
+            midRangeInvestmentCost_int += (midRangeInvestmentCost_int * midTermRate_int);
+            shortRangeInvestmentCost_int += (shortRangeInvestmentCost_int * shortTermRate_int);
+
+            _longRangeInvestmentCostHistory.Add(_currentLongRangeInvestmentCost);
+
+            Int64 getGrowthRate(McInvestmentPositionType investmentPositionType) =>
+                investmentPositionType switch
+                {
+                    McInvestmentPositionType.SHORT_TERM => shortTermRate_int,
+                    McInvestmentPositionType.MID_TERM => midTermRate_int,
+                    McInvestmentPositionType.LONG_TERM => longTermRate_int,
+                    _ => throw new NotImplementedException(),
+                };
+// todo: delete these debug vars
+            var lt_invest_before = (Int64)(Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM) * pennyModifier);
+            var lt_invest_after_calc = lt_invest_before + (lt_invest_before * longTermRate_int);
+            long lt_value_summed_old = 0;
+            long lt_value_summed_new = 0;
+
+            foreach (var account in _investmentAccounts
+                         .Where(x => x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE))
+            {
+                // good number goes up
+                foreach (var p in account.Positions)
+                {
+
+                    decimal oldPrice = p.Price;-
+
+                    if (p is not McInvestmentPosition) break;
+                    if (!p.IsOpen) break;
+                    
+                    var growthRate = getGrowthRate(p.InvenstmentPositionType);
+                    //p.Price = Math.Round(p.Price + (p.Price * growthRate), 4);
+                    p.Price = p.Price + (p.Price * growthRate);
+
+                    decimal oldValue = oldPrice * p.Quantity;
+                    decimal newValue = p.Price * p.Quantity;
+                    if (p.InvenstmentPositionType == McInvestmentPositionType.LONG_TERM && _corePackage.DebugMode)
+                    {
+                        // todo: delete this check
+                        lt_value_summed_old += oldValue;
+                        lt_value_summed_new += newValue;
+                    }
+                    _totalInvestmentAccrualLifetime += (newValue - oldValue);
+                    if (_corePackage.DebugMode == true)
+                    {
+                        AddReconLine(
+                            currentDate,
+                            ReconciliationLineItemType.Credit,
+                            newValue - oldValue,
+                            $"Investment interest accrual for account {account.Name}"
+                        );
+                    }
+                }
+                
+            }
+
+            foreach (var account in _debtAccounts)
+            {
+                // bad number goes up
+                foreach (var p in account.Positions)
+                {
+
+                    decimal oldBalance = p.CurrentBalance;
+
+                    if (p is not McDebtPosition) break;
+                    if (!p.IsOpen) break;
+                    
+                    decimal amount = Math.Round(p.CurrentBalance * (p.AnnualPercentageRate / 12), 2);
+                    p.CurrentBalance += amount;
+
+                    _totalDebtAccrualLifetime += (p.CurrentBalance - oldBalance);
+                    if (_corePackage.DebugMode == true)
+                    {
+                        AddReconLine(
+                            currentDate,
+                            ReconciliationLineItemType.Debit,
+                            amount,
+                            $"Debt accrual for account {account.Name}"
+                        );
+                    }
+                }
+            }
+            if (_corePackage.DebugMode == true)
+            {
+                AddReconLine(
+                    currentDate,
+                    ReconciliationLineItemType.Debit,
+                    0,
+                    $"Accrue interest completed"
+                );
+            }
+            // todo: delete these debug vars
+            var lt_invest_after = Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM);
+            var lt_invest_diff = lt_invest_after - lt_invest_after_calc;
+            var lt_value_summed_diff = lt_value_summed_new - lt_value_summed_old;
             return;
         }
 
@@ -982,7 +1137,7 @@ namespace Lib.MonteCarlo
         /// </summary>
         private void SplitPositionsAtMaxIndividualValue()
         {
-            const decimal maxPositionValue = 1000M;
+            decimal maxPositionValue = _corePackage.MonteCarloSimMaxPositionValue;
             var accounts = _investmentAccounts.Where(x => {
                 if (x.AccountType == McInvestmentAccountType.PRIMARY_RESIDENCE) return false;
                 if (x.AccountType == McInvestmentAccountType.CASH) return false;

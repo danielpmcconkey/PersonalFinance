@@ -30,6 +30,10 @@ public static class ConfigManager
     {
         return int.Parse(ReadSetting(key));
     }
+    public static decimal ReadDecimalSetting(string key)
+    {
+        return decimal.Parse(ReadSetting(key));
+    }
 
     public static string ReadStringSetting(string key)
     {

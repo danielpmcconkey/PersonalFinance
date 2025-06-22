@@ -38,6 +38,7 @@ public class ReconciliationLedger
             new SpreadsheetColumn(){ Ordinal = 4, ColumnType = SpreadsheetColumnType.String, Header = "Description", PropertyName = "Description" },
             new SpreadsheetColumn(){ Ordinal = 5, ColumnType = SpreadsheetColumnType.String, Header = "Type", PropertyName = "Type" },
             new SpreadsheetColumn(){ Ordinal = 6, ColumnType = SpreadsheetColumnType.Decimal, Header = "Current Month Growth Rate", PropertyName = "CurrentMonthGrowthRate" },
+            new SpreadsheetColumn(){ Ordinal = 6, ColumnType = SpreadsheetColumnType.Decimal, Header = "Current Long Range Investment Cost", PropertyName = "CurrentLongRangeInvestmentCost" },
             new SpreadsheetColumn(){ Ordinal = 7, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Net Worth", PropertyName = "TotalNetWorth" },
             new SpreadsheetColumn(){ Ordinal = 8, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Long Term Investment", PropertyName = "TotalLongTermInvestment" },
             new SpreadsheetColumn(){ Ordinal = 9, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Mid Term Investment", PropertyName = "TotalMidTermInvestment" },

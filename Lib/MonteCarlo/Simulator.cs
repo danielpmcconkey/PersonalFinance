@@ -102,9 +102,12 @@ namespace Lib.MonteCarlo
                     _bank.SetLongTermGrowthRate(priceGrowthRate);
 
                     _bank.AccrueInterest(_currentDate);
+                    
+                    
 
 
                     PayDownLoans();
+                    
 
                     if (_currentDate.Month == 1)
                     {
@@ -280,6 +283,9 @@ namespace Lib.MonteCarlo
                 {
                     if (_isBankrupt) break;
                     if (!p.IsOpen) continue;
+                    
+                    var og_balance = p.CurrentBalance; // only used for debug recon
+                    
                     decimal amount = Math.Round(p.MonthlyPayment, 2);
                     if (amount > p.CurrentBalance) amount = p.CurrentBalance;
                     if (!SpendCash(amount))
@@ -289,6 +295,17 @@ namespace Lib.MonteCarlo
                     }
 
                     p.CurrentBalance -= amount;
+                    _bank.RecordDebtPayment(amount, _currentDate);
+                    
+                    if (_corePackage.DebugMode == true)
+                    {
+                        _bank.AddReconLine(
+                            _currentDate,
+                            ReconciliationLineItemType.Debit,
+                            amount,
+                            $"Pay down debt {account.Name} {p.Name} from {og_balance} to {p.CurrentBalance}"
+                        );
+                    }
                     if(p.CurrentBalance <= 0)
                     {
                          _logger.Debug($"Paid off {p.Name}");
@@ -296,6 +313,15 @@ namespace Lib.MonteCarlo
                         p.IsOpen = false;
                     }
                 }
+            }
+            if (_corePackage.DebugMode == true)
+            {
+                _bank.AddReconLine(
+                    _currentDate,
+                    ReconciliationLineItemType.Debit,
+                    0,
+                    $"Pay down debt completed"
+                );
             }
         }
         private void AddMonthlySavings()
@@ -315,6 +341,17 @@ namespace Lib.MonteCarlo
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.HSA);
             _bank.InvestFunds(_currentDate, _monthly401kMatch,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
+            
+            
+            if (_corePackage.DebugMode == true)
+            {
+                _bank.AddReconLine(
+                    _currentDate,
+                    ReconciliationLineItemType.Debit,
+                    0,
+                    $"Add monthly savings completed"
+                );
+            }
         }
         /// <summary>
         /// reads any LocalDateTime and returns the first of the month closest to it

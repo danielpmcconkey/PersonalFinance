@@ -11,6 +11,7 @@ public class ReconciliationLineItem
     public string Description { get; set; }
     public ReconciliationLineItemType Type { get; set; }
     public decimal CurrentMonthGrowthRate { get; set; }
+    public decimal CurrentLongRangeInvestmentCost { get; set; }
     public decimal TotalNetWorth { get; set; }
     public decimal TotalLongTermInvestment { get; set; }
     public decimal TotalMidTermInvestment { get; set; }
@@ -36,6 +37,7 @@ public class ReconciliationLineItem
         string description,
         ReconciliationLineItemType type,
         decimal currentMonthGrowthRate,
+        decimal currentLongRangeInvestmentCost,
         decimal totalNetWorth,
         decimal totalLongTermInvestment,
         decimal totalMidTermInvestment,
@@ -59,6 +61,7 @@ public class ReconciliationLineItem
         Description = description;
         Type = type;
         CurrentMonthGrowthRate = currentMonthGrowthRate;
+        CurrentLongRangeInvestmentCost = currentLongRangeInvestmentCost;
         TotalNetWorth = totalNetWorth;
         TotalLongTermInvestment = totalLongTermInvestment;
         TotalMidTermInvestment = totalMidTermInvestment;
