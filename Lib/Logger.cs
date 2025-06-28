@@ -9,6 +9,7 @@ using NodaTime;
 
 namespace Lib
 {
+    // todo: replace logging with a widely-used package
     public class Logger(LogLevel logLevel, string filePath)
     {
         private LogLevel _logLevel = logLevel;

@@ -6,86 +6,67 @@ namespace Lib.MonteCarlo
 {
     internal class Bank
     {
-        private Logger _logger;
-        private McModel _simParams;
-        private bool _areWeInADownYear = false;
-        public bool AreWeInADownYear { get { return  _areWeInADownYear; } }
-        private decimal _downYearCounter = 0M;
-        public bool AreWeInAusterityMeasures { get { return _downYearCounter >= 1.0M; } }
-        private bool _areWeInExtremeAusterityMeasures = false;
-        private LocalDateTime _lastExtremeAusterityMeasureEnd;
-        public bool AreWeInExtremeAusterityMeasures { get { return _areWeInExtremeAusterityMeasures; } }
-        private decimal _recessionRecoveryPoint = 0M;
-        private LocalDateTime _retirementDate;
-        private TaxFiler _taxFiler;
-        /// <summary>
-        /// list of total distributions by year that qualify against RMD requirements
-        /// </summary>
-        private Dictionary<int, decimal> _rmdDistributions;
         
-        private CorePackage _corePackage;
-        private ReconciliationLedger _reconciliationLedger;
+        
+        
+        
+       
 
-        private decimal _currentLongTermGrowthRate = 0.0M;
+        private long _currentLongTermGrowthRate = 0.0M;
 
-        private decimal _totalSpendLifetime = 0.0M;
-        private decimal _totalInvestmentAccrualLifetime = 0.0M;
-        private decimal _totalDebtAccrualLifetime = 0.0M;
-        private decimal _totalSocialSecurityWageLifetime = 0.0M;
-        private decimal _totalDebtPaidLifetime = 0.0M;
-        private bool _isBankrupt = false;
+        
 
 
 
 
-        // account pointers
-        private McInvestmentAccount _roth401k;
-        private McInvestmentAccount _rothIra;
-        private McInvestmentAccount _traditional401k;
-        private McInvestmentAccount _traditionalIra;
-        private McInvestmentAccount _brokerage;
-        private McInvestmentAccount _hsa;
-        private McInvestmentAccount _cash;
-        private List<McInvestmentAccount> _investmentAccounts;
-        private List<McDebtAccount> _debtAccounts;
+        // // account pointers
+        // private McInvestmentAccount _roth401k;
+        // private McInvestmentAccount _rothIra;
+        // private McInvestmentAccount _traditional401k;
+        // private McInvestmentAccount _traditionalIra;
+        // private McInvestmentAccount _brokerage;
+        // private McInvestmentAccount _hsa;
+        // private McInvestmentAccount _cash;
+        // private List<McInvestmentAccount> _investmentAccounts;
+        // private List<McDebtAccount> _debtAccounts;
 
         // price pointers
-        private List<decimal> _longRangeInvestmentCostHistory = [];
-        public decimal CurrentLongRangeInvestmentCost
-        {
-            get { return _currentLongRangeInvestmentCost; }
-        }
-        private decimal _currentLongRangeInvestmentCost = 100.0M;
-        private decimal _currentMidRangeInvestmentCost = 100.0M;
-        private decimal _currentShortRangeInvestmentCost = 100.0M;
-
-        private McInvestmentAccountType[] _salesOrderWithNoRoom = [
-                // no tax, period
-                McInvestmentAccountType.HSA,
-                McInvestmentAccountType.ROTH_IRA,
-                McInvestmentAccountType.ROTH_401_K,
-                // tax on growth only
-                McInvestmentAccountType.TAXABLE_BROKERAGE,
-                // tax deferred
-                McInvestmentAccountType.TRADITIONAL_401_K,
-                McInvestmentAccountType.TRADITIONAL_IRA,
-                ];
-        private McInvestmentAccountType[] _salesOrderWithRoom = [
-            // tax deferred
-                McInvestmentAccountType.TRADITIONAL_401_K,
-                McInvestmentAccountType.TRADITIONAL_IRA,
-                // tax on growth only
-                McInvestmentAccountType.TAXABLE_BROKERAGE,
-                // no tax, period
-                McInvestmentAccountType.HSA,
-                McInvestmentAccountType.ROTH_IRA,
-                McInvestmentAccountType.ROTH_401_K,
-                ];
-        private McInvestmentAccountType[] _salesOrderRmd = [
-            // tax deferred
-                McInvestmentAccountType.TRADITIONAL_401_K,
-                McInvestmentAccountType.TRADITIONAL_IRA,
-                ];
+        private List<long> _longRangeInvestmentCostHistory = [];
+        // public long CurrentLongRangeInvestmentCost
+        // {
+        //     get { return _currentLongRangeInvestmentCost; }
+        // }
+        // private long _currentLongRangeInvestmentCost = 100.0M;
+        // private long _currentMidRangeInvestmentCost = 100.0M;
+        // private long _currentShortRangeInvestmentCost = 100.0M;
+        //
+        // private McInvestmentAccountType[] _salesOrderWithNoRoom = [
+        //         // no tax, period
+        //         McInvestmentAccountType.HSA,
+        //         McInvestmentAccountType.ROTH_IRA,
+        //         McInvestmentAccountType.ROTH_401_K,
+        //         // tax on growth only
+        //         McInvestmentAccountType.TAXABLE_BROKERAGE,
+        //         // tax deferred
+        //         McInvestmentAccountType.TRADITIONAL_401_K,
+        //         McInvestmentAccountType.TRADITIONAL_IRA,
+        //         ];
+        // private McInvestmentAccountType[] _salesOrderWithRoom = [
+        //     // tax deferred
+        //         McInvestmentAccountType.TRADITIONAL_401_K,
+        //         McInvestmentAccountType.TRADITIONAL_IRA,
+        //         // tax on growth only
+        //         McInvestmentAccountType.TAXABLE_BROKERAGE,
+        //         // no tax, period
+        //         McInvestmentAccountType.HSA,
+        //         McInvestmentAccountType.ROTH_IRA,
+        //         McInvestmentAccountType.ROTH_401_K,
+        //         ];
+        // private McInvestmentAccountType[] _salesOrderRmd = [
+        //     // tax deferred
+        //         McInvestmentAccountType.TRADITIONAL_401_K,
+        //         McInvestmentAccountType.TRADITIONAL_IRA,
+        //         ];
 
         public Bank(CorePackage corePackage, McModel simParams, List<McInvestmentAccount> investmentAccounts,
             List<McDebtAccount> debtAccounts, LocalDateTime retirementDate, TaxFiler taxFiler)
@@ -143,72 +124,72 @@ namespace Lib.MonteCarlo
                 
         }
 
-        public void PrintReconciliation()
-        {
-            _reconciliationLedger.ExportToSpreadsheet();
-        }
-
-        public void AddReconLine(LocalDateTime currentDate, ReconciliationLineItemType type,
-            Decimal amount, string description)
-        {
-            if (_corePackage.DebugMode == false) return;
-            
-            var person = _simParams.Person;
-            if (person is null)
-            {
-                // pull it from the DB
-                // todo: move the db reads from datastgage and this one to a single, consolidated DAL 
-                using var context = new PgContext();
-                var pgperson = context.PgPeople.FirstOrDefault(x => x.Id == _simParams.PersonId);
-                if (pgperson is null) throw new InvalidDataException();
-                
-                person = new McPerson()
-                {
-                    Id = pgperson.Id,
-                    Name = pgperson.Name,
-                    BirthDate = pgperson.BirthDate,
-                    AnnualSalary = pgperson.AnnualSalary,
-                    AnnualBonus = pgperson.AnnualBonus,
-                    MonthlyFullSocialSecurityBenefit = pgperson.MonthlyFullSocialSecurityBenefit,
-                    Annual401kMatchPercent = pgperson.Annual401kMatchPercent,
-                    InvestmentAccounts = _investmentAccounts,
-                    DebtAccounts = _debtAccounts,
-                };
-                _simParams.Person = person;
-            }
-
-            var ageTimeSpan = (currentDate - person.BirthDate);
-            var yearsOld = ageTimeSpan.Years;
-            var monthsOld = ageTimeSpan.Months;
-            var daysOld = ageTimeSpan.Days;
-            var age = yearsOld + (monthsOld / 12.0M) + (daysOld / 365.25M);
-            var line = new ReconciliationLineItem(
-                0, // placeholder ordinal. The recon ledger will add the right value
-                currentDate, 
-                age,
-                amount, 
-                description, 
-                type,
-                _currentLongTermGrowthRate,
-                _currentLongRangeInvestmentCost,
-                MeasureNetWorth(currentDate).NetWorth,
-                Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM),
-                Recon_GetAssetTotalByType(McInvestmentPositionType.MID_TERM),
-                Recon_GetAssetTotalByType(McInvestmentPositionType.SHORT_TERM),
-                GetCashBalance(),
-                Recon_GetDebtTotal(),
-                _totalSpendLifetime,
-                _totalInvestmentAccrualLifetime,
-                _totalDebtAccrualLifetime,
-                _totalSocialSecurityWageLifetime,
-                _totalDebtPaidLifetime,
-                currentDate >= _simParams.RetirementDate, 
-                _isBankrupt,
-                _areWeInADownYear,
-                _areWeInExtremeAusterityMeasures
-            );
-            _reconciliationLedger.AddLine(line);
-        }
+        // public void PrintReconciliation()
+        // {
+        //     _reconciliationLedger.ExportToSpreadsheet();
+        // }
+        //
+        // public void AddReconLine(LocalDateTime currentDate, ReconciliationLineItemType type,
+        //     Decimal amount, string description)
+        // {
+        //     if (_corePackage.DebugMode == false) return;
+        //     
+        //     var person = _simParams.Person;
+        //     if (person is null)
+        //     {
+        //         // pull it from the DB
+        //         // todo: move the db reads from datastgage and this one to a single, consolidated DAL 
+        //         using var context = new PgContext();
+        //         var pgperson = context.PgPeople.FirstOrDefault(x => x.Id == _simParams.PersonId);
+        //         if (pgperson is null) throw new InvalidDataException();
+        //         
+        //         person = new McPerson()
+        //         {
+        //             Id = pgperson.Id,
+        //             Name = pgperson.Name,
+        //             BirthDate = pgperson.BirthDate,
+        //             AnnualSalary = pgperson.AnnualSalary,
+        //             AnnualBonus = pgperson.AnnualBonus,
+        //             MonthlyFullSocialSecurityBenefit = pgperson.MonthlyFullSocialSecurityBenefit,
+        //             Annual401kMatchPercent = pgperson.Annual401kMatchPercent,
+        //             InvestmentAccounts = _investmentAccounts,
+        //             DebtAccounts = _debtAccounts,
+        //         };
+        //         _simParams.Person = person;
+        //     }
+        //
+        //     var ageTimeSpan = (currentDate - person.BirthDate);
+        //     var yearsOld = ageTimeSpan.Years;
+        //     var monthsOld = ageTimeSpan.Months;
+        //     var daysOld = ageTimeSpan.Days;
+        //     var age = yearsOld + (monthsOld / 12.0M) + (daysOld / 365.25M);
+        //     var line = new ReconciliationLineItem(
+        //         0, // placeholder ordinal. The recon ledger will add the right value
+        //         currentDate, 
+        //         age,
+        //         amount, 
+        //         description, 
+        //         type,
+        //         _currentLongTermGrowthRate,
+        //         _currentLongRangeInvestmentCost,
+        //         MeasureNetWorth(currentDate).NetWorth,
+        //         Recon_GetAssetTotalByType(McInvestmentPositionType.LONG_TERM),
+        //         Recon_GetAssetTotalByType(McInvestmentPositionType.MID_TERM),
+        //         Recon_GetAssetTotalByType(McInvestmentPositionType.SHORT_TERM),
+        //         GetCashBalance(),
+        //         Recon_GetDebtTotal(),
+        //         _totalSpendLifetime,
+        //         _totalInvestmentAccrualLifetime,
+        //         _totalDebtAccrualLifetime,
+        //         _totalSocialSecurityWageLifetime,
+        //         _totalDebtPaidLifetime,
+        //         currentDate >= _simParams.RetirementDate, 
+        //         _isBankrupt,
+        //         _areWeInADownYear,
+        //         _areWeInExtremeAusterityMeasures
+        //     );
+        //     _reconciliationLedger.AddLine(line);
+        // }
         #region public interface
 
         /// <summary>
@@ -216,11 +197,11 @@ namespace Lib.MonteCarlo
         /// </summary>
         /// <param name="amount"></param>
         /// <param name="currentDate"></param>
-        public void RecordDebtPayment(decimal amount, LocalDateTime currentDate)
+        public void RecordDebtPayment(long amount, LocalDateTime currentDate)
         {
             _totalDebtPaidLifetime += amount;
         }
-        public void SetLongTermGrowthRate(decimal longTermGrowthRate)
+        public void SetLongTermGrowthRate(long longTermGrowthRate)
         {
             _currentLongTermGrowthRate = longTermGrowthRate;
             _currentLongRangeInvestmentCost +=
@@ -228,8 +209,8 @@ namespace Lib.MonteCarlo
         }
         public void AccrueInterest_old(LocalDateTime currentDate)
         {
-            decimal midTermGrowthRate = _currentLongTermGrowthRate * 0.5M;
-            decimal shortTermGrowthRate = 0.0M;
+            long midTermGrowthRate = _currentLongTermGrowthRate * 0.5M;
+            long shortTermGrowthRate = 0.0M;
 
             _currentMidRangeInvestmentCost +=
                 (_currentMidRangeInvestmentCost * midTermGrowthRate);
@@ -238,7 +219,7 @@ namespace Lib.MonteCarlo
 
             _longRangeInvestmentCostHistory.Add(_currentLongRangeInvestmentCost);
 
-            decimal getGrowthRate(McInvestmentPositionType investmentPositionType) =>
+            long getGrowthRate(McInvestmentPositionType investmentPositionType) =>
                 investmentPositionType switch
                 {
                     McInvestmentPositionType.SHORT_TERM => shortTermGrowthRate,
@@ -259,18 +240,18 @@ namespace Lib.MonteCarlo
                 foreach (var p in account.Positions)
                 {
 
-                    decimal oldPrice = p.Price;
+                    long oldPrice = p.Price;
 
                     if (p is not McInvestmentPosition) break;
                     if (!p.IsOpen) break;
                     
-                    var growthRate = getGrowthRate(p.InvenstmentPositionType);
+                    var growthRate = getGrowthRate(p.InvestmentPositionType);
                     //p.Price = Math.Round(p.Price + (p.Price * growthRate), 4);
                     p.Price = p.Price + (p.Price * growthRate);
 
-                    decimal oldValue = oldPrice * p.Quantity;
-                    decimal newValue = p.Price * p.Quantity;
-                    if (p.InvenstmentPositionType == McInvestmentPositionType.LONG_TERM && _corePackage.DebugMode)
+                    long oldValue = oldPrice * p.Quantity;
+                    long newValue = p.Price * p.Quantity;
+                    if (p.InvestmentPositionType == McInvestmentPositionType.LONG_TERM && _corePackage.DebugMode)
                     {
                         // todo: delete this check
                         lt_value_summed_old += oldValue;
@@ -296,12 +277,12 @@ namespace Lib.MonteCarlo
                 foreach (var p in account.Positions)
                 {
 
-                    decimal oldBalance = p.CurrentBalance;
+                    long oldBalance = p.CurrentBalance;
 
                     if (p is not McDebtPosition) break;
                     if (!p.IsOpen) break;
                     
-                    decimal amount = Math.Round(p.CurrentBalance * (p.AnnualPercentageRate / 12), 2);
+                    long amount = Math.Round(p.CurrentBalance * (p.AnnualPercentageRate / 12), 2);
                     p.CurrentBalance += amount;
 
                     _totalDebtAccrualLifetime += (p.CurrentBalance - oldBalance);
@@ -334,8 +315,8 @@ namespace Lib.MonteCarlo
         public void AccrueInterest(LocalDateTime currentDate)
         {
             const int pennyModifier = 10000; // 10.1234 => 101234
-            decimal midTermGrowthRate = _currentLongTermGrowthRate * 0.5M;
-            decimal shortTermGrowthRate = 0.0M;
+            long midTermGrowthRate = _currentLongTermGrowthRate * 0.5M;
+            long shortTermGrowthRate = 0.0M;
             
             Int64 longTermRate_int = (Int64)(_currentLongTermGrowthRate * pennyModifier);
             Int64 midTermRate_int = (Int64)(midTermGrowthRate * pennyModifier);
@@ -376,18 +357,18 @@ namespace Lib.MonteCarlo
                 foreach (var p in account.Positions)
                 {
 
-                    decimal oldPrice = p.Price;-
+                    long oldPrice = p.Price;
 
                     if (p is not McInvestmentPosition) break;
                     if (!p.IsOpen) break;
                     
-                    var growthRate = getGrowthRate(p.InvenstmentPositionType);
+                    var growthRate = getGrowthRate(p.InvestmentPositionType);
                     //p.Price = Math.Round(p.Price + (p.Price * growthRate), 4);
                     p.Price = p.Price + (p.Price * growthRate);
 
-                    decimal oldValue = oldPrice * p.Quantity;
-                    decimal newValue = p.Price * p.Quantity;
-                    if (p.InvenstmentPositionType == McInvestmentPositionType.LONG_TERM && _corePackage.DebugMode)
+                    long oldValue = oldPrice * p.Quantity;
+                    long newValue = p.Price * p.Quantity;
+                    if (p.InvestmentPositionType == McInvestmentPositionType.LONG_TERM && _corePackage.DebugMode)
                     {
                         // todo: delete this check
                         lt_value_summed_old += oldValue;
@@ -413,12 +394,12 @@ namespace Lib.MonteCarlo
                 foreach (var p in account.Positions)
                 {
 
-                    decimal oldBalance = p.CurrentBalance;
+                    long oldBalance = p.CurrentBalance;
 
                     if (p is not McDebtPosition) break;
                     if (!p.IsOpen) break;
                     
-                    decimal amount = Math.Round(p.CurrentBalance * (p.AnnualPercentageRate / 12), 2);
+                    long amount = Math.Round(p.CurrentBalance * (p.AnnualPercentageRate / 12), 2);
                     p.CurrentBalance += amount;
 
                     _totalDebtAccrualLifetime += (p.CurrentBalance - oldBalance);
@@ -467,7 +448,7 @@ namespace Lib.MonteCarlo
             }
         }
 
-        public void DepositSocialSecurityCheck(decimal amount, LocalDateTime currentDate)
+        public void DepositSocialSecurityCheck(long amount, LocalDateTime currentDate)
         {
             DepositCash(amount, currentDate);
             _totalSocialSecurityWageLifetime += amount;
@@ -482,7 +463,7 @@ namespace Lib.MonteCarlo
             }
         }
 
-        private void DepositCash(decimal amount, LocalDateTime currentDate)
+        private void DepositCash(long amount, LocalDateTime currentDate)
         {
 
             var totalCash = GetCashBalance();
@@ -499,7 +480,7 @@ namespace Lib.MonteCarlo
             }
 
         }
-        public void InvestFunds(LocalDateTime _currentDate, decimal dollarAmount, 
+        public void InvestFunds(LocalDateTime _currentDate, long dollarAmount, 
             McInvestmentPositionType mcInvestmentPositionType, McInvestmentAccountType accountType)
         {
             if (dollarAmount <= 0) return;
@@ -521,7 +502,7 @@ namespace Lib.MonteCarlo
 
             var roundedDollarAmount = Math.Round(dollarAmount, 2);
 
-            decimal getPrice() =>
+            long getPrice() =>
             mcInvestmentPositionType switch
             {
                 McInvestmentPositionType.SHORT_TERM => _currentShortRangeInvestmentCost,
@@ -529,8 +510,8 @@ namespace Lib.MonteCarlo
                 McInvestmentPositionType.LONG_TERM => _currentLongRangeInvestmentCost,
                 _ => throw new NotImplementedException(),
             };
-            decimal price = getPrice();
-            decimal quantity = Math.Round(roundedDollarAmount / price, 4);
+            long price = getPrice();
+            long quantity = Math.Round(roundedDollarAmount / price, 4);
             var account = GetAccount();
             account.Positions.Add(new McInvestmentPosition()
             {
@@ -538,7 +519,7 @@ namespace Lib.MonteCarlo
                 // InvestmentAccountId = account.Id,
                 Entry = _currentDate,
                 InitialCost = dollarAmount,
-                InvenstmentPositionType = mcInvestmentPositionType,
+                InvestmentPositionType = mcInvestmentPositionType,
                 IsOpen = true,
                 Name = "automated investment",
                 Price = price,
@@ -555,66 +536,14 @@ namespace Lib.MonteCarlo
                 );
             }
         }
-        public NetWorthMeasurement MeasureNetWorth(LocalDateTime _currentDate)
-        {
-            var totalAssets = 0M;
-            var totalLiabilities = 0M;
-            foreach (var account in _investmentAccounts)
-            {
-                if (account.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE)
-                {
-                    totalAssets += account.Positions.Where(x => x.IsOpen).Sum(x => {
-                        McInvestmentPosition ip = (McInvestmentPosition)x;
-                        return ip.CurrentValue;
-                    });
-                }
-            }
-            foreach (var account in _debtAccounts)
-            {
-                totalLiabilities += account.Positions.Where(x => x.IsOpen).Sum(x => {
-                    McDebtPosition dp = (McDebtPosition)x;
-                    return dp.CurrentBalance;
-                });
-            }
-            NetWorthMeasurement measurement = new NetWorthMeasurement()
-            {
-                MeasuredDate = _currentDate,
-                TotalAssets = totalAssets,
-                TotalLiabilities = totalLiabilities,
-                TotalCash = GetCashBalance(),
-                TotalMidTermInvestments = GetMidBucketTotalBalance(),
-                TotalLongTermInvestments = GetLongBucketTotalBalance(),
-                TotalSpend = 0,
-                TotalTax = _taxFiler.TotalTaxPaid,
-            };
-
-            // see if we're in extreme austerity measures based on total net worth
-            if (measurement.NetWorth <= _simParams.ExtremeAusterityNetWorthTrigger)
-            {
-
-                _areWeInExtremeAusterityMeasures = true;
-                // set the end date to now. if we stay below the line, the date
-                // will keep going up with it
-                _lastExtremeAusterityMeasureEnd = _currentDate;
-            }
-            else
-            {
-                // has it been within 12 months that we were in an extreme measure?
-                if (_lastExtremeAusterityMeasureEnd < _currentDate.PlusYears(-1))
-                {
-
-                    _areWeInExtremeAusterityMeasures = false;
-                }
-            }
-            return measurement;
-        }
+        
         public void MeetRmdRequirements(LocalDateTime currentDate)
         {
             var year = currentDate.Year;
             var rmdRate = _taxFiler.GetRmdRateByYear(year);
             if(rmdRate is null) { return; } // no requirement this year
 
-            var rate = (decimal)rmdRate;
+            var rate = (long)rmdRate;
 
             // get total balance in rmd-relevant accounts
             var relevantAccounts = _investmentAccounts
@@ -625,7 +554,7 @@ namespace Lib.MonteCarlo
                 balance += GetInvestmentAccountTotalValue(account);
 
             var totalRmdRequirement = balance / rate;
-            if(!_rmdDistributions.TryGetValue(year, out decimal totalRmdSoFar))
+            if(!_rmdDistributions.TryGetValue(year, out long totalRmdSoFar))
             {
                 _rmdDistributions[year] = 0;
                 totalRmdSoFar = 0;
@@ -715,7 +644,7 @@ namespace Lib.MonteCarlo
                 else
                 {
                     // we're still in a dip. keep us here, but increment the down year counter
-                    decimal _downYearCounterIncrement() =>
+                    long _downYearCounterIncrement() =>
                     _simParams.RebalanceFrequency switch
                     {
                         RebalanceFrequency.MONTHLY => 1M / 12M,
@@ -787,7 +716,7 @@ namespace Lib.MonteCarlo
         /// deduct cash from the cash account
         /// </summary>
         /// <returns>true if able to pay. false if not</returns>
-        public bool WithdrawCash(decimal amount, LocalDateTime currentDate)
+        public bool WithdrawCash(long amount, LocalDateTime currentDate)
         {
             var totalCashOnHand = GetCashBalance();
 
@@ -857,9 +786,9 @@ namespace Lib.MonteCarlo
 
 
 
-        public decimal Recon_GetAssetTotalByType(McInvestmentPositionType t)
+        public long Recon_GetAssetTotalByType(McInvestmentPositionType t)
         {
-            decimal total = 0.0M;
+            long total = 0.0M;
             var accounts = _investmentAccounts
                 .Where(x => x.AccountType != McInvestmentAccountType.PRIMARY_RESIDENCE
                     && x.AccountType != McInvestmentAccountType.CASH)
@@ -867,7 +796,7 @@ namespace Lib.MonteCarlo
             foreach (var a in accounts)
             {
                 var positions = a.Positions
-                    .Where(x => x.InvenstmentPositionType == t && x.IsOpen)
+                    .Where(x => x.InvestmentPositionType == t && x.IsOpen)
                     .ToList();
                 foreach (var p in positions)
                 {
@@ -876,21 +805,7 @@ namespace Lib.MonteCarlo
             }
             return total;
         }
-        public decimal Recon_GetDebtTotal()
-        {
-            decimal total = 0.0M;
-            foreach (var a in _debtAccounts)
-            {
-                var positions = a.Positions
-                    .Where(x => x.IsOpen)
-                    .ToList();
-                foreach (var p in positions)
-                {
-                    total += p.CurrentBalance;
-                }
-            }
-            return total;
-        }
+        
         
 
 
@@ -901,7 +816,7 @@ namespace Lib.MonteCarlo
 
         #region private methods
 
-        private void AddRmdDistribution(LocalDateTime currentDate, decimal amount)
+        private void AddRmdDistribution(LocalDateTime currentDate, long amount)
         {
             int year = currentDate.Year;
             if (_rmdDistributions.ContainsKey(year))
@@ -910,26 +825,8 @@ namespace Lib.MonteCarlo
             }
             else _rmdDistributions[year] = amount;
         }
-        private decimal GetInvestmentAccountTotalValue(McInvestmentAccount account)
-        {
-            return account.Positions.Sum(x => {
-                if (x.IsOpen && x is McInvestmentPosition)
-                {
-                    var ip = x as McInvestmentPosition;
-                    if (ip is null) return 0;
-                    return ip.CurrentValue;
-                }
-                return 0;
-            });
-        }
-        public decimal GetCashBalance()
-        {
-            return _cash.Positions.Sum(x => {
-                if (!x.IsOpen) return 0M;
-                var ip = (McInvestmentPosition)x;
-                return ip.CurrentValue;
-            });
-        }
+        
+        
         private List<McInvestmentPosition> GetInvestmentPositionsByAccountTypeAndPositionType(
             McInvestmentAccountType accountType, McInvestmentPositionType mcInvestmentPositionType,
             LocalDateTime currentDate)
@@ -943,7 +840,7 @@ namespace Lib.MonteCarlo
                     if (y is not McInvestmentPosition) return false;
                     var ip = y as McInvestmentPosition;
                     if (ip is null) return false;
-                    if (ip.InvenstmentPositionType != mcInvestmentPositionType) return false;
+                    if (ip.InvestmentPositionType != mcInvestmentPositionType) return false;
                     return true;
                 }
                     ))
@@ -958,36 +855,7 @@ namespace Lib.MonteCarlo
             }
             return investmentPositions;
         }
-        private decimal GetLongBucketTotalBalance()
-        {
-            return GetTotalBalanceByBucketType(McInvestmentPositionType.LONG_TERM);
-        }
-        private decimal GetMidBucketTotalBalance()
-        {
-            return GetTotalBalanceByBucketType(McInvestmentPositionType.MID_TERM);
-        }
-        private decimal GetTotalBalanceByBucketType(McInvestmentPositionType bucketType)
-        {
-            var totalBalance = 0M;
-            var accounts = _investmentAccounts.Where(x => {
-                if (x.AccountType == McInvestmentAccountType.PRIMARY_RESIDENCE) return false;
-                if (x.AccountType == McInvestmentAccountType.CASH) return false;
-                return true;
-            });
-            foreach (var account in accounts)
-            {
-                var totalValueBegin = GetInvestmentAccountTotalValue(account);
-                totalBalance += account.Positions
-                    .Where(x => x.IsOpen && x is McInvestmentPosition)
-                    .Sum(x => {
-                        var ip = x as McInvestmentPosition;
-                        if (ip is null) return 0M;
-                        if (ip.InvenstmentPositionType != bucketType) return 0M;
-                        return ip.CurrentValue;
-                    });
-            }
-            return totalBalance;
-        }
+        
         private void RemoveClosedPositions()
         {
             foreach (var account in _investmentAccounts)
@@ -1004,20 +872,20 @@ namespace Lib.MonteCarlo
         /// different bucket
         /// </summary>
         /// <returns>the amount actually sold (may go under or over)</returns>
-        private decimal SellInvestment(decimal amountNeededGlobal,
+        private long SellInvestment(long amountNeededGlobal,
             McInvestmentPositionType mcInvestmentPositionType, LocalDateTime currentDate
             , bool isRmd = false)
         {
-            decimal amountSoldGlobal = 0M;
+            long amountSoldGlobal = 0M;
             var incomeRoom = _taxFiler.CalculateIncomeRoom(currentDate.Year);
 
 
 
             // pull all relevant positions and sell until you've reached a
             // given amount or more. return what was actually sold
-            Func<McInvestmentAccountType, decimal, decimal> sellToAmount = (McInvestmentAccountType accountType, decimal cap) =>
+            Func<McInvestmentAccountType, long, long> sellToAmount = (McInvestmentAccountType accountType, long cap) =>
             {
-                decimal amountSoldLocal = 0M; // this is the amount sold in just this internal amount
+                long amountSoldLocal = 0M; // this is the amount sold in just this internal amount
                 var positions = GetInvestmentPositionsByAccountTypeAndPositionType(
                         accountType, mcInvestmentPositionType, currentDate);
                 foreach (var p in positions)
@@ -1070,7 +938,7 @@ namespace Lib.MonteCarlo
                 // then, once the income room is reached, fulfill from
                 // Roth / HSA, then brokerage, then traditional
 
-                decimal amountSoldLocal = 0M; // just the amount sold in first pass (the salesOrderWithRoom flow)
+                long amountSoldLocal = 0M; // just the amount sold in first pass (the salesOrderWithRoom flow)
                 foreach (var accountType in _salesOrderWithRoom)
                 {
                     if (amountSoldGlobal >= amountNeededGlobal) break;
@@ -1105,9 +973,9 @@ namespace Lib.MonteCarlo
                      *    amountNeededLocal= 7,000.00 (Math.Min(globalPendingSale, incomeRoomLeft))
                      *    
                      * */
-                    decimal globalPendingSale = amountNeededGlobal - amountSoldGlobal;
-                    decimal incomeRoomLeft = incomeRoom - amountSoldLocal;
-                    decimal amountNeededLocal = Math.Min(globalPendingSale, incomeRoomLeft);
+                    long globalPendingSale = amountNeededGlobal - amountSoldGlobal;
+                    long incomeRoomLeft = incomeRoom - amountSoldLocal;
+                    long amountNeededLocal = Math.Min(globalPendingSale, incomeRoomLeft);
                     amountSoldLocal += sellToAmount(accountType, amountNeededLocal);
                 }
                 if (amountSoldGlobal < amountNeededGlobal)
@@ -1137,7 +1005,7 @@ namespace Lib.MonteCarlo
         /// </summary>
         private void SplitPositionsAtMaxIndividualValue()
         {
-            decimal maxPositionValue = _corePackage.MonteCarloSimMaxPositionValue;
+            long maxPositionValue = _corePackage.MonteCarloSimMaxPositionValue;
             var accounts = _investmentAccounts.Where(x => {
                 if (x.AccountType == McInvestmentAccountType.PRIMARY_RESIDENCE) return false;
                 if (x.AccountType == McInvestmentAccountType.CASH) return false;
@@ -1173,7 +1041,7 @@ namespace Lib.MonteCarlo
                             // InvestmentAccountId = account.Id,
                             Entry = ip.Entry,
                             InitialCost = costOfNewPosition,
-                            InvenstmentPositionType = ip.InvenstmentPositionType,
+                            InvestmentPositionType = ip.InvestmentPositionType,
                             IsOpen = true,
                             Name = "automated investment",
                             Price = ip.Price,
@@ -1239,9 +1107,9 @@ namespace Lib.MonteCarlo
 
             if (numMonths <= 0) return;
 
-            decimal totalCashWanted = numMonths * _simParams.DesiredMonthlySpend;
-            decimal cashOnHand = GetCashBalance();
-            decimal cashNeeded = totalCashWanted - cashOnHand;
+            long totalCashWanted = numMonths * _simParams.DesiredMonthlySpend;
+            long cashOnHand = GetCashBalance();
+            long cashNeeded = totalCashWanted - cashOnHand;
             if (cashNeeded > 0)
             {
                 // need to pull from one of the buckets. 
@@ -1359,10 +1227,10 @@ namespace Lib.MonteCarlo
 
             if (numMonths <= 0) return;
 
-            decimal totalAmountWanted = numMonths * _simParams.DesiredMonthlySpend;
-            decimal amountOnHand = GetMidBucketTotalBalance();
-            decimal amountNeeded = totalAmountWanted - amountOnHand;
-            decimal maxAmountToPull = _simParams.DesiredMonthlySpend * _simParams.NumMonthsCashOnHand; // don't pull more in one go than the cash on hand goal
+            long totalAmountWanted = numMonths * _simParams.DesiredMonthlySpend;
+            long amountOnHand = GetMidBucketTotalBalance();
+            long amountNeeded = totalAmountWanted - amountOnHand;
+            long maxAmountToPull = _simParams.DesiredMonthlySpend * _simParams.NumMonthsCashOnHand; // don't pull more in one go than the cash on hand goal
             amountNeeded = Math.Min(amountNeeded, maxAmountToPull);
             if (amountNeeded > 0)
             {
@@ -1398,7 +1266,7 @@ namespace Lib.MonteCarlo
                 }
             }
         }
-        private void UpdateCashAccountBalance(decimal newBalance, LocalDateTime _currentDate)
+        private void UpdateCashAccountBalance(long newBalance, LocalDateTime _currentDate)
         {
             _cash.Positions = [
                     new McInvestmentPosition(){
@@ -1408,7 +1276,7 @@ namespace Lib.MonteCarlo
                         Price = 1,
                         Quantity = newBalance,
                         InitialCost = 0,
-                        InvenstmentPositionType = McInvestmentPositionType.SHORT_TERM,
+                        InvestmentPositionType = McInvestmentPositionType.SHORT_TERM,
                         IsOpen = true,
                         Name = "default cash account"}
                     ];

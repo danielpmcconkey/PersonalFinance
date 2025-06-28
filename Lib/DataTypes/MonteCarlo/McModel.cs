@@ -46,38 +46,38 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("socialsecuritystart")]
         public required LocalDateTime SocialSecurityStart { get; set; }
         
-        [Column("desiredmonthlyspend",TypeName = "numeric(12,2)")]
-        public required decimal DesiredMonthlySpend { get; set; }
+        [Column("desiredmonthlyspend")]
+        public required long DesiredMonthlySpend { get; set; }
 
         /// <summary>
         /// the percentage of monthly spend that you actually spend when times 
         /// are tough
         /// </summary>
-        [Column("austerityratio",TypeName = "numeric(5,4)")]
-        public required decimal AusterityRatio { get; set; }
+        [Column("austerityratio")]
+        public required long AusterityRatio { get; set; }
         /// <summary>
         /// the percentage of monthly spend that you actually spend when times 
         /// are really tough
         /// </summary>
-        [Column("extremeausterityratio",TypeName = "numeric(5,4)")]
-        public required decimal ExtremeAusterityRatio { get; set; }
+        [Column("extremeausterityratio")]
+        public required long ExtremeAusterityRatio { get; set; }
         /// <summary>
         /// If net worth is below this level, you go into extreme austerity
         /// </summary>
-        [Column("extremeausteritynetworthtrigger",TypeName = "numeric(12,2)")]
-        public required decimal ExtremeAusterityNetWorthTrigger { get; set; }
+        [Column("extremeausteritynetworthtrigger")]
+        public required long ExtremeAusterityNetWorthTrigger { get; set; }
 
-        [Column("monthlyinvest401kroth",TypeName = "numeric(12,2)")]
-        public required decimal MonthlyInvest401kRoth { get; set; }
+        [Column("monthlyinvest401kroth")]
+        public required long MonthlyInvest401kRoth { get; set; }
 
-        [Column("monthlyinvest401ktraditional",TypeName = "numeric(12,2)")]
-        public required decimal MonthlyInvest401kTraditional { get; set; }
+        [Column("monthlyinvest401ktraditional")]
+        public required long MonthlyInvest401kTraditional { get; set; }
 
-        [Column("monthlyinvestbrokerage",TypeName = "numeric(12,2)")]
-        public required decimal MonthlyInvestBrokerage { get; set; }
+        [Column("monthlyinvestbrokerage")]
+        public required long MonthlyInvestBrokerage { get; set; }
 
-        [Column("monthlyinvesthsa",TypeName = "numeric(12,2)")]
-        public required decimal MonthlyInvestHSA { get; set; }
+        [Column("monthlyinvesthsa")]
+        public required long MonthlyInvestHSA { get; set; }
         
         [Column("rebalancefrequency")]
         public required RebalanceFrequency RebalanceFrequency { get; set; }
@@ -94,8 +94,8 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("recessionchecklookbackmonths")]
         public required int RecessionCheckLookBackMonths { get; set; }
 
-        [Column("recessionrecoverypointmodifier",TypeName = "numeric(5,4)")]
-        public required decimal RecessionRecoveryPointModifier { get; set; }
+        [Column("recessionrecoverypointmodifier")]
+        public required long RecessionRecoveryPointModifier { get; set; }
 
     }
 }

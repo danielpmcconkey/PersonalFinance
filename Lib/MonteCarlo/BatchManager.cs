@@ -141,7 +141,7 @@ namespace Lib.MonteCarlo
                             IsOpen = p.IsOpen,
                             Name = p.Name,
                             Entry = p.Entry,
-                            InvenstmentPositionType = p.InvenstmentPositionType,
+                            InvestmentPositionType = p.InvestmentPositionType,
                             InitialCost = p.InitialCost,
                             Quantity = p.Quantity,
                             Price = p.Price,

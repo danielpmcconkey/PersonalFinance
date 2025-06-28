@@ -34,6 +34,10 @@ public static class ConfigManager
     {
         return decimal.Parse(ReadSetting(key));
     }
+    public static long ReadLongSetting(string key)
+    {
+        return Int64.Parse(ReadSetting(key));
+    }
 
     public static string ReadStringSetting(string key)
     {

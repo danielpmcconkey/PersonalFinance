@@ -2,6 +2,7 @@
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using System.Collections.Concurrent;
+using Lib.Utils;
 
 namespace Lib.MonteCarlo
 {
@@ -13,19 +14,19 @@ namespace Lib.MonteCarlo
         private McPerson _mcPerson;
         private McModel _simParams;
         private List<NetWorthMeasurement> _measurements;
-        //private decimal[] _sAndP500HistoricalTrends;
+        //private long[] _sAndP500HistoricalTrends;
         private LocalDateTime _currentDate;
         private LocalDateTime _endDate;
         private LocalDateTime _retirementDate;
         private bool _isRetired;
         private bool _isBankrupt;
-        private decimal _monthly401kMatch = 0M;
-        //private decimal _netWorthAtRetirement = 0M;
+        private long _monthly401kMatch = 0;
+        //private long _netWorthAtRetirement = 0M;
         private int _simMonthCount = 0;
         //private int _historicalMonthsCount = 0;
         //private int _historicalTrendsPointer = 0;
-        private decimal _monthlySocialSecurityWage = 0;
-        private decimal _totalSpend;
+        private long _monthlySocialSecurityWage = 0;
+        private long _totalSpend;
 
         private Dictionary<LocalDateTime, Decimal> _hypotheticalPrices;
 
@@ -61,7 +62,7 @@ namespace Lib.MonteCarlo
                 _retirementDate, _taxFiler);
             _taxFiler.SetBank(_bank);
             _monthlySocialSecurityWage = CalculateMonthlySocialSecurityWage();
-            _totalSpend = 0M;
+            _totalSpend = 0;
 
             //ResetTrendsPointer();
 
@@ -75,7 +76,7 @@ namespace Lib.MonteCarlo
             {
                 _logger.Debug(_logger.FormatHeading($"New month {_currentDate:MMM, yyyy}"));
                 _simMonthCount++;
-                decimal priceGrowthRate = 0.0M;
+                long priceGrowthRate = 0;
 
                 if (!_isBankrupt)
                 {
@@ -95,10 +96,11 @@ namespace Lib.MonteCarlo
 
                     }
 
-                    if (!_hypotheticalPrices.TryGetValue(_currentDate, out priceGrowthRate))
+                    if (!_hypotheticalPrices.TryGetValue(_currentDate, out var dec_priceGrowthRate))
                     {
                         throw new InvalidDataException("_currentDate not found in _hypotheticalPrices");
                     }
+                    priceGrowthRate = CurrencyConverter.ConvertFromCurrency(dec_priceGrowthRate);
                     _bank.SetLongTermGrowthRate(priceGrowthRate);
 
                     _bank.AccrueInterest(_currentDate);
@@ -150,9 +152,9 @@ namespace Lib.MonteCarlo
             _bank.PrintReconciliation();
             return _measurements;
         }
-        private decimal PayTax()
+        private long PayTax()
         {
-            if (_isBankrupt) return 0.0M;
+            if (_isBankrupt) return 0;
             var taxLiability = _taxFiler.CalculateTaxLiabilityForYear(_currentDate, _currentDate.Year - 1);
 
             if (!SpendCash(taxLiability))
@@ -183,7 +185,7 @@ namespace Lib.MonteCarlo
                 );
             }
         }
-        private decimal CalculateMonthlySocialSecurityWage()
+        private long CalculateMonthlySocialSecurityWage()
         {
             var maxWage = _mcPerson.MonthlyFullSocialSecurityBenefit;
             var benefitElectionStart = _simParams.SocialSecurityStart;
@@ -191,21 +193,21 @@ namespace Lib.MonteCarlo
             var timeSpanEarly = (fullRetirementDate - benefitElectionStart);
             int monthsEarly = (int)Math.Round(
                 timeSpanEarly.Days / 365.25 * 12, 0);
-            decimal penalty = 0.0M;
+            long penalty = 0;
             if (monthsEarly <= 36)
             {
-                penalty += 0.01M * (5M / 9M) * monthsEarly;
+                penalty += 100 * 5 / 9 * monthsEarly;
             }
             else
             {
-                penalty += 0.01M * (5M / 9M) * 36;
-                penalty += 0.01M * (5M / 12M) * (monthsEarly - 36);
+                penalty += 100 * 5 / 9 * 36;
+                penalty += 100 * 5 / 12 * (monthsEarly - 36);
             }
-            penalty = Math.Max(penalty, 0M); // don't want to add on to max if I made a date math error
+            penalty = Math.Max(penalty, 0); // don't want to add on to max if I made a date math error
             var primaryWage = maxWage - (maxWage * penalty);
             return primaryWage;
         }
-        private bool SpendCash(decimal amount)
+        private bool SpendCash(long amount)
         {
             // prior to retirement, don't debit the cash account as it's
             // assumed we're just paying our bills pre-retirement with our
@@ -286,7 +288,7 @@ namespace Lib.MonteCarlo
                     
                     var og_balance = p.CurrentBalance; // only used for debug recon
                     
-                    decimal amount = Math.Round(p.MonthlyPayment, 2);
+                    long amount = p.MonthlyPayment;
                     if (amount > p.CurrentBalance) amount = p.CurrentBalance;
                     if (!SpendCash(amount))
                     {

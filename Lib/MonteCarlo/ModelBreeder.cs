@@ -37,16 +37,16 @@ namespace Lib.MonteCarlo
                 BatchResults = [],
             };
         }
-        private static decimal RecessionRecoveryPointModifier(McModel a, McModel b)
+        private static long RecessionRecoveryPointModifier(McModel a, McModel b)
         {
-            Func<decimal> getRandom = () =>
+            Func<long> getRandom = () =>
             {
-                int min = 80;
-                int max = 120;
+                int min =  8000; 
+                int max = 12000;
 
                 var rngInt =  GetUnSeededRandomInt(min, max);
-                var rngDecimal = rngInt * 0.01M;
-                return rngDecimal;
+                
+                return (long)rngInt;
             };
             var heredetarySource = GetHeredetarySource();
             switch (heredetarySource)
@@ -176,9 +176,9 @@ namespace Lib.MonteCarlo
                     throw new NotImplementedException();
             }
         }
-        private static decimal ExtremeAusterityNetWorthTrigger(McModel a, McModel b)
+        private static long ExtremeAusterityNetWorthTrigger(McModel a, McModel b)
         {
-            Func<decimal> getRandom = () =>
+            Func<long> getRandom = () =>
             {
                 int min = 500000;
                 int max = 2000000;
@@ -198,14 +198,14 @@ namespace Lib.MonteCarlo
                     throw new NotImplementedException();
             }
         }
-        private static decimal ExtremeAusterityRatio(McModel a, McModel b)
+        private static long ExtremeAusterityRatio(McModel a, McModel b)
         {
-            Func<decimal> getRandom = () =>
+            Func<long> getRandom = () =>
             {
-                int min = 40;
-                int max = 90;
+                int min = 4000;
+                int max = 9000;
 
-                return GetUnSeededRandomInt(min, max) * 0.01M;
+                return GetUnSeededRandomInt(min, max);
             };
             var heredetarySource = GetHeredetarySource();
             switch (heredetarySource)
@@ -220,14 +220,14 @@ namespace Lib.MonteCarlo
                     throw new NotImplementedException();
             }
         }
-        private static decimal AusterityRatio(McModel a, McModel b)
+        private static long AusterityRatio(McModel a, McModel b)
         {
-            Func<decimal> getRandom = () =>
+            Func<long> getRandom = () =>
             {
-                int min = 50;
-                int max = 100;
+                int min = 5000;
+                int max = 10000;
 
-                return GetUnSeededRandomInt(min, max) * 0.01M;
+                return GetUnSeededRandomInt(min, max);
             };
             var heredetarySource = GetHeredetarySource();
             switch (heredetarySource)
@@ -242,9 +242,9 @@ namespace Lib.MonteCarlo
                     throw new NotImplementedException();
             }
         }
-        private static decimal DesiredMonthlySpend(McModel a, McModel b)
+        private static long DesiredMonthlySpend(McModel a, McModel b)
         {
-            Func<decimal> getRandom = () =>
+            Func<long> getRandom = () =>
             {
                 int min = 8000;
                 int max = 16000;
@@ -312,10 +312,10 @@ namespace Lib.MonteCarlo
                     throw new NotImplementedException();
             }
         }
-        private static (decimal roth, decimal trad, decimal brokerage) InvestmentAmounts(
+        private static (long roth, long trad, long brokerage) InvestmentAmounts(
             McModel a, McModel b)
         {
-            Func<(decimal roth, decimal trad, decimal brokerage)>
+            Func<(long roth, long trad, long brokerage)>
                 getRandom = () =>
                 {
                     // today, I put $500 per paycheck into my brokerage account. if I
@@ -324,17 +324,17 @@ namespace Lib.MonteCarlo
                     // taxed at 16.2%, or at least that's the difference I think I'd
                     // make in my paycheck
 
-                    decimal monthlyBrokerageContributionBase = 500M * 26M / 12M;
-                    var monthly401kContribution = (23500M + 7500M) / 12.0M;
-                    int maxMonthlyRothContribution = (int)Math.Round(monthly401kContribution, 0);
-                    decimal roth = GetUnSeededRandomInt(0, maxMonthlyRothContribution);
-                    decimal trad = maxMonthlyRothContribution - roth;
-                    decimal brokerage = monthlyBrokerageContributionBase + (trad * 0.162M);
+                    int monthlyBrokerageContributionBase = 5000000 * 26 / 12;
+                    int monthly401kContribution = (235000000 + 75000000) / 12;
+                    int maxMonthlyRothContribution = monthly401kContribution;
+                    long roth = GetUnSeededRandomInt(0, maxMonthlyRothContribution);
+                    long trad = maxMonthlyRothContribution - roth;
+                    long brokerage = monthlyBrokerageContributionBase + (trad * 1620);
                     return (roth, trad, brokerage);
                 };
-            decimal monthlyRoth401kContribution = 0;
-            decimal monthlyTraditional401kContribution = 0;
-            decimal monthlyBrokerageContribution = 0;
+            long monthlyRoth401kContribution = 0;
+            long monthlyTraditional401kContribution = 0;
+            long monthlyBrokerageContribution = 0;
             var heredetarySource = GetHeredetarySource();
             switch (heredetarySource)
             {
