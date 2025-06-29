@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using NodaTime;
 
 namespace Lib.StaticConfig;
@@ -13,16 +14,16 @@ public static class MonteCarloConfig
     public static string LogOutputDirectory;
     public static LocalDateTime MonteCarloSimStartDate;
     public static LocalDateTime MonteCarloSimEndDate;
-    public static long MonteCarloSimMaxPositionValue;
+    public static LogLevel LogLevel = LogLevel.INFO;
 
     static MonteCarloConfig()
     {
         MonteCarloSimStartDate = ConfigManager.ReadDateSetting("MonteCarloSimStartDate");
         MonteCarloSimEndDate = ConfigManager.ReadDateSetting("MonteCarloSimEndDate");
-        MonteCarloSimMaxPositionValue = ConfigManager.ReadLongSetting("MonteCarloSimMaxPositionValue");
         DebugMode = ConfigManager.ReadBoolSetting("IsDebugModeOn");
         ShouldRunParallel = ConfigManager.ReadBoolSetting("ShouldRunParallel");
         ReconOutputDirectory = ConfigManager.ReadStringSetting("ReconOutputDir");
         LogOutputDirectory = ConfigManager.ReadStringSetting("LogOutputDir");
+        if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
 }

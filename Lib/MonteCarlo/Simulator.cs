@@ -2,129 +2,143 @@
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using System.Collections.Concurrent;
-using Lib.Utils;
+using Lib.MonteCarlo.StaticFunctions;
 
 namespace Lib.MonteCarlo
 {
     public class Simulator
     {
-        private Logger _logger;
-        private List<McInvestmentAccount> _investmentAccounts;
-        private List<McDebtAccount> _debtAccounts;
-        private McPerson _mcPerson;
-        private McModel _simParams;
-        private List<NetWorthMeasurement> _measurements;
-        //private long[] _sAndP500HistoricalTrends;
-        private LocalDateTime _currentDate;
-        private LocalDateTime _endDate;
-        private LocalDateTime _retirementDate;
-        private bool _isRetired;
-        private bool _isBankrupt;
-        private long _monthly401kMatch = 0;
-        //private long _netWorthAtRetirement = 0M;
-        private int _simMonthCount = 0;
-        //private int _historicalMonthsCount = 0;
-        //private int _historicalTrendsPointer = 0;
-        private long _monthlySocialSecurityWage = 0;
-        private long _totalSpend;
-
+        /// <summary>
+        /// our list of hypothetical price history to be used, passed in by whatever created the simulation
+        /// </summary>
         private Dictionary<LocalDateTime, Decimal> _hypotheticalPrices;
-
-
-        private Bank _bank;
-        private TaxFiler _taxFiler;
+        /// <summary>
+        /// our month-over-month net worth measurements 
+        /// </summary>
+        private List<NetWorthMeasurement> _measurements;
+        private LocalDateTime _retirementDate;
         
-        private CorePackage _corePackage;
+        // private Logger _logger;
+        // private List<McInvestmentAccount> _investmentAccounts;
+        // private List<McDebtAccount> _debtAccounts;
+        // private McPerson _mcPerson;
+        // private McModel _simParams;
+        // //private long[] _sAndP500HistoricalTrends;
+        // private LocalDateTime _currentDate;
+        // private LocalDateTime _endDate;
+     
+        // //private long _netWorthAtRetirement = 0M;
+        // //private int _historicalMonthsCount = 0;
+        // //private int _historicalTrendsPointer = 0;
+        
+        // private long _totalSpend;
+        //
+        //
+        //
+        // private Bank _bank;
+        // private TaxFiler _taxFiler;
+        //
+        // private CorePackage _corePackage;
 
+        private MonteCarloSim _sim;
         
 
 
 
-        public Simulator(CorePackage corePackage, McModel simParams, McPerson mcPerson,
+        public Simulator(McModel simParams, McPerson mcPerson,
             List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
             Dictionary<LocalDateTime, Decimal> hypotheticalPrices) 
         {
-            _corePackage = corePackage;
-            _logger = corePackage.Log;
-            _simParams = simParams;
-            _mcPerson = mcPerson;
-            _investmentAccounts = investmentAccounts;
-            _debtAccounts = debtAccounts;
+            string logDir = ConfigManager.ReadStringSetting("LogDir");
+            string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
+            string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
+            _sim = new MonteCarloSim()
+            {
+                Log = new Logger(
+                    StaticConfig.MonteCarloConfig.LogLevel,
+                    logFilePath
+                ),
+                SimParameters = simParams,
+                BookOfAccounts = Account.CreateBookOfAccounts(investmentAccounts, debtAccounts),
+                CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
+                Person = mcPerson,
+            };
             _hypotheticalPrices = hypotheticalPrices;
             _measurements = [];
-            _currentDate = NormalizeDate(_simParams.SimStartDate);
-            _endDate = NormalizeDate(_simParams.SimEndDate);
-            _retirementDate = NormalizeDate(_simParams.RetirementDate);
-            _isRetired = false;
-            _isBankrupt = false;
-            _taxFiler = new TaxFiler(_corePackage);
-            _bank = new (_corePackage,_simParams, _investmentAccounts, _debtAccounts,
-                _retirementDate, _taxFiler);
-            _taxFiler.SetBank(_bank);
-            _monthlySocialSecurityWage = CalculateMonthlySocialSecurityWage();
-            _totalSpend = 0;
-
-            //ResetTrendsPointer();
-
-            
-
-            _monthly401kMatch = _mcPerson.AnnualSalary * _mcPerson.Annual401kMatchPercent / 12;
+            _sim.Person.MonthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(_sim.Person,
+                _sim.SimParameters.SocialSecurityStart);
+            _sim.Person.Monthly401kMatch = Person.CalculateMonthly401kMatch(_sim.Person);
         }
         public List<NetWorthMeasurement> Run()
         {
-            while (_currentDate <= _endDate)
+            while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
             {
-                _logger.Debug(_logger.FormatHeading($"New month {_currentDate:MMM, yyyy}"));
-                _simMonthCount++;
-                long priceGrowthRate = 0;
+                var priceGrowthRate = 0M;
 
-                if (!_isBankrupt)
+                if (!_sim.Person.IsBankrupt)
                 {
                     // net worth is still positive.
                     // keep calculating stuff
 
-                    if (_currentDate == _retirementDate)
+                    if (_sim.CurrentDateInSim == _retirementDate)
                     {
                         Retire();
-                        
                     }
-                    if (_currentDate >= _simParams.SocialSecurityStart)
+                    if (_sim.CurrentDateInSim >= _sim.SimParameters.SocialSecurityStart)
                     {
                         // payday
-
                         GetSocialSecurityCheck();
-
                     }
 
-                    if (!_hypotheticalPrices.TryGetValue(_currentDate, out var dec_priceGrowthRate))
+                    if (!_hypotheticalPrices.TryGetValue(_sim.CurrentDateInSim, out priceGrowthRate))
                     {
                         throw new InvalidDataException("_currentDate not found in _hypotheticalPrices");
                     }
-                    priceGrowthRate = CurrencyConverter.ConvertFromCurrency(dec_priceGrowthRate);
-                    _bank.SetLongTermGrowthRate(priceGrowthRate);
-
-                    _bank.AccrueInterest(_currentDate);
-                    
-                    
-
-
+                    Pricing.SetLongTermGrowthRateAndPrices(_sim.CurrentPrices, priceGrowthRate);
+                    Account.AccrueInterest(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.LifetimeSpend);
                     PayDownLoans();
                     
 
-                    if (_currentDate.Month == 1)
+                    if (_sim.CurrentDateInSim.Month == 1)
                     {
-                        _bank.CleanUpAccounts(_currentDate);
+                        CleanUpAccounts();
                     }
-                    _bank.Rebalance(_currentDate);
+
+                    RebalancePortfolio();
 
 
-                    if (!_isRetired)
+                    if (!_sim.Person.IsRetired)
                     {
                         // still in savings mode
                         AddMonthlySavings();
                     }
                     else
                     {
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        /*
+                         * you are here. we're still refactoring...forever
+                         */
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
+                        
                         // calculate draw downs, taxes, etc.
                         if (_currentDate.Month == 12) _bank.MeetRmdRequirements(_currentDate);
                         if (_currentDate.Month == 1)
@@ -151,6 +165,34 @@ namespace Lib.MonteCarlo
             _logger.Debug(_logger.FormatHeading("End of simulated lifetime"));
             _bank.PrintReconciliation();
             return _measurements;
+        }
+        private void RebalancePortfolio()
+        {
+            if (_sim.Person.IsBankrupt) return;
+            Rebalance.RebalancePortfolio(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.RecessionStats, 
+                _sim.CurrentPrices, _sim.SimParameters, _sim.TaxLedger);
+            if (StaticConfig.MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, 0M, "Rebalanced portfolio");
+            }
+        }
+        private void CleanUpAccounts()
+        {
+            if (_sim.Person.IsBankrupt) return;
+            Account.CleanUpAccounts(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices);
+            if (StaticConfig.MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, 0M, "Cleaned up accounts");
+            }
+        }
+        private void AccrueInterest()
+        {
+            if (_sim.Person.IsBankrupt) return;
+            Account.AccrueInterest(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.LifetimeSpend);
+            if (StaticConfig.MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, 0M, "Accrued interest");
+            }
         }
         private long PayTax()
         {
@@ -185,28 +227,7 @@ namespace Lib.MonteCarlo
                 );
             }
         }
-        private long CalculateMonthlySocialSecurityWage()
-        {
-            var maxWage = _mcPerson.MonthlyFullSocialSecurityBenefit;
-            var benefitElectionStart = _simParams.SocialSecurityStart;
-            var fullRetirementDate = _mcPerson.BirthDate.PlusYears(67);
-            var timeSpanEarly = (fullRetirementDate - benefitElectionStart);
-            int monthsEarly = (int)Math.Round(
-                timeSpanEarly.Days / 365.25 * 12, 0);
-            long penalty = 0;
-            if (monthsEarly <= 36)
-            {
-                penalty += 100 * 5 / 9 * monthsEarly;
-            }
-            else
-            {
-                penalty += 100 * 5 / 9 * 36;
-                penalty += 100 * 5 / 12 * (monthsEarly - 36);
-            }
-            penalty = Math.Max(penalty, 0); // don't want to add on to max if I made a date math error
-            var primaryWage = maxWage - (maxWage * penalty);
-            return primaryWage;
-        }
+        
         private bool SpendCash(long amount)
         {
             // prior to retirement, don't debit the cash account as it's
@@ -328,31 +349,29 @@ namespace Lib.MonteCarlo
         }
         private void AddMonthlySavings()
         {
-            if (_isBankrupt)
+            if (_sim.Person.IsBankrupt)
             {
                 return;
             }
 
-            _bank.InvestFunds(_currentDate, _simParams.MonthlyInvest401kRoth,
-                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.ROTH_401_K);
-            _bank.InvestFunds(_currentDate, _simParams.MonthlyInvest401kTraditional,
-                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
-            _bank.InvestFunds(_currentDate, _simParams.MonthlyInvestBrokerage,
-                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE);
-            _bank.InvestFunds(_currentDate, _simParams.MonthlyInvestHSA,
-                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.HSA);
-            _bank.InvestFunds(_currentDate, _monthly401kMatch,
-                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kRoth,
+                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.ROTH_401_K, _sim.CurrentPrices);
+
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kTraditional,
+                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, _sim.CurrentPrices);
+
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestBrokerage,
+                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, _sim.CurrentPrices);
+
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestHSA,
+                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.HSA, _sim.CurrentPrices);
+
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.Person.Monthly401kMatch,
+                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, _sim.CurrentPrices);
             
-            
-            if (_corePackage.DebugMode == true)
+            if (StaticConfig.MonteCarloConfig.DebugMode)
             {
-                _bank.AddReconLine(
-                    _currentDate,
-                    ReconciliationLineItemType.Debit,
-                    0,
-                    $"Add monthly savings completed"
-                );
+                Reconciliation.AddFullReconLine(_sim, 0M, "Add monthly savings completed");
             }
         }
         /// <summary>

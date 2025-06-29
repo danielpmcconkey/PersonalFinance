@@ -1,7 +1,6 @@
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using Lib.Spreadsheets;
-using Lib.Utils;
 
 namespace Lib.MonteCarlo.StaticFunctions;
 
@@ -52,14 +51,14 @@ public static class Reconciliation
         if (line is null) throw new InvalidDataException("line is null in AddReconLine");
         ReconciliationLedger.AddLine(line);
     }
-    public static void AddMessageLine(LocalDateTime? date, long? amount, string? description)
+    public static void AddMessageLine(LocalDateTime? date, decimal? amount, string? description)
     {
         if (StaticConfig.MonteCarloConfig.DebugMode == false) return;
         var line = new ReconciliationLineItem(
             0, // placeholder ordinal. The recon ledger will add the right value
             date, 
             null,
-            (amount is null) ? null : CurrencyConverter.ConvertToCurrency((long)amount), 
+            amount, 
             description, 
             null,
             null,
@@ -101,21 +100,19 @@ public static class Reconciliation
                 age,
                 amount,
                 description,
-                (sim.CurrentPrices.CurrentLongTermGrowthRate is null)? null :
-                    CurrencyConverter.ConvertToCurrency((long)sim.CurrentPrices.CurrentLongTermGrowthRate),
-                (sim.CurrentPrices.CurrentLongTermInvestmentPrice is null) ? null :
-                    CurrencyConverter.ConvertToCurrency((long)sim.CurrentPrices.CurrentLongTermInvestmentPrice),
-                CurrencyConverter.ConvertToCurrency((long)Account.CalculateNetWorth(sim.BookOfAccounts)),
-                CurrencyConverter.ConvertToCurrency((long)Account.CalculateLongBucketTotalBalance(sim.BookOfAccounts)),
-                CurrencyConverter.ConvertToCurrency((long)Account.CalculateMidBucketTotalBalance(sim.BookOfAccounts)),
-                CurrencyConverter.ConvertToCurrency((long)Account.CalculateShortBucketTotalBalance(sim.BookOfAccounts)),
-                CurrencyConverter.ConvertToCurrency((long)Account.CalculateCashBalance(sim.BookOfAccounts)),
-                CurrencyConverter.ConvertToCurrency((long)Account.CalculateDebtTotal(sim.BookOfAccounts)),
-                CurrencyConverter.ConvertToCurrency((long)sim.LifetimeSpend.TotalSpendLifetime),
-                CurrencyConverter.ConvertToCurrency((long)sim.LifetimeSpend.TotalInvestmentAccrualLifetime),
-                CurrencyConverter.ConvertToCurrency((long)sim.LifetimeSpend.TotalDebtAccrualLifetime),
-                CurrencyConverter.ConvertToCurrency((long)sim.LifetimeSpend.TotalSocialSecurityWageLifetime),
-                CurrencyConverter.ConvertToCurrency((long)sim.LifetimeSpend.TotalDebtPaidLifetime),
+                sim.CurrentPrices.CurrentLongTermGrowthRate,
+                sim.CurrentPrices.CurrentLongTermInvestmentPrice,
+                Account.CalculateNetWorth(sim.BookOfAccounts),
+                Account.CalculateLongBucketTotalBalance(sim.BookOfAccounts),
+                Account.CalculateMidBucketTotalBalance(sim.BookOfAccounts),
+                Account.CalculateShortBucketTotalBalance(sim.BookOfAccounts),
+                Account.CalculateCashBalance(sim.BookOfAccounts),
+                Account.CalculateDebtTotal(sim.BookOfAccounts),
+                sim.LifetimeSpend.TotalSpendLifetime,
+                sim.LifetimeSpend.TotalInvestmentAccrualLifetime,
+                sim.LifetimeSpend.TotalDebtAccrualLifetime,
+                sim.LifetimeSpend.TotalSocialSecurityWageLifetime,
+                sim.LifetimeSpend.TotalDebtPaidLifetime,
                 sim.CurrentDateInSim >= sim.SimParameters.RetirementDate,
                 sim.LifetimeSpend.IsBankrupt,
                 sim.RecessionStats.AreWeInADownYear,

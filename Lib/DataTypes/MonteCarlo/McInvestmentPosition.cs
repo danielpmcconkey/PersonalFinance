@@ -1,5 +1,4 @@
-﻿
-using NodaTime;
+﻿using NodaTime;
 
 namespace Lib.DataTypes.MonteCarlo
 {
@@ -13,9 +12,9 @@ namespace Lib.DataTypes.MonteCarlo
         public required McInvestmentPositionType InvestmentPositionType { get; set; }
 
         
-        public required long InitialCost { get; set; }
-        public required long Quantity { get; set; }
-        public required long Price { get; set; }
-        public long CurrentValue => Price * Quantity;
+        public required decimal InitialCost { get; set; }
+        public required decimal Quantity { get; set; }
+        public required decimal Price { get; set; }
+        public decimal CurrentValue => Price * Quantity;
     }
 }

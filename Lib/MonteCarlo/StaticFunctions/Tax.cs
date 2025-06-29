@@ -6,14 +6,23 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Tax
 {
-    public static long CalculateCapitalGainsForYear(TaxLedger ledger, int year)
+    public static void AddRmdDistribution(TaxLedger ledger, LocalDateTime currentDate, decimal amount)
+    {
+        int year = currentDate.Year;
+        if (ledger.RmdDistributions.ContainsKey(year))
+        {
+            ledger.RmdDistributions[year] += amount;
+        }
+        else ledger.RmdDistributions[year] = amount;
+    }
+    public static decimal CalculateCapitalGainsForYear(TaxLedger ledger, int year)
     {
         return ledger.CapitalGains
             .Where(x => x.earnedDate.Year == year)
             .Sum(x => x.amount);
     }
     
-    public static long CalculateEarnedIncomeForYear(TaxLedger ledger, int year)
+    public static decimal CalculateEarnedIncomeForYear(TaxLedger ledger, int year)
     {
         return 
             CalculateOrdinaryIncomeForYear(ledger, year) +
@@ -31,7 +40,7 @@ public static class Tax
     /// </summary>
     /// <param name="year"></param>
     /// <returns></returns>
-    public static long CalculateIncomeRoom(TaxLedger ledger, int year)
+    public static decimal CalculateIncomeRoom(TaxLedger ledger, int year)
     {
         var room = ledger.IncomeTarget -
                    CalculateOrdinaryIncomeForYear(ledger, year) -
@@ -39,7 +48,7 @@ public static class Tax
             ;
         return Math.Max(room, 0);
     }
-    public static long CalculateOrdinaryIncomeForYear(TaxLedger ledger, int year)
+    public static decimal CalculateOrdinaryIncomeForYear(TaxLedger ledger, int year)
     {
         return ledger.OrdinaryIncome
             .Where(x => x.earnedDate.Year == year)
@@ -52,14 +61,14 @@ public static class Tax
     /// up to enough to be maximally taxable, which is 85% of the total
     /// benefit
     /// </summary>
-    public static long CalculateTaxableSocialSecurityIncomeForYear(TaxLedger ledger, int year)
+    public static decimal CalculateTaxableSocialSecurityIncomeForYear(TaxLedger ledger, int year)
     {
         return (ledger.SocialSecurityIncome
             .Where(x => x.earnedDate.Year == year)
             .Sum(x => x.amount)) * TaxConstants.MaxSocialSecurityTaxPercent;
     }
 
-    public static long CalculateTaxLiabilityForYear(TaxLedger ledger, int taxYear)
+    public static decimal CalculateTaxLiabilityForYear(TaxLedger ledger, int taxYear)
     {
         var earnedIncome = CalculateEarnedIncomeForYear(ledger, taxYear);
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
@@ -77,7 +86,7 @@ public static class Tax
         UpdateIncomeTarget(ledger, taxYear);
 
 
-        long totalLiability = 0L;
+        decimal totalLiability = 0M;
 
         // tax on ordinary income
         foreach (var bracket in TaxConstants._incomeTaxBrackets)
@@ -145,14 +154,14 @@ public static class Tax
         return totalLiability;
     }
     
-    public static long? GetRmdRateByYear(int year)
+    public static decimal? GetRmdRateByYear(int year)
     {
         if(!TaxConstants._rmdTable.TryGetValue(year, out var rmd))
             return null;
         return rmd;
 
     }
-    public static void LogCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, long amount)
+    public static void LogCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         ledger.CapitalGains.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
@@ -160,7 +169,7 @@ public static class Tax
             Reconciliation.AddMessageLine(earnedDate, amount, "Capital gain logged");
         }
     }
-    public static void LogIncome(TaxLedger ledger, LocalDateTime earnedDate, long amount)
+    public static void LogIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         ledger.OrdinaryIncome.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
@@ -193,7 +202,7 @@ public static class Tax
                 throw new InvalidDataException();
         }
     }
-    public static void LogSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, long amount)
+    public static void LogSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         ledger.SocialSecurityIncome.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)

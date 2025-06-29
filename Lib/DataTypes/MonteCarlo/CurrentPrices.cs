@@ -2,20 +2,9 @@ namespace Lib.DataTypes.MonteCarlo;
 
 public class CurrentPrices
 {
-    public long? CurrentLongTermGrowthRate { get; set; }
-    public long? CurrentLongTermInvestmentPrice { get; set; }
-    public long? CurrentMidTermInvestmentPrice { get; set; }
-    public long? CurrentShortTermInvestmentPrice { get; set; }
-
-    public CurrentPrices(
-        long? currentLongTermGrowthRate = null,
-        long? currentLongTermInvestmentPrice = null,
-        long? currentMidTermInvestmentPrice = null,
-        long? currentShortTermInvestmentPrice = null)
-    {
-        CurrentLongTermGrowthRate = currentLongTermGrowthRate;
-        CurrentLongTermInvestmentPrice = currentLongTermInvestmentPrice;
-        CurrentMidTermInvestmentPrice = currentMidTermInvestmentPrice;
-        CurrentShortTermInvestmentPrice = currentShortTermInvestmentPrice;
-    }
+    public decimal CurrentLongTermGrowthRate { get; set; }
+    public decimal CurrentLongTermInvestmentPrice { get; set; } = 100m;
+    public decimal CurrentMidTermInvestmentPrice { get; set; } = 100m;
+    public decimal CurrentShortTermInvestmentPrice { get; set; } = 100m;
+    public List<decimal> LongRangeInvestmentCostHistory { get; set; } = [];
 }

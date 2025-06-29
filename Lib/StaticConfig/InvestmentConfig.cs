@@ -2,11 +2,16 @@ using Lib.DataTypes.MonteCarlo;
 
 namespace Lib.StaticConfig;
 
-/// <summary>
-/// when you sell investments during the Monte Carlo simulator, the simulator needs to know what order to sell things off in
-/// </summary>
-public static class InvestmentSalesOrders
+
+public static class InvestmentConfig
 {
+    public static decimal MidTermGrowthRateModifier = 0.5M; // half of the long term growth rate
+    public static decimal ShortTermGrowthRateModifier = 0M; 
+    public static decimal MonteCarloSimMaxPositionValue = ConfigManager.ReadLongSetting("MonteCarloSimMaxPositionValue");
+    
+    /// <summary>
+    /// when you sell investments during the Monte Carlo simulator, the simulator needs to know what order to sell things off in
+    /// </summary>
     public static McInvestmentAccountType[] _salesOrderWithNoRoom = [
         // no tax, period
         McInvestmentAccountType.HSA,

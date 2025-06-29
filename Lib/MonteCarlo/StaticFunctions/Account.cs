@@ -1,5 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
-using Lib.Utils;
+using Lib.StaticConfig;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -8,12 +8,12 @@ public static class Account
 {
     #region DB read functions
 
-    public static long FetchDbCashTotalByPersonId(Guid personId)
+    public static decimal FetchDbCashTotalByPersonId(Guid personId)
     {
         // todo: change get cash method to actually use the person ID
         
         using var context = new PgContext();
-        long currentCash = 0L;
+        var currentCash = 0M;
         
         // get the max date by symbol
         var maxDateByAccount = (
@@ -25,16 +25,18 @@ public static class Account
         // get any positions at max date
         foreach (var maxDate in maxDateByAccount)
         {
-            var positionAtMaxDate = context.PgCashPositions
-                                        .Where(x => 
-                                            x.PositionDate == maxDate.maxdate && 
-                                            x.CashAccountId == maxDate.Key)
-                                        .OrderByDescending(x => x.CurrentBalance)
-                                        .FirstOrDefault()
-                                    ??  throw new InvalidDataException();
+            var positionAtMaxDate = 
+                context
+                    .PgCashPositions
+                    .Where(x => 
+                        x.PositionDate == maxDate.maxdate && 
+                        x.CashAccountId == maxDate.Key)
+                    .OrderByDescending(x => x.CurrentBalance)
+                    .FirstOrDefault()
+                ??  throw new InvalidDataException();
             if (positionAtMaxDate.CurrentBalance >= 0)
             {
-                currentCash += CurrencyConverter.ConvertFromCurrency(positionAtMaxDate.CurrentBalance);
+                currentCash += positionAtMaxDate.CurrentBalance;
             }
         }
         
@@ -56,8 +58,9 @@ public static class Account
             from accountPg in accountsPg 
             let positionsPg = FetchDbOpenDebtPositionsByAccountId(
                 accountPg.Id, 
-                CurrencyConverter.ConvertFromCurrency(accountPg.AnnualPercentageRate),
-                CurrencyConverter.ConvertFromCurrency(accountPg.MonthlyPayment))
+                accountPg.AnnualPercentageRate,
+                accountPg.MonthlyPayment
+                )
             where positionsPg.Any() select new McDebtAccount()
             {
                 Id = Guid.NewGuid(), Name = accountPg.Name, Positions = positionsPg,
@@ -109,7 +112,7 @@ public static class Account
         });
         return accounts;
     }
-    public static List<McDebtPosition> FetchDbOpenDebtPositionsByAccountId(int accountId, long apr, long payment)
+    public static List<McDebtPosition> FetchDbOpenDebtPositionsByAccountId(int accountId, decimal apr, decimal payment)
     {
         List<McDebtPosition> positions = [];
         using var context = new PgContext();
@@ -128,7 +131,7 @@ public static class Account
             IsOpen = true,
             Name = $"Position {latestPosition.CurrentBalance}",
             Entry = latestPosition.PositionDate,
-            CurrentBalance = CurrencyConverter.ConvertFromCurrency(latestPosition.CurrentBalance),
+            CurrentBalance = latestPosition.CurrentBalance,
             MonthlyPayment = payment,
             AnnualPercentageRate = apr
         });
@@ -172,10 +175,10 @@ public static class Account
                     IsOpen = true,
                     Name = $"Position {maxDate.Key}",
                     Entry = positionAtMaxDate.PositionDate,
-                    InvestmentPositionType = GetInvestmentPositionType(maxDate.Key),
-                    InitialCost = CurrencyConverter.ConvertFromCurrency(positionAtMaxDate.CostBasis),
-                    Quantity = CurrencyConverter.ConvertFromCurrency(positionAtMaxDate.TotalQuantity),
-                    Price = CurrencyConverter.ConvertFromCurrency(positionAtMaxDate.Price),
+                    InvestmentPositionType = Investment.GetInvestmentPositionType(maxDate.Key),
+                    InitialCost = positionAtMaxDate.CostBasis,
+                    Quantity = positionAtMaxDate.TotalQuantity,
+                    Price = positionAtMaxDate.Price,
                 });
             }
         }
@@ -186,15 +189,18 @@ public static class Account
     #endregion DB read functions
 
     #region Calculation functions
-    public static long CalculateCashBalance(BookOfAccounts accounts)
+    public static decimal CalculateCashBalance(BookOfAccounts accounts)
     {
+        if (accounts.Cash is null) throw new InvalidDataException("Cash is null");
+        if (accounts.Cash.Positions is null) throw new InvalidDataException("Cash.Positions is null");
+        
         return accounts.Cash.Positions.Sum(x => {
             if (!x.IsOpen) return 0;
             var ip = (McInvestmentPosition)x;
             return ip.CurrentValue;
         });
     }
-    public static long CalculateInvestmentAccountTotalValue(McInvestmentAccount account)
+    public static decimal CalculateInvestmentAccountTotalValue(McInvestmentAccount account)
     {
         return account.Positions.Sum(x => {
             if (x.IsOpen && x is McInvestmentPosition)
@@ -206,44 +212,55 @@ public static class Account
             return 0;
         });
     }
-    public static long CalculateLongBucketTotalBalance(BookOfAccounts accounts)
+    public static decimal CalculateLongBucketTotalBalance(BookOfAccounts accounts)
     {
         return CalculateTotalBalanceByBucketType(accounts, McInvestmentPositionType.LONG_TERM);
     }
-    public static long CalculateMidBucketTotalBalance(BookOfAccounts accounts)
+    public static decimal CalculateMidBucketTotalBalance(BookOfAccounts accounts)
     {
         return CalculateTotalBalanceByBucketType(accounts, McInvestmentPositionType.MID_TERM);
     }
-    public static long CalculateShortBucketTotalBalance(BookOfAccounts accounts)
+    public static decimal CalculateShortBucketTotalBalance(BookOfAccounts accounts)
     {
         return CalculateTotalBalanceByBucketType(accounts, McInvestmentPositionType.SHORT_TERM);
     }
-    public static long CalculateNetWorth(BookOfAccounts accounts)
+
+    public static decimal CalculateNetWorth(BookOfAccounts accounts)
+    {
+        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
+        
+        var totalAssets = 0M;
+        var totalLiabilities = 0M;
+        foreach (var account in accounts.InvestmentAccounts)
         {
-            var totalAssets = 0L;
-            var totalLiabilities = 0L;
-            foreach (var account in accounts.InvestmentAccounts)
+            if (account.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE)
             {
-                if (account.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE)
+                totalAssets += account.Positions.Where(x => x.IsOpen).Sum(x =>
                 {
-                    totalAssets += account.Positions.Where(x => x.IsOpen).Sum(x => {
-                        McInvestmentPosition ip = (McInvestmentPosition)x;
-                        return ip.CurrentValue;
-                    });
-                }
-            }
-            foreach (var account in accounts.DebtAccounts)
-            {
-                totalLiabilities += account.Positions.Where(x => x.IsOpen).Sum(x => {
-                    McDebtPosition dp = (McDebtPosition)x;
-                    return dp.CurrentBalance;
+                    McInvestmentPosition ip = (McInvestmentPosition)x;
+                    return ip.CurrentValue;
                 });
             }
-            return totalAssets - totalLiabilities;
         }
-    public static long CalculateTotalBalanceByBucketType(BookOfAccounts bookOfAccounts, McInvestmentPositionType bucketType)
+
+        foreach (var account in accounts.DebtAccounts)
+        {
+            totalLiabilities += account.Positions.Where(x => x.IsOpen).Sum(x =>
+            {
+                McDebtPosition dp = (McDebtPosition)x;
+                return dp.CurrentBalance;
+            });
+        }
+
+        return totalAssets - totalLiabilities;
+    }
+
+    public static decimal CalculateTotalBalanceByBucketType(BookOfAccounts bookOfAccounts, McInvestmentPositionType bucketType)
     {
-        var totalBalance = 0L;
+        if (bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        
+        var totalBalance = 0M;
         var accounts = bookOfAccounts.InvestmentAccounts.Where(x => {
             if (x.AccountType == McInvestmentAccountType.PRIMARY_RESIDENCE) return false;
             if (x.AccountType == McInvestmentAccountType.CASH) return false;
@@ -263,9 +280,11 @@ public static class Account
         }
         return totalBalance;
     }
-    public static long CalculateDebtTotal(BookOfAccounts accounts)
+    public static decimal CalculateDebtTotal(BookOfAccounts accounts)
     {
-        long total = 0L;
+        if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
+        
+        decimal total = 0L;
         foreach (var a in accounts.DebtAccounts)
         {
             var positions = a.Positions
@@ -281,9 +300,81 @@ public static class Account
     
 
     #endregion Calculation functions
+
+   
+    public static void AccrueInterest(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, CurrentPrices prices, LifetimeSpend lifetimeSpend)
+    {
+        if (bookOfAccounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
+        if (bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        
+        
+        /*
+         * for debt accounts, we just need to update the balances according to the apr
+         * 
+         * for investment accounts, if all accounts have previously normalized, we should only have to update the
+         * price on all positions
+         */
+        
+        // debt stuff
+        foreach (var account in bookOfAccounts.DebtAccounts)
+        {
+            // bad number goes up
+            foreach (var p in account.Positions)
+            {
+                decimal oldBalance = p.CurrentBalance;
+
+                if (p is not McDebtPosition) break;
+                if (!p.IsOpen) break;
+                
+                decimal amount = p.CurrentBalance * (p.AnnualPercentageRate / 12);
+                p.CurrentBalance += amount;
+
+                lifetimeSpend.TotalDebtAccrualLifetime += amount;
+                if (StaticConfig.MonteCarloConfig.DebugMode == true)
+                {
+                    Reconciliation.AddMessageLine(currentDate, amount, $"Debt accrual for account {account.Name}; position {p.Name}");
+                }
+            }
+        }
+        
+        // investment accounts
+        foreach (var account in bookOfAccounts.InvestmentAccounts
+                     .Where(x => x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE))
+        {
+            foreach (var p in account.Positions)
+            {
+                var oldAmount = (StaticConfig.MonteCarloConfig.DebugMode == false) ? 0 : p.CurrentValue;
+                
+                var newPrice = p.InvestmentPositionType switch
+                {
+                    McInvestmentPositionType.MID_TERM => (decimal)prices.CurrentMidTermInvestmentPrice,
+                    McInvestmentPositionType.SHORT_TERM => (decimal)prices.CurrentShortTermInvestmentPrice,
+                    _ => (decimal)prices.CurrentLongTermInvestmentPrice
+                };
+                p.Price = newPrice;
+                
+                if (StaticConfig.MonteCarloConfig.DebugMode == true)
+                {
+                    var newAmount =  p.CurrentValue;
+                    Reconciliation.AddMessageLine(currentDate, newAmount - oldAmount,
+                        $"Debt accrual for account {account.Name}; position {p.Name}");
+                }
+            }
+        }
+    }
     
-    
-    
+    /// <summary>
+    /// removes closed positions and splits up large investment positions
+    /// </summary>
+    public static void CleanUpAccounts(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, CurrentPrices prices)
+    {
+        Investment.RemoveClosedPositions(bookOfAccounts);
+        Investment.SplitLargePositions(bookOfAccounts, prices);
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, 0, "Cleaned up accounts");
+        }
+    }
     
     public static BookOfAccounts CreateBookOfAccounts(
         List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts)
@@ -321,14 +412,84 @@ public static class Account
     }
     
     
-    
-    
-    public static McInvestmentPositionType GetInvestmentPositionType(string symbol)
+    public static void DepositCash(BookOfAccounts accounts, decimal amount, LocalDateTime currentDate)
     {
-        // todo: change GetInvestmentPositionType to read type from the DB
-        if (symbol == "SCHD") return McInvestmentPositionType.MID_TERM;
-        return McInvestmentPositionType.LONG_TERM;
+
+        var totalCash = CalculateCashBalance(accounts);
+        totalCash += amount;
+        UpdateCashAccountBalance(accounts, totalCash, currentDate);
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, amount, "Generic cash deposit");
+        }
     }
+    
+
+    public static NetWorthMeasurement CreateNetWorthMeasurement(MonteCarloSim sim)
+    {
+        if (sim.BookOfAccounts is null) throw new InvalidDataException("BookOfAccounts is null");
+        if (sim.BookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        if (sim.BookOfAccounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
+
+        var totalAssets = 0M;
+        var totalLiabilities = 0M;
+        foreach (var account in sim.BookOfAccounts.InvestmentAccounts)
+        {
+            if (account.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE)
+            {
+                totalAssets += account.Positions.Where(x => x.IsOpen).Sum(x =>
+                {
+                    McInvestmentPosition ip = (McInvestmentPosition)x;
+                    return ip.CurrentValue;
+                });
+            }
+        }
+
+        foreach (var account in sim.BookOfAccounts.DebtAccounts)
+        {
+            totalLiabilities += account.Positions.Where(x => x.IsOpen).Sum(x =>
+            {
+                McDebtPosition dp = (McDebtPosition)x;
+                return dp.CurrentBalance;
+            });
+        }
+
+        NetWorthMeasurement measurement = new NetWorthMeasurement()
+        {
+            MeasuredDate = sim.CurrentDateInSim,
+            TotalAssets = totalAssets,
+            TotalLiabilities = totalLiabilities,
+            TotalCash = CalculateCashBalance(sim.BookOfAccounts),
+            TotalMidTermInvestments = CalculateMidBucketTotalBalance(sim.BookOfAccounts),
+            TotalLongTermInvestments = CalculateLongBucketTotalBalance(sim.BookOfAccounts),
+            TotalSpend = 0,
+            TotalTax = sim.TaxLedger.TotalTaxPaid,
+        };
+
+        // see if we're in extreme austerity measures based on total net worth
+        if (measurement.NetWorth <= sim.SimParameters.ExtremeAusterityNetWorthTrigger)
+        {
+
+            sim.RecessionStats.AreWeInExtremeAusterityMeasures = true;
+            // set the end date to now. if we stay below the line, the date
+            // will keep going up with it
+            sim.RecessionStats.LastExtremeAusterityMeasureEnd = sim.CurrentDateInSim;
+        }
+        else
+        {
+            // has it been within 12 months that we were in an extreme measure?
+            if (sim.RecessionStats.LastExtremeAusterityMeasureEnd < sim.CurrentDateInSim.PlusYears(-1))
+            {
+
+                sim.RecessionStats.AreWeInExtremeAusterityMeasures = false;
+            }
+        }
+
+        return measurement;
+    }
+    
+    
+    
     public static McInvestmentAccountType GetAccountType(int taxBucket, int accountGroup)
     {
         // tax buckets
@@ -367,57 +528,23 @@ public static class Account
     }
     
     
-    public static NetWorthMeasurement CreateNetWorthMeasurement(MonteCarloSim sim)
-        {
-            var totalAssets = 0L;
-            var totalLiabilities = 0L;
-            foreach (var account in sim.BookOfAccounts.InvestmentAccounts)
-            {
-                if (account.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE)
-                {
-                    totalAssets += account.Positions.Where(x => x.IsOpen).Sum(x => {
-                        McInvestmentPosition ip = (McInvestmentPosition)x;
-                        return ip.CurrentValue;
-                    });
-                }
-            }
-            foreach (var account in sim.BookOfAccounts.DebtAccounts)
-            {
-                totalLiabilities += account.Positions.Where(x => x.IsOpen).Sum(x => {
-                    McDebtPosition dp = (McDebtPosition)x;
-                    return dp.CurrentBalance;
-                });
-            }
-            NetWorthMeasurement measurement = new NetWorthMeasurement()
-            {
-                MeasuredDate = sim.CurrentDateInSim,
-                TotalAssets = totalAssets,
-                TotalLiabilities = totalLiabilities,
-                TotalCash = CalculateCashBalance(sim.BookOfAccounts),
-                TotalMidTermInvestments = CalculateMidBucketTotalBalance(sim.BookOfAccounts),
-                TotalLongTermInvestments = CalculateLongBucketTotalBalance(sim.BookOfAccounts),
-                TotalSpend = 0,
-                TotalTax = sim.TaxLedger.TotalTaxPaid,
-            };
+    public static void UpdateCashAccountBalance(BookOfAccounts accounts, decimal newBalance, LocalDateTime currentDate)
+    {
+        accounts.Cash.Positions = [
+            new McInvestmentPosition(){
+                Id = Guid.NewGuid(),
+                Entry = currentDate,
+                Price = 1,
+                Quantity = newBalance,
+                InitialCost = 0,
+                InvestmentPositionType = McInvestmentPositionType.SHORT_TERM,
+                IsOpen = true,
+                Name = "default cash account"}
+        ];
+    }
 
-            // see if we're in extreme austerity measures based on total net worth
-            if (measurement.NetWorth <= sim.SimParameters.ExtremeAusterityNetWorthTrigger)
-            {
 
-                sim.RecessionStats.AreWeInExtremeAusterityMeasures = true;
-                // set the end date to now. if we stay below the line, the date
-                // will keep going up with it
-                sim.RecessionStats.LastExtremeAusterityMeasureEnd = sim.CurrentDateInSim;
-            }
-            else
-            {
-                // has it been within 12 months that we were in an extreme measure?
-                if (sim.RecessionStats.LastExtremeAusterityMeasureEnd < sim.CurrentDateInSim.PlusYears(-1))
-                {
 
-                    sim.RecessionStats.AreWeInExtremeAusterityMeasures = false;
-                }
-            }
-            return measurement;
-        }
+    
+
 }
