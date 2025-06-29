@@ -3,6 +3,7 @@ using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using System.Collections.Concurrent;
 using Lib.MonteCarlo.StaticFunctions;
+using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo
 {
@@ -49,15 +50,10 @@ namespace Lib.MonteCarlo
             List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
             Dictionary<LocalDateTime, Decimal> hypotheticalPrices) 
         {
-            string logDir = ConfigManager.ReadStringSetting("LogDir");
-            string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
-            string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
+            
             _sim = new MonteCarloSim()
             {
-                Log = new Logger(
-                    StaticConfig.MonteCarloConfig.LogLevel,
-                    logFilePath
-                ),
+                Log = ,
                 SimParameters = simParams,
                 BookOfAccounts = Account.CreateBookOfAccounts(investmentAccounts, debtAccounts),
                 CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
@@ -92,7 +88,7 @@ namespace Lib.MonteCarlo
 
                     if (!_hypotheticalPrices.TryGetValue(_sim.CurrentDateInSim, out priceGrowthRate))
                     {
-                        throw new InvalidDataException("_currentDate not found in _hypotheticalPrices");
+                        throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
                     }
                     Pricing.SetLongTermGrowthRateAndPrices(_sim.CurrentPrices, priceGrowthRate);
                     Account.AccrueInterest(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.LifetimeSpend);
@@ -114,57 +110,42 @@ namespace Lib.MonteCarlo
                     }
                     else
                     {
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        /*
-                         * you are here. we're still refactoring...forever
-                         */
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
-                        
                         // calculate draw downs, taxes, etc.
-                        if (_currentDate.Month == 12) _bank.MeetRmdRequirements(_currentDate);
-                        if (_currentDate.Month == 1)
+                        if (_sim.CurrentDateInSim.Month == 12) MeetRmdRequirements();
+                        if (_sim.CurrentDateInSim.Month == 1)
                         {
                             PayTax();
                         }
                         PayForStuff();
                     }
                 }
-                var measurement = _bank.MeasureNetWorth(_currentDate);
-                measurement.TotalSpend = _totalSpend;
-                if (measurement.NetWorth <= 0 || _isBankrupt)
+                var measurement = Account.CreateNetWorthMeasurement(_sim);
+                if (measurement.NetWorth <= 0 || _sim.Person.IsBankrupt)
                 {
                     // zero it out to make reporting cleaner
                     // and don't bother calculating anything further
                     measurement.TotalAssets = 0;
                     measurement.TotalLiabilities = 0;
-                    _isBankrupt = true;
+                    _sim.Person.IsBankrupt = true;
                 }
 
                 _measurements.Add(measurement);
-                _currentDate = _currentDate.PlusMonths(1);
+                _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
             }
-            _logger.Debug(_logger.FormatHeading("End of simulated lifetime"));
-            _bank.PrintReconciliation();
+            _sim.Log.Debug(_sim.Log.FormatHeading("End of simulated lifetime"));
+            Reconciliation.ExportToSpreadsheet();
             return _measurements;
+        }
+
+        private void MeetRmdRequirements()
+        {
+            if (_sim.Person.IsBankrupt) return;
+            var totalRmd = Tax.MeetRmdRequirements(
+                _sim.TaxLedger, _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices);
+            if (StaticConfig.MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, totalRmd, "RMD requirements met");
+            }
         }
         private void RebalancePortfolio()
         {
@@ -194,157 +175,103 @@ namespace Lib.MonteCarlo
                 Reconciliation.AddFullReconLine(_sim, 0M, "Accrued interest");
             }
         }
-        private long PayTax()
+        private decimal PayTax()
         {
-            if (_isBankrupt) return 0;
-            var taxLiability = _taxFiler.CalculateTaxLiabilityForYear(_currentDate, _currentDate.Year - 1);
+            if (_sim.Person.IsBankrupt) return 0;
+            var taxLiability = Tax.CalculateTaxLiabilityForYear(_sim.TaxLedger, _sim.CurrentDateInSim.Year - 1);
 
-            if (!SpendCash(taxLiability))
-                DeclareBankruptcy();
+            SpendCash(taxLiability);
             
-            if (_corePackage.DebugMode == true)
+            _sim.TaxLedger.TotalTaxPaid += taxLiability;
+            
+            if (MonteCarloConfig.DebugMode)
             {
-                _bank.AddReconLine(
-                    _currentDate,
-                    ReconciliationLineItemType.Debit,
-                    taxLiability,
-                    "Paid taxes"
-                );
+                Reconciliation.AddFullReconLine(_sim, taxLiability, "Paid taxes");
             }
             return taxLiability;
         }
         private void GetSocialSecurityCheck()
         {
-            _bank.DepositSocialSecurityCheck(_monthlySocialSecurityWage, _currentDate);
-            _taxFiler.LogSocialSecurityIncome(_currentDate, _monthlySocialSecurityWage);
-            if (_corePackage.DebugMode == true)
+            var amount = _sim.Person.MonthlySocialSecurityWage;
+            Account.DepositCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim);
+            _sim.LifetimeSpend.TotalSocialSecurityWageLifetime += amount;
+            Tax.LogSocialSecurityIncome(_sim.TaxLedger, _sim.CurrentDateInSim, amount);
+            if (MonteCarloConfig.DebugMode)
             {
-                _bank.AddReconLine(
-                    _currentDate,
-                    ReconciliationLineItemType.Credit,
-                    _monthlySocialSecurityWage,
-                    "Social Security check processed"
-                );
+                Reconciliation.AddFullReconLine(_sim, amount, "Social Security check processed");
             }
         }
         
-        private bool SpendCash(long amount)
+        private void SpendCash(decimal amount)
         {
             // prior to retirement, don't debit the cash account as it's
             // assumed we're just paying our bills pre-retirement with our
             // surplus income
-            if (!_isRetired) return true;
-            else
+            if (!_sim.Person.IsRetired) return; // todo: re-jigger spending pre-retirement to calc "fun" points
+            var couldAfford = Account.WithdrawCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim, _sim.TaxLedger);
+            if (!couldAfford)
             {
-                return _bank.WithdrawCash(amount, _currentDate);
+                DeclareBankruptcy();
+            }
+            _sim.LifetimeSpend.TotalSpendLifetime += amount;
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim, amount, "Spend cash");
             }
         }
         private void Retire()
         {
-            _isRetired = true;
-            _logger.Debug(_logger.FormatHeading("Retirement"));
-            if (_corePackage.DebugMode == true)
+            _sim.Person.IsRetired = true;
+            if (MonteCarloConfig.DebugMode)
             {
-                _bank.AddReconLine(
-                    _currentDate,
-                    ReconciliationLineItemType.Credit,
-                    0,
-                    "Retirement date"
-                );
+                Reconciliation.AddFullReconLine(_sim, 0, "Retired!");
             }
         }
         
         private void PayForStuff()
         {
-            if (_isBankrupt) return;
-            var spendAmount = _simParams.DesiredMonthlySpend;
-            if (_bank.AreWeInAusterityMeasures)
+            if (_sim.Person.IsBankrupt) return;
+            var spendAmount = _sim.SimParameters.DesiredMonthlySpend;
+            if (_sim.RecessionStats.AreWeInAusterityMeasures)
             {
-                spendAmount = _simParams.DesiredMonthlySpend *
-                    _simParams.AusterityRatio;
+                spendAmount = _sim.SimParameters.DesiredMonthlySpend *
+                    _sim.SimParameters.AusterityRatio;
             }
-            if (_bank.AreWeInExtremeAusterityMeasures)
+            if (_sim.RecessionStats.AreWeInExtremeAusterityMeasures)
             {
-                spendAmount = _simParams.DesiredMonthlySpend *
-                    _simParams.ExtremeAusterityRatio;
+                spendAmount = _sim.SimParameters.DesiredMonthlySpend *
+                    _sim.SimParameters.ExtremeAusterityRatio;
             }
-            if (!SpendCash(spendAmount))
+            SpendCash(spendAmount);
+            if (MonteCarloConfig.DebugMode)
             {
-                DeclareBankruptcy();
-                return;
+                Reconciliation.AddFullReconLine(_sim, spendAmount, "Monthly spend");
             }
-            if (_corePackage.DebugMode == true)
-            {
-                _bank.AddReconLine(
-                    _currentDate,
-                    ReconciliationLineItemType.Debit,
-                    spendAmount,
-                    "Monthly spend"
-                );
-            }
-            _totalSpend += spendAmount;
-            return;
         }
         
         private void DeclareBankruptcy()
         {
-            _isBankrupt = true;
+            _sim.Person.IsBankrupt = true;
         }
 
 
         private void PayDownLoans()
         {
-            if (_isBankrupt)
+            if (_sim.Person.IsBankrupt)
             {
                 return;
             }
 
-            foreach (var account in _debtAccounts)
+            if (Account.PayDownLoans(
+                    _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.Person, _sim.TaxLedger, _sim.LifetimeSpend) ==
+                false)
             {
-                if (_isBankrupt) break;
-                foreach (var p in account.Positions)
-                {
-                    if (_isBankrupt) break;
-                    if (!p.IsOpen) continue;
-                    
-                    var og_balance = p.CurrentBalance; // only used for debug recon
-                    
-                    long amount = p.MonthlyPayment;
-                    if (amount > p.CurrentBalance) amount = p.CurrentBalance;
-                    if (!SpendCash(amount))
-                    {
-                        DeclareBankruptcy();
-                        break;
-                    }
-
-                    p.CurrentBalance -= amount;
-                    _bank.RecordDebtPayment(amount, _currentDate);
-                    
-                    if (_corePackage.DebugMode == true)
-                    {
-                        _bank.AddReconLine(
-                            _currentDate,
-                            ReconciliationLineItemType.Debit,
-                            amount,
-                            $"Pay down debt {account.Name} {p.Name} from {og_balance} to {p.CurrentBalance}"
-                        );
-                    }
-                    if(p.CurrentBalance <= 0)
-                    {
-                         _logger.Debug($"Paid off {p.Name}");
-                        p.CurrentBalance = 0;
-                        p.IsOpen = false;
-                    }
-                }
+                DeclareBankruptcy();
+                return;
             }
-            if (_corePackage.DebugMode == true)
+            if (MonteCarloConfig.DebugMode == true)
             {
-                _bank.AddReconLine(
-                    _currentDate,
-                    ReconciliationLineItemType.Debit,
-                    0,
-                    $"Pay down debt completed"
-                );
+                Reconciliation.AddFullReconLine(_sim, 0, "Pay down debt completed");
             }
         }
         private void AddMonthlySavings()

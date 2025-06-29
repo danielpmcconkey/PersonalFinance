@@ -462,7 +462,7 @@ public static class Account
             TotalCash = CalculateCashBalance(sim.BookOfAccounts),
             TotalMidTermInvestments = CalculateMidBucketTotalBalance(sim.BookOfAccounts),
             TotalLongTermInvestments = CalculateLongBucketTotalBalance(sim.BookOfAccounts),
-            TotalSpend = 0,
+            TotalSpend = sim.LifetimeSpend.TotalSpendLifetime,
             TotalTax = sim.TaxLedger.TotalTaxPaid,
         };
 
@@ -526,7 +526,47 @@ public static class Account
         if (taxBucket == 1 && accountGroup == 3) return McInvestmentAccountType.TRADITIONAL_IRA;
         return McInvestmentAccountType.CASH;
     }
-    
+
+    public static bool PayDownLoans(
+        BookOfAccounts accounts, LocalDateTime currentDate, McPerson person, 
+        TaxLedger taxLedger, LifetimeSpend lifetimeSpend)
+    {
+        if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
+        foreach (var account in accounts.DebtAccounts)
+        {
+            if (person.IsBankrupt) return false;
+            foreach (var p in account.Positions)
+            {
+                if (person.IsBankrupt) return false;
+                if (!p.IsOpen) continue;
+                    
+                
+                    
+                decimal amount = p.MonthlyPayment;
+                if (amount > p.CurrentBalance) amount = p.CurrentBalance;
+                if (!Account.WithdrawCash(accounts, amount, currentDate, taxLedger))
+                {
+                    person.IsBankrupt = true;
+                    return false;
+                }
+                p.CurrentBalance -= amount;
+                lifetimeSpend.TotalDebtPaidLifetime += amount;
+                
+
+                if (MonteCarloConfig.DebugMode)
+                {
+                    Reconciliation.AddMessageLine(currentDate, amount, $"Pay down loan {account.Name} {p.Name}");
+                }
+                if(p.CurrentBalance <= 0)
+                {
+                    Reconciliation.AddMessageLine(currentDate, 0, $"Paid off loan {account.Name} {p.Name}");
+                    p.CurrentBalance = 0;
+                    p.IsOpen = false;
+                }
+            }
+        }
+        return true;
+    }
     
     public static void UpdateCashAccountBalance(BookOfAccounts accounts, decimal newBalance, LocalDateTime currentDate)
     {
@@ -544,6 +584,62 @@ public static class Account
     }
 
 
+
+    /// <summary>
+    /// deduct cash from the cash account
+    /// </summary>
+    /// <returns>true if able to pay. false if not</returns>
+    public static bool WithdrawCash(
+        BookOfAccounts accounts, decimal amount, LocalDateTime currentDate, TaxLedger taxLedger)
+    {
+        var totalCashOnHand = CalculateCashBalance(accounts);
+
+        if (totalCashOnHand < amount)
+        {
+            // can we pull it from the mid bucket?
+            var amountNeeded = amount - totalCashOnHand;
+            var cashSold = Investment. SellInvestment(
+                accounts, amountNeeded, McInvestmentPositionType.MID_TERM, currentDate, taxLedger);
+            if (MonteCarloConfig.DebugMode == true)
+            {
+                Reconciliation.AddMessageLine(currentDate, cashSold, "Investment sales from mid-term to support cash withdrawal");
+            }
+            totalCashOnHand += cashSold;
+            
+            // is that enough?
+            
+            
+            if (totalCashOnHand < amount)
+            {
+                // can we pull it from the long-term bucket?
+                cashSold = Investment.SellInvestment(
+                    accounts, amountNeeded, McInvestmentPositionType.LONG_TERM, currentDate, taxLedger);
+                if (MonteCarloConfig.DebugMode == true)
+                {
+                    Reconciliation.AddMessageLine(currentDate, cashSold, "Investment sales from long-term to support cash withdrawal");
+                }
+                totalCashOnHand += cashSold;
+                if (totalCashOnHand < amount)
+                {
+                    // we broke. update the account balance just in case.
+                    // returning false here should result in a bankruptcy
+                    // witch sets everything to 0, but we may change code
+                    // flow later and it's important to add our sales
+                    // proceeds to the cash account
+                    UpdateCashAccountBalance(accounts, totalCashOnHand, currentDate);
+                    return false;
+                }
+            }
+        }
+        totalCashOnHand -= amount;
+        // that's enough selling. Now put whatever surplus back into the cash account
+        UpdateCashAccountBalance(accounts, totalCashOnHand, currentDate);
+        if (MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, amount, "Cash withdrawal");
+        }
+        return true;
+    }
 
     
 

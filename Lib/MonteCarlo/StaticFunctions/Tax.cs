@@ -149,8 +149,6 @@ public static class Tax
 
         //Logger.Info($"Tax bill of {totalLiability.ToString("C")}");
 
-        // todo: move the tax paid update out of the calculate tax liability function
-        ledger.TotalTaxPaid += totalLiability;
         return totalLiability;
     }
     
@@ -209,6 +207,84 @@ public static class Tax
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Social security income logged");
         }
+    }
+
+    public static decimal MeetRmdRequirements(
+        TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices)
+    {
+        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        
+        var year = currentDate.Year;
+        var rmdRate = GetRmdRateByYear(year);
+        if (rmdRate is null)
+        {
+            // no requirement this year
+            return 0M;
+        } 
+
+        var rate = (decimal)rmdRate;
+
+        // get total balance in rmd-relevant accounts
+        var relevantAccounts = accounts.InvestmentAccounts
+            .Where(x => x.AccountType is McInvestmentAccountType.TRADITIONAL_401_K
+                        || x.AccountType is McInvestmentAccountType.TRADITIONAL_IRA);
+        var balance = 0M;
+        foreach (var account in relevantAccounts)
+            balance += Account.CalculateInvestmentAccountTotalValue(account);
+
+        var totalRmdRequirement = balance / rate;
+        if (!ledger.RmdDistributions.TryGetValue(year, out var totalRmdSoFar))
+        {
+            ledger.RmdDistributions[year] = 0;
+            totalRmdSoFar = 0;
+        }
+
+        if (totalRmdSoFar >= totalRmdRequirement) return totalRmdSoFar;
+
+        var amountLeft = totalRmdRequirement - totalRmdSoFar;
+
+        // start with long-term investments as you're most likely to have them there
+        var cashSold = Investment.SellInvestment(accounts, amountLeft,
+            McInvestmentPositionType.LONG_TERM, currentDate, ledger, true);
+        totalRmdSoFar += cashSold;
+        if (MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Sold long-term investment");
+        }
+
+        // and invest it back into mid-term
+        Investment.InvestFunds(accounts, currentDate, cashSold, McInvestmentPositionType.MID_TERM,
+            McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
+        if (MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Bought mid-term investment");
+        }
+
+        amountLeft -= cashSold;
+        if (amountLeft <= 0) return totalRmdSoFar;
+
+        // try mid-term investments for remainder
+        cashSold = Investment.SellInvestment(accounts, amountLeft,
+            McInvestmentPositionType.MID_TERM, currentDate, ledger, true);
+        totalRmdSoFar += cashSold;
+        if (MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Sold mid-term investment");
+        }
+
+        // and invest it back into mid-term
+        Investment.InvestFunds(accounts, currentDate, cashSold, McInvestmentPositionType.MID_TERM,
+            McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
+        if (MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Bought mid-term investment");
+        }
+
+        amountLeft -= cashSold;
+        if (amountLeft <= 0) return totalRmdSoFar;
+
+        // nothing's left to try. not sure how we got here
+        throw new InvalidDataException("RMD: Nothing left to try. Not sure how we got here");
     }
 
     /// <summary>
