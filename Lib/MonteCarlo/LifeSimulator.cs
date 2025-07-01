@@ -63,6 +63,10 @@ namespace Lib.MonteCarlo
         {
             try
             {
+                if (StaticConfig.MonteCarloConfig.DebugMode)
+                {
+                    Reconciliation.AddFullReconLine(_sim, 0, "Beginning the life simulator");
+                }
                 while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
                 {
                     _sim.Log.Debug($"Starting new month: {_sim.CurrentDateInSim}");

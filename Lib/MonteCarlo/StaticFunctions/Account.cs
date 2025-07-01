@@ -334,7 +334,7 @@ public static class Account
                 lifetimeSpend.TotalDebtAccrualLifetime += amount;
                 if (StaticConfig.MonteCarloConfig.DebugMode == true)
                 {
-                    Reconciliation.AddMessageLine(currentDate, amount, $"Debt accrual for account {account.Name}; position {p.Name}");
+                    Reconciliation.AddMessageLine(currentDate, -1 * amount, $"Debt accrual for account {account.Name}; position {p.Name}");
                 }
             }
         }
@@ -359,6 +359,7 @@ public static class Account
                 if (StaticConfig.MonteCarloConfig.DebugMode == true)
                 {
                     var newAmount =  p.CurrentValue;
+                    lifetimeSpend.TotalInvestmentAccrualLifetime += newAmount - oldAmount;
                     Reconciliation.AddMessageLine(currentDate, newAmount - oldAmount,
                         $"Interest accrual for account {account.Name}; position {p.Name}");
                 }
@@ -373,10 +374,6 @@ public static class Account
     {
         Investment.RemoveClosedPositions(bookOfAccounts);
         Investment.SplitLargePositions(bookOfAccounts, prices);
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, 0, "Cleaned up accounts");
-        }
     }
     
     /// <summary>
