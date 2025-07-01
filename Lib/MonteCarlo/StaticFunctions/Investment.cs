@@ -106,7 +106,8 @@ public static class Investment
         
         var relevantAccounts =
             bookOfAccounts.InvestmentAccounts.Where(x =>
-                x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE);
+                x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE 
+                && x.AccountType is not McInvestmentAccountType.CASH);
         foreach (var a in relevantAccounts)
         {
             foreach (var p in a.Positions)
@@ -122,6 +123,7 @@ public static class Investment
 
                 var newQuantity = (totalValue / newPrice);
                 p.Quantity = newQuantity;
+                p.Price = newPrice;
             }
         }
     }

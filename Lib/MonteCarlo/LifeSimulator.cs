@@ -7,7 +7,10 @@ using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo
 {
-    public class Simulator
+    /// <summary>
+    /// Simulates a single life from sim start to sim end and creates a list of NetWorthMeasurements
+    /// </summary>
+    public class LifeSimulator
     {
         /// <summary>
         /// our list of hypothetical price history to be used, passed in by whatever created the simulation
@@ -19,45 +22,36 @@ namespace Lib.MonteCarlo
         private List<NetWorthMeasurement> _measurements;
         private LocalDateTime _retirementDate;
         
-        // private Logger _logger;
-        // private List<McInvestmentAccount> _investmentAccounts;
-        // private List<McDebtAccount> _debtAccounts;
-        // private McPerson _mcPerson;
-        // private McModel _simParams;
-        // //private long[] _sAndP500HistoricalTrends;
-        // private LocalDateTime _currentDate;
-        // private LocalDateTime _endDate;
-     
-        // //private long _netWorthAtRetirement = 0M;
-        // //private int _historicalMonthsCount = 0;
-        // //private int _historicalTrendsPointer = 0;
         
-        // private long _totalSpend;
-        //
-        //
-        //
-        // private Bank _bank;
-        // private TaxFiler _taxFiler;
-        //
-        // private CorePackage _corePackage;
-
+        /// <summary>
+        /// this houses all of our simulation data: history and current state
+        /// </summary>
         private MonteCarloSim _sim;
         
 
 
 
-        public Simulator(McModel simParams, McPerson mcPerson,
-            List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
+        public LifeSimulator(Logger logger, McModel simParams, McPerson person,
             Dictionary<LocalDateTime, Decimal> hypotheticalPrices) 
         {
-            
+            // need to create a book of accounts before you can normalize positions
+            var accounts = Account.CreateBookOfAccounts(person.InvestmentAccounts, person.DebtAccounts);
+            // set up a CurrentPrices sheet at the default starting rates
+            var prices = new CurrentPrices();
+            // set investment positions in terms of the default long, middle, and short-term prices
+            Investment.NormalizeInvestmentPositions(accounts, prices);
+            // set up the sim struct to be used to keep track of all the sim data
             _sim = new MonteCarloSim()
             {
-                Log = ,
+                Log = logger,
                 SimParameters = simParams,
-                BookOfAccounts = Account.CreateBookOfAccounts(investmentAccounts, debtAccounts),
+                BookOfAccounts = accounts,
+                Person = person,
                 CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
-                Person = mcPerson,
+                CurrentPrices = prices,
+                RecessionStats = new RecessionStats(),
+                TaxLedger = new TaxLedger(),
+                LifetimeSpend = new LifetimeSpend(),
             };
             _hypotheticalPrices = hypotheticalPrices;
             _measurements = [];
@@ -67,73 +61,94 @@ namespace Lib.MonteCarlo
         }
         public List<NetWorthMeasurement> Run()
         {
-            while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
+            try
             {
-                var priceGrowthRate = 0M;
-
-                if (!_sim.Person.IsBankrupt)
+                while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
                 {
-                    // net worth is still positive.
-                    // keep calculating stuff
+                    _sim.Log.Debug($"Starting new month: {_sim.CurrentDateInSim}");
+                    var priceGrowthRate = 0M;
 
-                    if (_sim.CurrentDateInSim == _retirementDate)
+                    if (!_sim.Person.IsBankrupt)
                     {
-                        Retire();
-                    }
-                    if (_sim.CurrentDateInSim >= _sim.SimParameters.SocialSecurityStart)
-                    {
-                        // payday
-                        GetSocialSecurityCheck();
-                    }
+                        // net worth is still positive.
+                        // keep calculating stuff
 
-                    if (!_hypotheticalPrices.TryGetValue(_sim.CurrentDateInSim, out priceGrowthRate))
-                    {
-                        throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
-                    }
-                    Pricing.SetLongTermGrowthRateAndPrices(_sim.CurrentPrices, priceGrowthRate);
-                    Account.AccrueInterest(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.LifetimeSpend);
-                    PayDownLoans();
-                    
+                        if (_sim.CurrentDateInSim == _retirementDate)
+                        {
+                            Retire();
+                        }
 
-                    if (_sim.CurrentDateInSim.Month == 1)
-                    {
-                        CleanUpAccounts();
-                    }
+                        if (_sim.CurrentDateInSim >= _sim.SimParameters.SocialSecurityStart)
+                        {
+                            // payday
+                            GetSocialSecurityCheck();
+                        }
 
-                    RebalancePortfolio();
+                        if (!_hypotheticalPrices.TryGetValue(_sim.CurrentDateInSim, out priceGrowthRate))
+                        {
+                            throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
+                        }
+
+                        Pricing.SetLongTermGrowthRateAndPrices(_sim.CurrentPrices, priceGrowthRate);
+                        Account.AccrueInterest(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices,
+                            _sim.LifetimeSpend);
+                        PayDownLoans();
 
 
-                    if (!_sim.Person.IsRetired)
-                    {
-                        // still in savings mode
-                        AddMonthlySavings();
-                    }
-                    else
-                    {
-                        // calculate draw downs, taxes, etc.
-                        if (_sim.CurrentDateInSim.Month == 12) MeetRmdRequirements();
                         if (_sim.CurrentDateInSim.Month == 1)
                         {
-                            PayTax();
+                            CleanUpAccounts();
                         }
-                        PayForStuff();
+
+                        RebalancePortfolio();
+
+
+                        if (!_sim.Person.IsRetired)
+                        {
+                            // still in savings mode
+                            AddMonthlySavings();
+                        }
+                        else
+                        {
+                            // calculate draw downs, taxes, etc.
+                            if (_sim.CurrentDateInSim.Month == 12) MeetRmdRequirements();
+                            if (_sim.CurrentDateInSim.Month == 1)
+                            {
+                                PayTax();
+                            }
+
+                            PayForStuff();
+                        }
                     }
-                }
-                var measurement = Account.CreateNetWorthMeasurement(_sim);
-                if (measurement.NetWorth <= 0 || _sim.Person.IsBankrupt)
-                {
-                    // zero it out to make reporting cleaner
-                    // and don't bother calculating anything further
-                    measurement.TotalAssets = 0;
-                    measurement.TotalLiabilities = 0;
-                    _sim.Person.IsBankrupt = true;
+
+                    var measurement = Account.CreateNetWorthMeasurement(_sim);
+                    if (measurement.NetWorth <= 0 || _sim.Person.IsBankrupt)
+                    {
+                        // zero it out to make reporting cleaner
+                        // and don't bother calculating anything further
+                        measurement.TotalAssets = 0;
+                        measurement.TotalLiabilities = 0;
+                        _sim.Person.IsBankrupt = true;
+                    }
+
+                    _measurements.Add(measurement);
+                    _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
                 }
 
-                _measurements.Add(measurement);
-                _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
+                Reconciliation.ExportToSpreadsheet();
+                
+                _sim.Log.Debug(_sim.Log.FormatHeading("End of simulated lifetime"));
+
             }
-            _sim.Log.Debug(_sim.Log.FormatHeading("End of simulated lifetime"));
-            Reconciliation.ExportToSpreadsheet();
+            catch (Exception e)
+            {
+                _sim.Log.Error(_sim.Log.FormatHeading("Error in Run()"));
+                _sim.Log.Error(e.ToString());
+                Reconciliation.ExportToSpreadsheet();
+                throw;
+            }
+            
+            
             return _measurements;
         }
 

@@ -77,19 +77,21 @@ public static class Account
         using var context = new PgContext();
         var accountsPg = context.PgInvestmentAccounts
             ?? throw new InvalidDataException();
-        accounts.AddRange(
-            from accountPg in accountsPg
-            let positionsPg = FetchDbOpenInvestmentPositionsByAccountId(accountPg.Id)
-            where positionsPg.Any()
-        select new McInvestmentAccount()
+        foreach (var pgInvestmentAccount in accountsPg)
         {
-            Id = Guid.NewGuid(), 
-            Name = accountPg.Name, 
-            AccountType = GetAccountType(
-                accountPg.TaxBucketId,
-                accountPg.InvestmentAccountGroupId),
-            Positions = positionsPg,
-        });
+            var positions = FetchDbOpenInvestmentPositionsByAccountId(pgInvestmentAccount.Id);
+            if(!positions.Any()) continue;
+            accounts.Add(new McInvestmentAccount()
+            {
+                Id = Guid.NewGuid(), 
+                Name = pgInvestmentAccount.Name, 
+                AccountType = GetAccountType(
+                    pgInvestmentAccount.TaxBucketId,
+                    pgInvestmentAccount.InvestmentAccountGroupId),
+                Positions = positions,
+            });
+        }
+        
         // the Monte Carlo sim considers cash accounts as investment
         // positions with a type of CASH so add any cash here 
         var currentCash = FetchDbCashTotalByPersonId(personId);
@@ -107,7 +109,7 @@ public static class Account
                 InvestmentPositionType = McInvestmentPositionType.SHORT_TERM,
                 InitialCost = currentCash,
                 Quantity  = currentCash,
-                Price  = 1L,
+                Price  = 1.0M,
             }],
         });
         return accounts;
@@ -339,7 +341,8 @@ public static class Account
         
         // investment accounts
         foreach (var account in bookOfAccounts.InvestmentAccounts
-                     .Where(x => x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE))
+                     .Where(x => x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE
+                     && x.AccountType is not McInvestmentAccountType.CASH))
         {
             foreach (var p in account.Positions)
             {
@@ -357,7 +360,7 @@ public static class Account
                 {
                     var newAmount =  p.CurrentValue;
                     Reconciliation.AddMessageLine(currentDate, newAmount - oldAmount,
-                        $"Debt accrual for account {account.Name}; position {p.Name}");
+                        $"Interest accrual for account {account.Name}; position {p.Name}");
                 }
             }
         }
@@ -376,6 +379,91 @@ public static class Account
         }
     }
     
+    /// <summary>
+    /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
+    /// sim run updating another's stats
+    /// </summary>
+    public static List<McDebtAccount> CopyDebtAccounts(List<McDebtAccount> oldAccounts)
+    {
+        Func<List<McDebtPosition>, Guid, List<McDebtPosition>>
+            CopyPositions = (positions, newAccountId) =>
+            {
+                List<McDebtPosition> newList = [];
+                foreach (McDebtPosition p in positions)
+                {
+                    newList.Add(new McDebtPosition()
+                    {
+                        Id = Guid.NewGuid(),
+                        IsOpen = p.IsOpen,
+                        Name = p.Name,
+                        Entry = p.Entry,
+                        AnnualPercentageRate = p.AnnualPercentageRate,
+                        MonthlyPayment = p.MonthlyPayment,
+                        CurrentBalance = p.CurrentBalance,
+                    });
+                }
+                return newList;
+            };
+        List<McDebtAccount> newAccounts = [];
+        foreach (McDebtAccount a in oldAccounts)
+        {
+            var newAccountId = Guid.NewGuid();
+            newAccounts.Add(new()
+            {
+                Id = Guid.NewGuid(),
+                Name = a.Name,
+                Positions = CopyPositions(a.Positions, newAccountId),
+            });
+        }
+        return newAccounts;
+    }
+
+    /// <summary>
+    /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
+    /// sim run updating another's stats
+    /// </summary>
+    public static List<McInvestmentAccount> CopyInvestmentAccounts(List<McInvestmentAccount> oldAccounts)
+    {
+        Func<List<McInvestmentPosition>, Guid, List<McInvestmentPosition>>
+            CopyPositions = (positions, newAccountId) =>
+            {
+                List<McInvestmentPosition> newList = [];
+                foreach (McInvestmentPosition p in positions)
+                {
+                    newList.Add(new McInvestmentPosition()
+                    {
+                        Id = Guid.NewGuid(),
+                        // InvestmentAccountId = newAccountId,
+                        IsOpen = p.IsOpen,
+                        Name = p.Name,
+                        Entry = p.Entry,
+                        InvestmentPositionType = p.InvestmentPositionType,
+                        InitialCost = p.InitialCost,
+                        Quantity = p.Quantity,
+                        Price = p.Price,
+                    });
+                }
+
+                return newList;
+            };
+        List<McInvestmentAccount> newAccounts = [];
+        foreach (McInvestmentAccount a in oldAccounts)
+        {
+            var newAccountId = Guid.NewGuid();
+            newAccounts.Add(new()
+            {
+                Id = Guid.NewGuid(),
+                // PersonId = a.PersonId,
+                Name = a.Name,
+                AccountType = a.AccountType,
+                Positions = CopyPositions(a.Positions, newAccountId),
+            });
+        }
+
+        return newAccounts;
+    }
+
+
     public static BookOfAccounts CreateBookOfAccounts(
         List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts)
     {
@@ -574,7 +662,7 @@ public static class Account
             new McInvestmentPosition(){
                 Id = Guid.NewGuid(),
                 Entry = currentDate,
-                Price = 1,
+                Price = 1m,
                 Quantity = newBalance,
                 InitialCost = 0,
                 InvestmentPositionType = McInvestmentPositionType.SHORT_TERM,

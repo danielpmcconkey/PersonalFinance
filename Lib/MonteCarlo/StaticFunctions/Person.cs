@@ -53,4 +53,32 @@ public static class Person
     {
         return person.AnnualSalary * person.Annual401kMatchPercent / 12;
     }
+    /// <summary>
+    /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
+    /// sim run updating another's stats
+    /// </summary>
+    /// <param name="person"></param>
+    /// <returns></returns>
+    public static McPerson CopyPerson(McPerson originalPerson)
+    {
+        var newInvestmentAccounts = Account.CopyInvestmentAccounts(originalPerson.InvestmentAccounts);
+        var newDebtAccounts = Account.CopyDebtAccounts(originalPerson.DebtAccounts);
+        var newPerson = new McPerson()
+        {
+            Id = new Guid(),
+            Name = originalPerson.Name,
+            BirthDate = originalPerson.BirthDate,
+            AnnualSalary = originalPerson.AnnualSalary,
+            AnnualBonus = originalPerson.AnnualBonus,
+            MonthlyFullSocialSecurityBenefit = originalPerson.MonthlyFullSocialSecurityBenefit,
+            Annual401kMatchPercent = originalPerson.Annual401kMatchPercent,
+            InvestmentAccounts = newInvestmentAccounts,
+            DebtAccounts = newDebtAccounts,
+            IsRetired = false,
+            IsBankrupt = false,
+            MonthlySocialSecurityWage = 0M,
+            Monthly401kMatch = 0M,
+        };
+        return newPerson;
+    }
 }

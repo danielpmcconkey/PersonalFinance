@@ -8,22 +8,7 @@ namespace Lib.MonteCarlo;
 
 public static class DataStage
 {
-    public static decimal[] GetSAndP500HistoricalTrends()
-    {
-        using var context = new PgContext();
-        /*
-         * this is an array of month over month growth of the S&P500 going
-         * back to 1980. we use 1980 because the 50 years prior don't 
-         * reflect more modern behavior. I hope.
-         * */
-        var  historicalGrowthRates = context.HistoricalGrowthRates
-            .Where(x => x.Year >= 1980)
-            .OrderBy(x => x.Year)
-            .ThenBy(x => x.Month)
-            .Select(x => x.InflationAdjustedGrowth)
-            .ToArray();
-        return historicalGrowthRates;
-    }
+    
     public static McModel GetModelChampion()
     {
         // var startDate = new  LocalDateTime(2025, 3, 1, 0, 0);

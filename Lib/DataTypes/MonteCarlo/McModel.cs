@@ -19,7 +19,7 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("personid")]
         public required Guid PersonId { get; set; }
         public McPerson? Person { get; set; }
-        public List<BatchResult> BatchResults { get; set; } = [];
+        //public List<SimulationAllLivesResult> BatchResults { get; set; } = [];
         
         [Column("parenta")]
         public required Guid ParentAId {  get; set; }
