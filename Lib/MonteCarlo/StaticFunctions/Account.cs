@@ -382,25 +382,6 @@ public static class Account
     /// </summary>
     public static List<McDebtAccount> CopyDebtAccounts(List<McDebtAccount> oldAccounts)
     {
-        Func<List<McDebtPosition>, Guid, List<McDebtPosition>>
-            CopyPositions = (positions, newAccountId) =>
-            {
-                List<McDebtPosition> newList = [];
-                foreach (McDebtPosition p in positions)
-                {
-                    newList.Add(new McDebtPosition()
-                    {
-                        Id = Guid.NewGuid(),
-                        IsOpen = p.IsOpen,
-                        Name = p.Name,
-                        Entry = p.Entry,
-                        AnnualPercentageRate = p.AnnualPercentageRate,
-                        MonthlyPayment = p.MonthlyPayment,
-                        CurrentBalance = p.CurrentBalance,
-                    });
-                }
-                return newList;
-            };
         List<McDebtAccount> newAccounts = [];
         foreach (McDebtAccount a in oldAccounts)
         {
@@ -409,11 +390,37 @@ public static class Account
             {
                 Id = Guid.NewGuid(),
                 Name = a.Name,
-                Positions = CopyPositions(a.Positions, newAccountId),
+                Positions = CopyDebtPositions(a.Positions),
             });
         }
         return newAccounts;
+
     }
+    
+    // <summary>
+    /// Creates a copy of debt positions with new IDs while preserving all other properties
+    /// </summary>
+    /// <param name="positions">Original debt positions to copy</param>
+    /// <returns>A new list containing copies of the original positions</returns>
+    public static List<McDebtPosition> CopyDebtPositions(List<McDebtPosition> positions)
+    {
+        List<McDebtPosition> newList = [];
+        foreach (McDebtPosition p in positions)
+        {
+            newList.Add(new McDebtPosition()
+            {
+                Id = Guid.NewGuid(),
+                IsOpen = p.IsOpen,
+                Name = p.Name,
+                Entry = p.Entry,
+                AnnualPercentageRate = p.AnnualPercentageRate,
+                MonthlyPayment = p.MonthlyPayment,
+                CurrentBalance = p.CurrentBalance,
+            });
+        }
+        return newList;
+    }
+
 
     /// <summary>
     /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
@@ -421,28 +428,6 @@ public static class Account
     /// </summary>
     public static List<McInvestmentAccount> CopyInvestmentAccounts(List<McInvestmentAccount> oldAccounts)
     {
-        Func<List<McInvestmentPosition>, Guid, List<McInvestmentPosition>>
-            CopyPositions = (positions, newAccountId) =>
-            {
-                List<McInvestmentPosition> newList = [];
-                foreach (McInvestmentPosition p in positions)
-                {
-                    newList.Add(new McInvestmentPosition()
-                    {
-                        Id = Guid.NewGuid(),
-                        // InvestmentAccountId = newAccountId,
-                        IsOpen = p.IsOpen,
-                        Name = p.Name,
-                        Entry = p.Entry,
-                        InvestmentPositionType = p.InvestmentPositionType,
-                        InitialCost = p.InitialCost,
-                        Quantity = p.Quantity,
-                        Price = p.Price,
-                    });
-                }
-
-                return newList;
-            };
         List<McInvestmentAccount> newAccounts = [];
         foreach (McInvestmentAccount a in oldAccounts)
         {
@@ -450,15 +435,42 @@ public static class Account
             newAccounts.Add(new()
             {
                 Id = Guid.NewGuid(),
-                // PersonId = a.PersonId,
                 Name = a.Name,
                 AccountType = a.AccountType,
-                Positions = CopyPositions(a.Positions, newAccountId),
+                Positions = CopyInvestmentPositions(a.Positions),
             });
         }
+        return newAccounts;
+
 
         return newAccounts;
     }
+    
+    // <summary>
+    /// Creates a copy of investment positions with new IDs while preserving all other properties
+    /// </summary>
+    /// <param name="positions">Original investment positions to copy</param>
+    /// <returns>A new list containing copies of the original positions</returns>
+    public static List<McInvestmentPosition> CopyInvestmentPositions(List<McInvestmentPosition> positions)
+    {
+        List<McInvestmentPosition> newList = [];
+        foreach (McInvestmentPosition p in positions)
+        {
+            newList.Add(new McInvestmentPosition()
+            {
+                Id = Guid.NewGuid(),
+                IsOpen = p.IsOpen,
+                Name = p.Name,
+                Entry = p.Entry,
+                InvestmentPositionType = p.InvestmentPositionType,
+                InitialCost = p.InitialCost,
+                Quantity = p.Quantity,
+                Price = p.Price,
+            });
+        }
+        return newList;
+    }
+
 
 
     public static BookOfAccounts CreateBookOfAccounts(

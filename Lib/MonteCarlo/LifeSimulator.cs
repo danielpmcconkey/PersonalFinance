@@ -70,58 +70,41 @@ namespace Lib.MonteCarlo
                         _sim.Log.Debug($"Starting new month: {_sim.CurrentDateInSim}");
                     }
                     
-                    var priceGrowthRate = 0M;
+                    
 
                     if (!_sim.Person.IsBankrupt)
                     {
                         // net worth is still positive.
                         // keep calculating stuff
 
-                        if (_sim.CurrentDateInSim == _sim.SimParameters.RetirementDate)
-                        {
-                            Retire();
-                        }
+                        SetGrowthAndPrices();
+                        
+                        CheckForRetirement();
+                        
+                        AccrueInterest();
 
-                        if (_sim.CurrentDateInSim >= _sim.SimParameters.SocialSecurityStart)
-                        {
-                            // payday
-                            GetSocialSecurityCheck();
-                        }
-
-                        if (!_hypotheticalPrices.TryGetValue(_sim.CurrentDateInSim, out priceGrowthRate))
-                        {
-                            throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
-                        }
-
-                        Pricing.SetLongTermGrowthRateAndPrices(_sim.CurrentPrices, priceGrowthRate);
-                        Account.AccrueInterest(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices,
-                            _sim.LifetimeSpend);
+                        Payday();
+                        
                         PayDownLoans();
+                        
+                        AddRetirementSavings();
 
-
+                        RebalancePortfolio();
+                        
+                        PayForStuff();
+                        
                         if (_sim.CurrentDateInSim.Month == 1)
                         {
                             CleanUpAccounts();
+
+                            GetBonusPayment();
+                            
+                            PayTax();
                         }
 
-                        RebalancePortfolio();
-
-
-                        if (!_sim.Person.IsRetired)
+                        if (_sim.CurrentDateInSim.Month == 12)
                         {
-                            // still in savings mode
-                            AddMonthlySavings();
-                        }
-                        else
-                        {
-                            // calculate draw downs, taxes, etc.
-                            if (_sim.CurrentDateInSim.Month == 12) MeetRmdRequirements();
-                            if (_sim.CurrentDateInSim.Month == 1)
-                            {
-                                PayTax();
-                            }
-
-                            PayForStuff();
+                            MeetRmdRequirements();
                         }
                     }
 
@@ -154,6 +137,66 @@ namespace Lib.MonteCarlo
             
             
             return _measurements;
+        }
+
+        private void SetGrowthAndPrices()
+        {
+            if (!_hypotheticalPrices.TryGetValue(_sim.CurrentDateInSim, out var priceGrowthRate))
+            {
+                throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
+            }
+
+            Pricing.SetLongTermGrowthRateAndPrices(_sim.CurrentPrices, priceGrowthRate);
+        }
+
+        private void CheckForRetirement()
+        {
+            if (_sim.CurrentDateInSim != _sim.SimParameters.RetirementDate) return;
+            _sim.Person.IsRetired = true;
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, 0, "Retired!");
+            }
+        }
+
+        private void Payday()
+        {
+            GetSocialSecurityCheck();
+            GetWorkingPaycheck();
+        }
+
+        
+        private void GetBonusPayment()
+        {
+            if (_sim.Person.IsRetired) return;
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting bonus");
+            }
+
+            var grossMonthlyPay = _sim.Person.AnnualBonus;
+            Tax.LogIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
+            Account.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collected bonus");
+            }
+        }
+        private void GetWorkingPaycheck()
+        {
+            if (_sim.Person.IsRetired) return;
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting paycheck");
+            }
+
+            var grossMonthlyPay = _sim.Person.AnnualSalary / 12m;
+            Tax.LogIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
+            Account.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collected paycheck");
+            }
         }
 
         private void MeetRmdRequirements()
@@ -231,6 +274,10 @@ namespace Lib.MonteCarlo
         }
         private void GetSocialSecurityCheck()
         {
+            if (_sim.CurrentDateInSim < _sim.SimParameters.SocialSecurityStart)
+            {
+                return;
+            }
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Social Security payday");
@@ -263,14 +310,7 @@ namespace Lib.MonteCarlo
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim, amount, "Spent cash");
             }
         }
-        private void Retire()
-        {
-            _sim.Person.IsRetired = true;
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddFullReconLine(_sim, 0, "Retired!");
-            }
-        }
+        
         
         private void PayForStuff()
         {
@@ -330,15 +370,13 @@ namespace Lib.MonteCarlo
                 Reconciliation.AddFullReconLine(_sim, 0, "Pay down debt completed");
             }
         }
-        private void AddMonthlySavings()
+        private void AddRetirementSavings()
         {
-            if (_sim.Person.IsBankrupt)
-            {
-                return;
-            }
+            if (_sim.Person.IsBankrupt || _sim.Person.IsRetired) return;
+            
             if (MonteCarloConfig.DebugMode)
             {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Adding monthly savings");
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Adding retirement savings");
             }
 
             Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kRoth,
@@ -358,7 +396,7 @@ namespace Lib.MonteCarlo
             
             if (StaticConfig.MonteCarloConfig.DebugMode)
             {
-                Reconciliation.AddFullReconLine(_sim, 0M, "Add monthly savings completed");
+                Reconciliation.AddFullReconLine(_sim, 0M, "Added retirement savings");
             }
         }
         /// <summary>
