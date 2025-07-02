@@ -332,7 +332,7 @@ public static class Account
                 p.CurrentBalance += amount;
 
                 lifetimeSpend.TotalDebtAccrualLifetime += amount;
-                if (StaticConfig.MonteCarloConfig.DebugMode == true)
+                if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileInterestAccrual)
                 {
                     Reconciliation.AddMessageLine(currentDate, -1 * amount, $"Debt accrual for account {account.Name}; position {p.Name}");
                 }
@@ -356,7 +356,7 @@ public static class Account
                 };
                 p.Price = newPrice;
                 
-                if (StaticConfig.MonteCarloConfig.DebugMode == true)
+                if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileInterestAccrual)
                 {
                     var newAmount =  p.CurrentValue;
                     lifetimeSpend.TotalInvestmentAccrualLifetime += newAmount - oldAmount;

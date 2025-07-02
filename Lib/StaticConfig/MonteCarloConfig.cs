@@ -36,6 +36,8 @@ public static class MonteCarloConfig
     /// </summary>
     public static int MaxLivesPerBatch;
 
+    public static bool ShouldReconcileInterestAccrual;
+
     static MonteCarloConfig()
     {
         MonteCarloSimStartDate = ConfigManager.ReadDateSetting("MonteCarloSimStartDate");
@@ -47,6 +49,7 @@ public static class MonteCarloConfig
         MaxLivesPerBatch = ConfigManager.ReadIntSetting("MaxLivesPerBatch");
         NumLivesPerModelRun = Math.Min(ConfigManager.ReadIntSetting("NumLivesPerModelRun"), MaxLivesPerBatch);
         ModelTrainingMode = ConfigManager.ReadBoolSetting("ModelTrainingMode");
+        ShouldReconcileInterestAccrual = ConfigManager.ReadBoolSetting("ShouldReconcileInterestAccrual");
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
 }
