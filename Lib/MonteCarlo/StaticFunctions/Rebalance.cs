@@ -5,95 +5,12 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Rebalance
 {
-    public static decimal MoveFromInvestmentToCash(BookOfAccounts bookOfAccounts, decimal cashNeeded, 
-        McInvestmentPositionType positionType, LocalDateTime currentDate, TaxLedger taxLedger)
+    public static bool IsRebalanceTime(LocalDateTime currentDate, McModel simParams)
     {
-        var cashSold = Investment.SellInvestment(
-            bookOfAccounts, cashNeeded, positionType, currentDate, taxLedger);
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(null, cashSold, $"Rebalance: Selling {positionType} investment");
-        }
-
-        Account.DepositCash(bookOfAccounts, cashSold, currentDate);
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, cashSold, "Rebalance: Depositing investment sales proceeds");
-        }
-        return cashSold;
-    }
-    /// <summary>
-    /// move investments between long-term, mid-term, and cash, per retirement strategy defined in the sim parameters
-    /// </summary>
-    public static void RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger)
-    {
-        // do our recession checking every month, regardless of whether
-        // it's time to move money around. this gives us a finer grain for
-        // determining down years
-
-        // see if we're already in a recession based on prior checks
-        if (recessionStats.AreWeInADownYear)
-        {
-            // we were previously in a down year. Let's see if we've made
-            // it out yet
-            if (currentPrices.CurrentLongTermInvestmentPrice >
-                (recessionStats.RecessionRecoveryPoint * simParams.RecessionRecoveryPointModifier))
-            {
-                // we've eclipsed the prior recovery point, we've made it
-                // out. go ahead and set the recovery point to today's cost
-                // just to keep it near a modern number
-                recessionStats.AreWeInADownYear = false;
-                recessionStats.RecessionRecoveryPoint = currentPrices.CurrentLongTermInvestmentPrice;
-                recessionStats.DownYearCounter = 0M;
-            }
-            else
-            {
-                // we're still in a dip. keep us here, but increment the down year counter
-                decimal _downYearCounterIncrement() =>
-                    simParams.RebalanceFrequency switch
-                    {
-                        RebalanceFrequency.MONTHLY => 1M / 12M,
-                        RebalanceFrequency.QUARTERLY => 0.25M,
-                        RebalanceFrequency.YEARLY => 1M,
-                        _ => throw new NotImplementedException(),
-                    };
-
-                recessionStats.DownYearCounter += _downYearCounterIncrement();
-            }
-        }
-        else
-        {
-            // we weren't previously in a down year. check to see if stocks
-            // have gone down year over year
-            var numMonthsOfHistory = currentPrices.LongRangeInvestmentCostHistory.Count;
-            // if we don't have 13 months of history, we can't check last
-            // year's price and won't know if we need to do any rebalancing yet
-            if (numMonthsOfHistory < simParams.RecessionCheckLookBackMonths) return;
-            var lookbackPrice = currentPrices.LongRangeInvestmentCostHistory[
-                numMonthsOfHistory - simParams.RecessionCheckLookBackMonths];
-            if (lookbackPrice > currentPrices.CurrentLongTermInvestmentPrice)
-            {
-                // prices are down year over year. Set the recovery point
-                recessionStats.AreWeInADownYear = true;
-                recessionStats.RecessionRecoveryPoint =
-                    (lookbackPrice > recessionStats.RecessionRecoveryPoint) ? lookbackPrice : recessionStats.RecessionRecoveryPoint;
-            }
-            else
-            {
-                // we're not in a down year update the recovery point if
-                // it's a new high water mark
-                recessionStats.RecessionRecoveryPoint =
-                    (currentPrices.CurrentLongTermInvestmentPrice > recessionStats.RecessionRecoveryPoint)
-                        ? currentPrices.CurrentLongTermInvestmentPrice
-                        : recessionStats.RecessionRecoveryPoint;
-            }
-        }
-
-        // now check whether it's time to move funds
+        // check whether it's time to move funds
         bool isTime = false;
         int currentMonthNum = currentDate.Month - 1; // we want it zero-indexed to make the modulus easier
-        if (
+        return (
             (
                 // check whether it's close enough to retirement to think about rebalancing
                 currentDate >= simParams.RetirementDate
@@ -106,25 +23,84 @@ public static class Rebalance
              && currentMonthNum % 3 == 0) ||
             (simParams.RebalanceFrequency is RebalanceFrequency.YEARLY
              && currentMonthNum % 12 == 0)
-        )
+        );
+    }
+    public static (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger)
+        MoveFromInvestmentToCash(BookOfAccounts bookOfAccounts, decimal cashNeeded, 
+            McInvestmentPositionType positionType, LocalDateTime currentDate, TaxLedger taxLedger)
+    {
+        // set up the return tuple
+        (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
+            0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        
+        var salesResults = InvestmentSales.SellInvestmentsToDollarAmountByPositionType(
+            cashNeeded, positionType, results.newBookOfAccounts, results.newLedger, currentDate);
+        results.amountMoved = salesResults.amountSold;
+        results.newBookOfAccounts = salesResults.newBookOfAccounts;
+        results.newLedger = salesResults.newLedger;
+        
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
-            isTime = true;
+            Reconciliation.AddMessageLine(null, results.amountMoved, $"Rebalance: Selling {positionType} investment");
         }
 
-        if (isTime)
-        {
-            // blammo. time to make the donuts.
-            TopUpCashBucket(currentDate, bookOfAccounts, recessionStats, currentPrices, simParams, taxLedger);
-            TopUpMidBucket(currentDate, bookOfAccounts, recessionStats, currentPrices, simParams, taxLedger);
-        }
+        return results;
+    }
+    
+    
+    /// <summary>
+    /// move investments between long-term, mid-term, and cash, per retirement strategy defined in the sim parameters
+    /// </summary>
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
+        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger)
+    {
+        if(IsRebalanceTime(currentDate, simParams) == false) return (bookOfAccounts, taxLedger);
+        
+        // blammo. time to make the donuts.
+        
+        // set up return tuple
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        
+        TopUpCashBucket(currentDate, bookOfAccounts, recessionStats, currentPrices, simParams, taxLedger);
+        TopUpMidBucket(currentDate, bookOfAccounts, recessionStats, currentPrices, simParams, taxLedger);
+        
+        return results;
     }
 
-    public static void TopUpCashBucket(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger) // todo: rename "top up" functions to something smarter
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) TopUpCashBucket(
+        LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger) // todo: rename "top up" functions to something smarter
     {
         // if it's been a good year, sell long-term growth assets and
         // top-up cash. if it's been a bad year, sell mid-term assets to
         // top-up cash.
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        /*
+         * you are here. in the middle of refactoring to make this whole thing work a lot more functional. then you need to write unit tests
+         */
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
 
         // todo: there's a lot of DRY violation with the reconciliation lines

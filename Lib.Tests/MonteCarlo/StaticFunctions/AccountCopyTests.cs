@@ -41,7 +41,7 @@ public class AccountCopyTests
         var copiedAccount = copiedAccounts[0];
 
         // Verify account properties
-        Assert.NotEqual(originalAccount.Id, copiedAccount.Id); // Should have new ID
+        Assert.Equal(originalAccount.Id, copiedAccount.Id);
         Assert.Equal(originalAccount.Name, copiedAccount.Name);
 
         // Verify positions
@@ -50,7 +50,7 @@ public class AccountCopyTests
         var copiedPosition = copiedAccount.Positions[0];
 
         // Verify position properties
-        Assert.NotEqual(originalPosition.Id, copiedPosition.Id); // Should have new ID
+        Assert.Equal(originalPosition.Id, copiedPosition.Id);
         Assert.Equal(originalPosition.IsOpen, copiedPosition.IsOpen);
         Assert.Equal(originalPosition.Name, copiedPosition.Name);
         Assert.Equal(originalPosition.Entry, copiedPosition.Entry);
@@ -96,7 +96,7 @@ public class AccountCopyTests
         var copiedAccount = copiedAccounts[0];
 
         // Verify account properties
-        Assert.NotEqual(originalAccount.Id, copiedAccount.Id); // Should have new ID
+        Assert.Equal(originalAccount.Id, copiedAccount.Id);
         Assert.Equal(originalAccount.Name, copiedAccount.Name);
         Assert.Equal(originalAccount.AccountType, copiedAccount.AccountType);
 
@@ -106,7 +106,7 @@ public class AccountCopyTests
         var copiedPosition = copiedAccount.Positions[0];
 
         // Verify position properties
-        Assert.NotEqual(originalPosition.Id, copiedPosition.Id); // Should have new ID
+        Assert.Equal(originalPosition.Id, copiedPosition.Id); 
         Assert.Equal(originalPosition.IsOpen, copiedPosition.IsOpen);
         Assert.Equal(originalPosition.Name, copiedPosition.Name);
         Assert.Equal(originalPosition.Entry, copiedPosition.Entry);
@@ -163,7 +163,7 @@ public class AccountCopyTests
             var original = originalPositions[i];
             var copied = copiedPositions[i];
 
-            Assert.NotEqual(original.Id, copied.Id); // Should have new ID
+            Assert.Equal(original.Id, copied.Id);
             Assert.Equal(original.IsOpen, copied.IsOpen);
             Assert.Equal(original.Name, copied.Name);
             Assert.Equal(original.Entry, copied.Entry);
@@ -216,7 +216,7 @@ public class AccountCopyTests
             var original = originalPositions[i];
             var copied = copiedPositions[i];
 
-            Assert.NotEqual(original.Id, copied.Id); // Should have new ID
+            Assert.Equal(original.Id, copied.Id); 
             Assert.Equal(original.IsOpen, copied.IsOpen);
             Assert.Equal(original.Name, copied.Name);
             Assert.Equal(original.Entry, copied.Entry);

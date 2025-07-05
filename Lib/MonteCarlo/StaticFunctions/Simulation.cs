@@ -7,6 +7,20 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Simulation
 {
+    #region sim copy functions
+
+    public static LifetimeSpend CopyLifetimeSpend(LifetimeSpend lifetimeSpend)
+    {
+        return new LifetimeSpend()
+        {
+            TotalDebtAccrualLifetime = lifetimeSpend.TotalDebtAccrualLifetime,
+            TotalDebtPaidLifetime = lifetimeSpend.TotalDebtPaidLifetime,
+            TotalInvestmentAccrualLifetime = lifetimeSpend.TotalInvestmentAccrualLifetime,
+            TotalSocialSecurityWageLifetime = lifetimeSpend.TotalSocialSecurityWageLifetime,
+            TotalSpendLifetime = lifetimeSpend.TotalSpendLifetime,
+        };
+    }
+    #endregion sim copy functions
     public static NetWorthMeasurement CalculatePercentileValue(NetWorthMeasurement[] sequence,
         decimal percentile)
     {

@@ -1,6 +1,6 @@
 namespace Lib.DataTypes.MonteCarlo;
 
-public class LifetimeSpend
+public struct LifetimeSpend
 {
     public decimal TotalSpendLifetime { get; set; } = 0m;
     public decimal TotalInvestmentAccrualLifetime { get; set; } = 0m;

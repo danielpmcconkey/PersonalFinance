@@ -3,8 +3,12 @@ using NodaTime;
 
 namespace Lib.DataTypes.MonteCarlo;
 
-public class TaxLedger
+public struct TaxLedger
 {
+    public TaxLedger()
+    {
+    }
+
     public List<(LocalDateTime earnedDate, decimal amount)> SocialSecurityIncome { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> OrdinaryIncome { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> CapitalGains { get; set; } = [];

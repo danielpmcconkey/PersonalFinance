@@ -20,8 +20,8 @@ public static class Person
             AnnualBonus = (pgperson.AnnualBonus),
             MonthlyFullSocialSecurityBenefit = (pgperson.MonthlyFullSocialSecurityBenefit),
             Annual401kMatchPercent = (pgperson.Annual401kMatchPercent),
-            InvestmentAccounts = Account.FetchDbInvestmentAccountsByPersonId(pgperson.Id),
-            DebtAccounts = Account.FetchDbDebtAccountsByPersonId(pgperson.Id),
+            InvestmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(pgperson.Id),
+            DebtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(pgperson.Id),
         };
         return person;
     }
@@ -61,8 +61,8 @@ public static class Person
     /// <returns></returns>
     public static McPerson CopyPerson(McPerson originalPerson)
     {
-        var newInvestmentAccounts = Account.CopyInvestmentAccounts(originalPerson.InvestmentAccounts);
-        var newDebtAccounts = Account.CopyDebtAccounts(originalPerson.DebtAccounts);
+        var newInvestmentAccounts = AccountCopy.CopyInvestmentAccounts(originalPerson.InvestmentAccounts);
+        var newDebtAccounts = AccountCopy.CopyDebtAccounts(originalPerson.DebtAccounts);
         var newPerson = new McPerson()
         {
             Id = new Guid(),

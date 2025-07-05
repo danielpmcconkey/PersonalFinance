@@ -6,151 +6,40 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Tax
 {
-    public static void AddRmdDistribution(TaxLedger ledger, LocalDateTime currentDate, decimal amount)
+    #region copy functions
+
+    public static TaxLedger CopyTaxLedger(TaxLedger ledger)
     {
-        int year = currentDate.Year;
-        if (ledger.RmdDistributions.ContainsKey(year))
+        return new TaxLedger()
         {
-            ledger.RmdDistributions[year] += amount;
-        }
-        else ledger.RmdDistributions[year] = amount;
+            CapitalGains = ledger.CapitalGains,
+            IncomeTarget = ledger.IncomeTarget,
+            OrdinaryIncome = ledger.OrdinaryIncome,
+            RmdDistributions = ledger.RmdDistributions,
+            SocialSecurityIncome = ledger.SocialSecurityIncome,
+        };
     }
-    public static decimal CalculateCapitalGainsForYear(TaxLedger ledger, int year)
-    {
-        return ledger.CapitalGains
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
-    }
-    
-    public static decimal CalculateEarnedIncomeForYear(TaxLedger ledger, int year)
-    {
-        return 
-            CalculateOrdinaryIncomeForYear(ledger, year) +
-            CalculateTaxableSocialSecurityIncomeForYear(ledger, year) -
-            TaxConstants._standardDeduction;
-    }
-    
+
+    #endregion
     /// <summary>
-    /// The best income scenario is that all taxable social security and
-    /// all taxable capital gains add up to $96,950 and are taxed at 12%,
-    /// with all other income coming from Roth or HSA accounts. So this
-    /// takes our income target (which is already $96,950 minus last year's
-    /// taxable social security minus the standard deduction) and subtracts
-    /// any income or taxable capital gains accrued thus far in the year
+    /// simply records the RMD distribution. Doesn't update any accounts. Only the ledger
     /// </summary>
-    /// <param name="year"></param>
-    /// <returns></returns>
-    public static decimal CalculateIncomeRoom(TaxLedger ledger, int year)
+    /// <returns>the new, updated ledger</returns>
+    public static TaxLedger AddRmdDistribution(TaxLedger ledger, LocalDateTime currentDate, decimal amount)
     {
-        var room = ledger.IncomeTarget -
-                   CalculateOrdinaryIncomeForYear(ledger, year) -
-                   CalculateCapitalGainsForYear(ledger, year)
-            ;
-        return Math.Max(room, 0);
-    }
-    public static decimal CalculateOrdinaryIncomeForYear(TaxLedger ledger, int year)
-    {
-        return ledger.OrdinaryIncome
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
+        var result = CopyTaxLedger(ledger);
+        
+        var year = currentDate.Year;
+        if (!result.RmdDistributions.TryAdd(year, amount))
+        {
+            result.RmdDistributions[year] += amount;
+        }
+
+        return result;
     }
     
+   
     
-    /// <summary>
-    /// Assumes that all of my social security and income benifit will add
-    /// up to enough to be maximally taxable, which is 85% of the total
-    /// benefit
-    /// </summary>
-    public static decimal CalculateTaxableSocialSecurityIncomeForYear(TaxLedger ledger, int year)
-    {
-        return (ledger.SocialSecurityIncome
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount)) * TaxConstants.MaxSocialSecurityTaxPercent;
-    }
-
-    public static decimal CalculateTaxLiabilityForYear(TaxLedger ledger, int taxYear)
-    {
-        var earnedIncome = CalculateEarnedIncomeForYear(ledger, taxYear);
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(null, earnedIncome, $"Earned income calculated for tax year {taxYear}");
-        }
-
-        var totalCapitalGains = CalculateCapitalGainsForYear(ledger, taxYear);
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(null, earnedIncome, $"Total capital gains calculated for tax year {taxYear}");
-        }
-
-        // todo: don't update the income target in the calc function
-        UpdateIncomeTarget(ledger, taxYear);
-
-
-        decimal totalLiability = 0M;
-
-        // tax on ordinary income
-        foreach (var bracket in TaxConstants._incomeTaxBrackets)
-        {
-            var amountInBracket =
-                    earnedIncome
-                    - (Math.Max(earnedIncome, bracket.max) - bracket.max) // amount above max
-                    - (Math.Min(earnedIncome, bracket.min)) // amount below min
-                ;
-            totalLiability += (amountInBracket * bracket.rate);
-        }
-
-        // tax on capital gains
-        if (earnedIncome + totalCapitalGains < TaxConstants._capitalGainsBrackets[0].max)
-        {
-            // you have 0 capital gains to pay. It stacks on top of earned
-            // income but still comes out less than the 0% max
-        }
-        else if (earnedIncome < TaxConstants._capitalGainsBrackets[0].max)
-        {
-            // the difference between your earned income and the free
-            // bracket max is free. the rest is charged at normal capital
-            // gains rates
-
-            var bracket1 = TaxConstants._capitalGainsBrackets[1];
-            var bracket2 = TaxConstants._capitalGainsBrackets[2];
-
-            var totalRevenue = earnedIncome + totalCapitalGains;
-            // any of totalRevenue above 583,750 is taxed at 20%
-            var amountAtBracket2 = Math.Max(0, totalRevenue - bracket2.min);
-            totalLiability += (amountAtBracket2 * bracket2.rate);
-
-            // any of totalRevenue above 94,050 but below 583,750 is taxed at 15%
-            var amountAtBracket1 = Math.Max(0, totalRevenue - bracket1.min - amountAtBracket2);
-            totalLiability += (amountAtBracket1 * bracket1.rate);
-        }
-        else
-        {
-            // there is no free bracket. Everything below the bracket 1 max
-            // is taxed at the bracket 1 rate
-            var bracket1 = TaxConstants._capitalGainsBrackets[1];
-            var amountInBracket1 =
-                    totalCapitalGains
-                    - (Math.Max(totalCapitalGains, bracket1.max) - bracket1.max) // amount above max
-                ;
-            totalLiability += (amountInBracket1 * bracket1.rate);
-            var bracket2 = TaxConstants._capitalGainsBrackets[2];
-            var amountInBracket2 =
-                    totalCapitalGains
-                    - (Math.Max(totalCapitalGains, bracket2.max) - bracket2.max) // amount above max
-                    - (Math.Min(totalCapitalGains, bracket2.min)) // amount below min
-                ;
-            totalLiability += (amountInBracket2 * bracket2.rate);
-        }
-
-        // NC state income tax
-        totalLiability += earnedIncome * TaxConstants._ncFiatTaxRate;
-        totalLiability += totalCapitalGains * TaxConstants._ncFiatTaxRate;
-
-
-        //Logger.Info($"Tax bill of {totalLiability.ToString("C")}");
-
-        return totalLiability;
-    }
     
     public static decimal? GetRmdRateByYear(int year)
     {
@@ -159,23 +48,27 @@ public static class Tax
         return rmd;
 
     }
-    public static void LogCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static TaxLedger LogCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        ledger.CapitalGains.Add((earnedDate, amount));
+        var result = CopyTaxLedger(ledger);
+        result.CapitalGains.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Capital gain logged");
         }
+        return result;
     }
-    public static void LogIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static TaxLedger LogIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        ledger.OrdinaryIncome.Add((earnedDate, amount));
+        var result = CopyTaxLedger(ledger);
+        result.OrdinaryIncome.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Income logged");
         }
+        return result;
     }
-    public static void LogInvestmentSale(TaxLedger ledger, LocalDateTime saleDate, McInvestmentPosition position,
+    public static TaxLedger LogInvestmentSale(TaxLedger ledger, LocalDateTime saleDate, McInvestmentPosition position,
         McInvestmentAccountType accountType)
     {
         switch(accountType)
@@ -184,21 +77,23 @@ public static class Tax
             case McInvestmentAccountType.ROTH_IRA:
             case McInvestmentAccountType.HSA:
                 // these are completely tax free
+                return ledger;
                 break; 
             case McInvestmentAccountType.TAXABLE_BROKERAGE:
                 // taxed on growth only
-                LogCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost);
+                return LogCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost);
                 break;
             case McInvestmentAccountType.TRADITIONAL_401_K:
             case McInvestmentAccountType.TRADITIONAL_IRA:
                 // tax deferred. everything is counted as income
-                LogIncome(ledger, saleDate, position.CurrentValue);
+                return LogIncome(ledger, saleDate, position.CurrentValue);
                 break;
             case McInvestmentAccountType.PRIMARY_RESIDENCE:
             case McInvestmentAccountType.CASH:
                 // these should not be "sold"
-                throw new InvalidDataException();
+                throw new InvalidDataException("Cannot sell cash or primary residence accounts");
         }
+        throw new InvalidDataException("Unknown account type");
     }
     public static void LogSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
@@ -209,7 +104,7 @@ public static class Tax
         }
     }
 
-    public static decimal MeetRmdRequirements(
+    public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) MeetRmdRequirements(
         TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices)
     {
         if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
@@ -218,88 +113,78 @@ public static class Tax
         var rmdRate = GetRmdRateByYear(year);
         if (rmdRate is null)
         {
-            // no requirement this year
-            return 0M;
+            if (MonteCarloConfig.DebugMode == true)
+            {
+                Reconciliation.AddMessageLine(currentDate, 0, 
+                    $"RMD: no RMD requirement this year");
+            }
+            return (0M, accounts, ledger);
         } 
+        
+        // set up the return tuple
+        (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
+            0M, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger)
+            );
+        
+        // calculate the total RMD requirement this year
+        decimal totalRmdRequirement = 
+            (accounts.InvestmentAccounts
+                .Where(x => x.AccountType is McInvestmentAccountType.TRADITIONAL_401_K
+                        || x.AccountType is McInvestmentAccountType.TRADITIONAL_IRA) // all relevant accounts
+                .Sum(AccountCalculation.CalculateInvestmentAccountTotalValue) // the sum of their balances
+                / (decimal)rmdRate); // the final amount we gotta withdraw
 
-        var rate = (decimal)rmdRate;
-
-        // get total balance in rmd-relevant accounts
-        var relevantAccounts = accounts.InvestmentAccounts
-            .Where(x => x.AccountType is McInvestmentAccountType.TRADITIONAL_401_K
-                        || x.AccountType is McInvestmentAccountType.TRADITIONAL_IRA);
-        var balance = 0M;
-        foreach (var account in relevantAccounts)
-            balance += Account.CalculateInvestmentAccountTotalValue(account);
-
-        var totalRmdRequirement = balance / rate;
+        // figure out how much we've already withdrawn
         if (!ledger.RmdDistributions.TryGetValue(year, out var totalRmdSoFar))
         {
             ledger.RmdDistributions[year] = 0;
             totalRmdSoFar = 0;
         }
 
-        if (totalRmdSoFar >= totalRmdRequirement) return totalRmdSoFar;
+        if (totalRmdSoFar >= totalRmdRequirement) 
+        {
+            if (MonteCarloConfig.DebugMode == true)
+            {
+                Reconciliation.AddMessageLine(currentDate, 0, 
+                    $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)");
+            }
+            return results; // no sales needed
+        }
 
         var amountLeft = totalRmdRequirement - totalRmdSoFar;
-
-        // start with long-term investments as you're most likely to have them there
-        var cashSold = Investment.SellInvestment(accounts, amountLeft,
-            McInvestmentPositionType.LONG_TERM, currentDate, ledger, true);
-        totalRmdSoFar += cashSold;
+        var localResult = InvestmentSales.SellInvestmentsToRmdAmount(
+            amountLeft, results.newBookOfAccounts, results.newLedger, currentDate);
+        
+        results.amountSold = localResult.amountSold;
+        results.newBookOfAccounts = localResult.newBookOfAccounts;
+        results.newLedger = localResult.newLedger;
+        
         if (MonteCarloConfig.DebugMode == true)
         {
-            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Sold long-term investment");
+            Reconciliation.AddMessageLine(currentDate, results.amountSold, 
+                $"RMD: Sold investment ({totalRmdSoFar} previously sold this year)");
         }
-
-        // and invest it back into mid-term
-        Investment.InvestFunds(accounts, currentDate, cashSold, McInvestmentPositionType.MID_TERM,
-            McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
-        if (MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Bought mid-term investment");
-        }
-
-        amountLeft -= cashSold;
-        if (amountLeft <= 0) return totalRmdSoFar;
-
-        // try mid-term investments for remainder
-        cashSold = Investment.SellInvestment(accounts, amountLeft,
-            McInvestmentPositionType.MID_TERM, currentDate, ledger, true);
-        totalRmdSoFar += cashSold;
-        if (MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Sold mid-term investment");
-        }
-
-        // and invest it back into mid-term
-        Investment.InvestFunds(accounts, currentDate, cashSold, McInvestmentPositionType.MID_TERM,
-            McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
-        if (MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, cashSold, "RMD: Bought mid-term investment");
-        }
-
-        amountLeft -= cashSold;
-        if (amountLeft <= 0) return totalRmdSoFar;
-
-        // nothing's left to try. not sure how we got here
-        throw new InvalidDataException("RMD: Nothing left to try. Not sure how we got here");
+        
+        return results;
     }
 
     /// <summary>
     /// sets the income target for next year based on this year's social
     /// security income
     /// </summary>
-    public static void UpdateIncomeTarget(TaxLedger ledger, int year)
+    public static TaxLedger UpdateIncomeTarget(TaxLedger ledger, int year)
     {
+        var result = CopyTaxLedger(ledger);
+        
         // update the income target for next year
         var ceiling = TaxConstants._incomeTaxBrackets[1].max;
         var expectedSocialSecurityIncome =
-            CalculateTaxableSocialSecurityIncomeForYear(ledger, year);
+            TaxCalculation.CalculateTaxableSocialSecurityIncomeForYear(ledger, year);
         var expectedTaxableIncome = 
             expectedSocialSecurityIncome - TaxConstants._standardDeduction;
-         ledger.IncomeTarget = ceiling - expectedTaxableIncome;
+         result.IncomeTarget = ceiling - expectedTaxableIncome;
+         
+         return result;
     }
     
 }

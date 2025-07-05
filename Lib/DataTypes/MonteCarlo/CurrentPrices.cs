@@ -1,7 +1,11 @@
 namespace Lib.DataTypes.MonteCarlo;
 
-public class CurrentPrices
+public struct CurrentPrices
 {
+    public CurrentPrices()
+    {
+    }
+
     public decimal CurrentLongTermGrowthRate { get; set; } = 0m;
     public decimal CurrentLongTermInvestmentPrice { get; set; } = 100m;
     public decimal CurrentMidTermInvestmentPrice { get; set; } = 100m;
