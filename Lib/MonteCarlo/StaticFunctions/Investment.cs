@@ -34,10 +34,10 @@ public static class Investment
         return positions;
     }
     
-    public static void InvestFunds(BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount, 
+    public static BookOfAccounts InvestFunds(BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount, 
             McInvestmentPositionType mcInvestmentPositionType, McInvestmentAccountType accountType, CurrentPrices prices)
         {
-            if (dollarAmount <= 0) return;
+            if (dollarAmount <= 0) return accounts;
             if (accounts.Cash is null) throw new InvalidDataException("Cash account is null");
             if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
             if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
@@ -48,17 +48,19 @@ public static class Investment
             if (accounts.Brokerage is null) throw new InvalidDataException("Brokerage account is null");
             if (accounts.Hsa is null) throw new InvalidDataException("Hsa account is null");
             
+            var results = AccountCopy.CopyBookOfAccounts(accounts);
+            
             // figure out the correct account pointer
             McInvestmentAccount GetAccount() =>
                 accountType switch
                 {
-                    McInvestmentAccountType.CASH => accounts.Cash,
-                    McInvestmentAccountType.HSA => accounts.Hsa,
-                    McInvestmentAccountType.ROTH_401_K => accounts.Roth401K,
-                    McInvestmentAccountType.ROTH_IRA => accounts.RothIra,
-                    McInvestmentAccountType.TAXABLE_BROKERAGE => accounts.Brokerage,
-                    McInvestmentAccountType.TRADITIONAL_IRA => accounts.TraditionalIra,
-                    McInvestmentAccountType.TRADITIONAL_401_K => accounts.Traditional401K,
+                    McInvestmentAccountType.CASH => results.Cash,
+                    McInvestmentAccountType.HSA => results.Hsa,
+                    McInvestmentAccountType.ROTH_401_K => results.Roth401K,
+                    McInvestmentAccountType.ROTH_IRA => results.RothIra,
+                    McInvestmentAccountType.TAXABLE_BROKERAGE => results.Brokerage,
+                    McInvestmentAccountType.TRADITIONAL_IRA => results.TraditionalIra,
+                    McInvestmentAccountType.TRADITIONAL_401_K => results.Traditional401K,
                     _ => throw new NotImplementedException(),
                 };
             
@@ -92,6 +94,7 @@ public static class Investment
                 Reconciliation.AddMessageLine(
                     currentDate, dollarAmount, $"Investment in account {account.Name}, type {mcInvestmentPositionType}");
             }
+            return results;
         }
     
     /// <summary>

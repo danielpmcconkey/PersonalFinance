@@ -84,9 +84,6 @@ namespace Lib
             modelBuilder.Entity<McModel>(e =>
             {
                 e.HasKey(m => m.Id);
-                e.HasOne(m => m.Person)
-                    .WithMany(p => p.Models)
-                    .HasForeignKey(m => m.PersonId);
                 e.HasOne(m => m.ParentA)
                     .WithMany(mm => mm.ChildrenA)
                     .HasForeignKey(m => m.ParentAId);

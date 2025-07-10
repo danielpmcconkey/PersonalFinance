@@ -18,7 +18,7 @@ namespace Lib.DataTypes.MonteCarlo
         
         [Column("personid")]
         public required Guid PersonId { get; set; }
-        public McPerson? Person { get; set; }
+        //public McPerson? Person { get; set; }
         //public List<SimulationAllLivesResult> BatchResults { get; set; } = [];
         
         [Column("parenta")]
@@ -46,8 +46,29 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("socialsecuritystart")]
         public required LocalDateTime SocialSecurityStart { get; set; }
         
-        [Column("desiredmonthlyspend")]
-        public required decimal DesiredMonthlySpend { get; set; }
+        /// <summary>
+        /// the amount you have to pay on basic things like groceries, bills, property tax. does not include any debt payments
+        /// </summary>
+        [Column("requiredmonthlyspend")]
+        public required decimal RequiredMonthlySpend { get; set; }
+        
+        /// <summary>
+        /// the amount you have to pay for health care once you retire. Changes based on age
+        /// </summary>
+        [Column("requiredmonthlyspendhealthcare")]
+        public required decimal RequiredMonthlySpendHealthCare { get; set; }
+        
+        /// <summary>
+        /// the amount of fun bucks you get to blow pre retirement
+        /// </summary>
+        [Column("desiredmonthlyspendpreretirement")]
+        public required decimal DesiredMonthlySpendPreRetirement { get; set; }
+        
+        // <summary>
+        /// the amount of fun bucks you get to blow post retirement
+        /// </summary>
+        [Column("desiredmonthlyspendpostretirement")]
+        public required decimal DesiredMonthlySpendPostRetirement { get; set; }
 
         /// <summary>
         /// the percentage of monthly spend that you actually spend when times 

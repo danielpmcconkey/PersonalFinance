@@ -258,7 +258,7 @@ namespace Lib.MonteCarlo
             _sim.RecessionStats = Recession.CalculateRecessionStats(_sim.RecessionStats, _sim.CurrentPrices, _sim.SimParameters);
             // now rebalance
             Rebalance.RebalancePortfolio(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.RecessionStats, 
-                _sim.CurrentPrices, _sim.SimParameters, _sim.TaxLedger);
+                _sim.CurrentPrices, _sim.SimParameters, _sim.TaxLedger, _sim.Person);
             if (StaticConfig.MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddFullReconLine(_sim, 0M, "Rebalanced portfolio");
@@ -334,7 +334,9 @@ namespace Lib.MonteCarlo
             }
             var amount = _sim.Person.MonthlySocialSecurityWage;
             var localResult = AccountCashManagement.DepositCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim);
-            _sim.LifetimeSpend.TotalSocialSecurityWageLifetime += amount;
+            
+            _sim.LifetimeSpend = Spend.RecordSocialSecurityWage(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
+            
             Tax.LogSocialSecurityIncome(_sim.TaxLedger, _sim.CurrentDateInSim, amount);
             if (MonteCarloConfig.DebugMode)
             {
@@ -349,12 +351,14 @@ namespace Lib.MonteCarlo
             // surplus income
             if (!_sim.Person.IsRetired) return; // todo: re-jigger spending pre-retirement to calc "fun" points
             
-            var couldAfford = AccountCashManagement.WithdrawCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim, _sim.TaxLedger);
-            if (!couldAfford)
+            var withdrawalResults = AccountCashManagement.WithdrawCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim, _sim.TaxLedger);
+            _sim.BookOfAccounts = withdrawalResults.newAccounts;
+            _sim.TaxLedger = withdrawalResults.newLedger;
+            if (!withdrawalResults.isSuccessful)
             {
                 DeclareBankruptcy();
             }
-            _sim.LifetimeSpend.TotalSpendLifetime += amount;
+            _sim.LifetimeSpend = Spend.RecordSpend(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim, amount, "Spent cash");
@@ -369,21 +373,25 @@ namespace Lib.MonteCarlo
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Time to spend the money");
             }
-            var spendAmount = _sim.SimParameters.DesiredMonthlySpend;
-            if (_sim.RecessionStats.AreWeInAusterityMeasures)
-            {
-                spendAmount = _sim.SimParameters.DesiredMonthlySpend *
-                    _sim.SimParameters.AusterityRatio;
-            }
-            if (_sim.RecessionStats.AreWeInExtremeAusterityMeasures)
-            {
-                spendAmount = _sim.SimParameters.DesiredMonthlySpend *
-                    _sim.SimParameters.ExtremeAusterityRatio;
-            }
-            SpendCash(spendAmount);
+
+            var funSpend = Spend.CalculateMonthlyFunSpend(_sim.SimParameters, _sim.Person, _sim.CurrentDateInSim);
+            var notFunSpend = Spend.CalculateMonthlyRequiredSpend(_sim.SimParameters, _sim.Person, _sim.CurrentDateInSim);
+            
+            // required spend can't move. But your fun spend can go down if we're in a recession
+            funSpend = Spend.CalculateRecessionSpendOverride(_sim.SimParameters, funSpend, _sim.RecessionStats);
+            
+            var withdrawalAmount = funSpend + notFunSpend;
+            SpendCash(withdrawalAmount);
+            
+            // calculate and record fun points
+            var funPoints = Spend.CalculateFunPointsForSpend(funSpend, _sim.Person, _sim.CurrentDateInSim);
+            _sim.LifetimeSpend = Spend.RecordFunPoints(_sim.LifetimeSpend, funPoints, _sim.CurrentDateInSim);
+            
+          
+            
             if (MonteCarloConfig.DebugMode)
             {
-                Reconciliation.AddFullReconLine(_sim, spendAmount, "Monthly spend spent");
+                Reconciliation.AddFullReconLine(_sim, withdrawalAmount, "Monthly spend spent");
             }
         }
         
@@ -399,18 +407,23 @@ namespace Lib.MonteCarlo
 
         private void PayDownLoans()
         {
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Paying down loans");
-            }
             if (_sim.Person.IsBankrupt)
             {
                 return;
             }
+            
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Paying down loans");
+            }
 
-            if (AccountDebtPayment.PayDownLoans(
-                    _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.Person, _sim.TaxLedger, _sim.LifetimeSpend) ==
-                false)
+            var paymentResult = AccountDebtPayment.PayDownLoans(
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.Person, _sim.TaxLedger, _sim.LifetimeSpend);
+            _sim.BookOfAccounts = paymentResult.newBookOfAccounts;
+            _sim.TaxLedger = paymentResult.newLedger;
+            _sim.LifetimeSpend = paymentResult.newSpend;
+            
+            if (paymentResult.isSuccessful == false)
             {
                 DeclareBankruptcy();
                 return;

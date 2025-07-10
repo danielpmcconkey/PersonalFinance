@@ -5,7 +5,18 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Rebalance
 {
-    public static bool IsRebalanceTime(LocalDateTime currentDate, McModel simParams)
+    #region Calculation functions
+
+    public static int CalculateNumMonthsUntilRetirement(McModel simParams, LocalDateTime currentDate)
+    {
+        int numMonths = simParams.NumMonthsCashOnHand;
+        // subtract the number of months until retirement because you don't need to have it all at once
+        if (currentDate < simParams.RetirementDate)
+            numMonths -= (int)(Math.Round((simParams.RetirementDate - currentDate).Days / 30f, 0));
+        return numMonths;
+    }
+    
+    public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, McModel simParams)
     {
         // check whether it's time to move funds
         bool isTime = false;
@@ -25,6 +36,11 @@ public static class Rebalance
              && currentMonthNum % 12 == 0)
         );
     }
+
+    #endregion Calculation functions
+    
+    #region asset movement functions
+    
     public static (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger)
         MoveFromInvestmentToCash(BookOfAccounts bookOfAccounts, decimal cashNeeded, 
             McInvestmentPositionType positionType, LocalDateTime currentDate, TaxLedger taxLedger)
@@ -47,154 +63,184 @@ public static class Rebalance
         return results;
     }
     
-    
-    /// <summary>
-    /// move investments between long-term, mid-term, and cash, per retirement strategy defined in the sim parameters
-    /// </summary>
-    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger)
+    public static (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger) SellInOrder(
+        decimal cashNeeded, McInvestmentPositionType[] pullOrder, BookOfAccounts bookOfAccounts,
+        TaxLedger taxLedger, LocalDateTime currentDate)
     {
-        if(IsRebalanceTime(currentDate, simParams) == false) return (bookOfAccounts, taxLedger);
-        
-        // blammo. time to make the donuts.
-        
         // set up return tuple
-        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
-            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger) results = (
+            0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger)); 
         
-        TopUpCashBucket(currentDate, bookOfAccounts, recessionStats, currentPrices, simParams, taxLedger);
-        TopUpMidBucket(currentDate, bookOfAccounts, recessionStats, currentPrices, simParams, taxLedger);
+        // loop over the pull types until we have the bucks
         
+        foreach (var positionType in pullOrder)
+        {
+            if (cashNeeded <= results.amountSold) return results;
+            
+            var localResults = MoveFromInvestmentToCash(
+                bookOfAccounts, cashNeeded, McInvestmentPositionType.MID_TERM, currentDate, taxLedger);
+            results.amountSold += localResults.amountMoved;
+            results.newAccounts = localResults.newBookOfAccounts;
+            results.newLedger = localResults.newLedger;
+        }
         return results;
     }
 
-    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) TopUpCashBucket(
+    
+    #endregion asset movement functions
+
+    #region rebalance functions
+
+    public static BookOfAccounts  InvestExcessCash(
         LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
-        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger) // todo: rename "top up" functions to something smarter
+        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, decimal reserveCashNeeded)
     {
-        // if it's been a good year, sell long-term growth assets and
-        // top-up cash. if it's been a bad year, sell mid-term assets to
-        // top-up cash.
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        /*
-         * you are here. in the middle of refactoring to make this whole thing work a lot more functional. then you need to write unit tests
-         */
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
+        var cashOnHand = AccountCalculation.CalculateCashBalance(bookOfAccounts);
+        var totalInvestmentAmount = cashOnHand - reserveCashNeeded;
 
-
-        // todo: there's a lot of DRY violation with the reconciliation lines
-
-        int numMonths = simParams.NumMonthsCashOnHand;
-        // subtract the number of months until retirement because you don't need to have it all at once
-        if (currentDate < simParams.RetirementDate)
-            numMonths -= (int)(Math.Round((simParams.RetirementDate - currentDate).Days / 30f, 0));
-
-        if (numMonths <= 0) return;
-
-        decimal totalCashWanted = numMonths * simParams.DesiredMonthlySpend;
-        decimal cashOnHand = Account.CalculateCashBalance(bookOfAccounts);
-        decimal cashNeeded = totalCashWanted - cashOnHand;
-        if (cashNeeded > 0)
+        if (totalInvestmentAmount <= 0) return bookOfAccounts;
+        
+        // we have excess cash, put it in long-term brokerage
+        BookOfAccounts results = AccountCopy.CopyBookOfAccounts(bookOfAccounts);
+        var investmentResults = Investment.InvestFunds(results, currentDate, totalInvestmentAmount,
+            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
+        
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
-            // need to pull from one of the buckets. 
-            if (recessionStats.AreWeInADownYear)
-            {
-                // pull what we can from the mid-term bucket
-                var cashSold = MoveFromInvestmentToCash(
-                    bookOfAccounts, cashNeeded, McInvestmentPositionType.MID_TERM, currentDate, taxLedger);
-
-                // pull any remaining from the long-term bucket
-                cashNeeded = cashNeeded - cashSold;
-                if (cashNeeded > 0)
-                {
-                    cashSold = MoveFromInvestmentToCash(
-                        bookOfAccounts, cashNeeded, McInvestmentPositionType.LONG_TERM, currentDate, taxLedger);
-                }
-            }
-            else
-            {
-                // pull what we can from the long-term bucket
-                var cashSold = MoveFromInvestmentToCash(
-                    bookOfAccounts, cashNeeded, McInvestmentPositionType.LONG_TERM, currentDate, taxLedger);
-
-                // pull any remaining from the mid-term bucket
-                cashNeeded = cashNeeded - cashSold;
-                if (cashNeeded > 0)
-                {
-                    cashSold = MoveFromInvestmentToCash(
-                        bookOfAccounts, cashNeeded, McInvestmentPositionType.MID_TERM, currentDate, taxLedger);
-                }
-            }
+            Reconciliation.AddMessageLine(currentDate, totalInvestmentAmount, "Rebalance: adding excess cash to long-term investment");
         }
-    }
 
-    public static void TopUpMidBucket(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger) // todo: rename "top up" functions to something smarter
+        return investmentResults;
+    }
+    
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalanceLongToMid(
+        LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, McPerson person)
     {
         // if it's been a good year, sell long-term growth assets and top-up mid-term.
         // if it's been a bad year, sit tight and hope the recession doesn't
         // outlast your mid-term bucket.
 
-        int numMonths = simParams.NumMonthsMidBucketOnHand;
-        // subtract the number of months until retirement because you don't need to have it all at once
-        if (currentDate < simParams.RetirementDate)
-            numMonths -= (int)(Math.Round((simParams.RetirementDate - currentDate).Days / 30f, 0));
-
-        if (numMonths <= 0) return;
-
-        decimal totalAmountWanted = numMonths * simParams.DesiredMonthlySpend;
-        decimal amountOnHand = Account.CalculateMidBucketTotalBalance(bookOfAccounts);
-        decimal amountNeeded = totalAmountWanted - amountOnHand;
-        decimal maxAmountToPull =
-            simParams.DesiredMonthlySpend *
-            simParams.NumMonthsCashOnHand; // don't pull more in one go than the cash on hand goal
-        amountNeeded = Math.Min(amountNeeded, maxAmountToPull);
-        if (amountNeeded > 0)
+        var numMonths = simParams.NumMonthsMidBucketOnHand; 
+        if (numMonths <= 0) return (bookOfAccounts, taxLedger);
+        
+       
+        // figure out how much we want to have in the mid-bucket
+        decimal amountOnHand = AccountCalculation.CalculateMidBucketTotalBalance(bookOfAccounts);
+        var totalAmountNeeded = Spend.CalculateCashNeedForNMonths(simParams, person, currentDate, numMonths);
+        decimal amountNeededToMove = totalAmountNeeded - amountOnHand;
+        
+        
+        // do we stiLl need to pull anything?
+        if (amountNeededToMove <= 0) return (bookOfAccounts, taxLedger);
+        
+        // if we're in a recession, don't move from long to mid until we absolutely have to
+        if (recessionStats.AreWeInADownYear) return (bookOfAccounts, taxLedger);
+        
+        // not in a recession. sell from long and buy mid
+        
+        // Set up the return tuple
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts),Tax.CopyTaxLedger(taxLedger));
+        
+        // first sell the long-term investments
+        var salesResults = SellInOrder(amountNeededToMove, [McInvestmentPositionType.LONG_TERM], results.newBookOfAccounts,
+            results.newLedger, currentDate);
+        var amountSold = salesResults.amountSold;
+        results.newBookOfAccounts = salesResults.newAccounts;
+        results.newLedger = salesResults.newLedger;
+        
+        // now buy the mid-term investments
+        results.newBookOfAccounts = Investment.InvestFunds(results.newBookOfAccounts, currentDate, amountSold,
+            McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
-            // need to pull from one of the buckets. 
-            if (recessionStats.AreWeInADownYear)
-            {
-                // rub some dirt on it, sissy
-            }
-            else
-            {
-                // pull what we can from the long-term bucket
-                var cashSold = Investment.SellInvestment(
-                    bookOfAccounts, amountNeeded, McInvestmentPositionType.LONG_TERM, currentDate, taxLedger);
-                if (StaticConfig.MonteCarloConfig.DebugMode == true)
-                {
-                    Reconciliation.AddMessageLine(currentDate, cashSold, "Rebalance: Selling long-term investment");
-                }
-
-                // and invest it back into mid-term
-                Investment.InvestFunds(bookOfAccounts, currentDate, cashSold, McInvestmentPositionType.MID_TERM, 
-                    McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
-                if (StaticConfig.MonteCarloConfig.DebugMode == true)
-                {
-                    Reconciliation.AddMessageLine(currentDate, cashSold, "Rebalance: adding investment sales to mid-term investment");
-                }
-            }
+            Reconciliation.AddMessageLine(currentDate, amountSold, "Rebalance: adding investment sales to mid-term investment");
         }
+
+        return results;
     }
+    
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalanceMidToCash(
+        LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, decimal totalCashNeeded) 
+    {
+        // if it's been a good year, sell long-term growth assets and
+        // top-up cash. if it's been a bad year, sell mid-term assets to
+        // top-up cash.
+        
+        var numMonths = CalculateNumMonthsUntilRetirement(simParams, currentDate);
+        if (numMonths <= 0) return (bookOfAccounts, taxLedger);
+        
+        
+        var totalCashOnHand = AccountCalculation.CalculateCashBalance(bookOfAccounts);
+        
+        var cashNeededToBeMoved = totalCashOnHand - totalCashNeeded;
+        
+        if (cashNeededToBeMoved <= 0) return (bookOfAccounts, taxLedger);
+        
+        // set up the return tuple
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        
+        // need to pull from one of the buckets. 
+        if (recessionStats.AreWeInADownYear)
+        {
+            // pull what we can from the mid-term bucket, then from long bucket
+            McInvestmentPositionType[] pullOrder = [ McInvestmentPositionType.MID_TERM, McInvestmentPositionType.LONG_TERM ];
+            var localResults = SellInOrder(cashNeededToBeMoved, pullOrder, bookOfAccounts, taxLedger, currentDate);
+            results.newBookOfAccounts = localResults.newAccounts;
+            results.newLedger = localResults.newLedger;
+        }
+        else
+        {
+            // pull what we can from the long-term bucket, then from mid
+            McInvestmentPositionType[] pullOrder = [ McInvestmentPositionType.LONG_TERM, McInvestmentPositionType.MID_TERM ];
+            var localResults = SellInOrder(cashNeededToBeMoved, pullOrder, bookOfAccounts, taxLedger, currentDate);
+            results.newBookOfAccounts = localResults.newAccounts;
+            results.newLedger = localResults.newLedger;
+        }
+        return results;
+    }
+    
+    /// <summary>
+    /// move investments between long-term, mid-term, and cash, per retirement strategy defined in the sim parameters
+    /// </summary>
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
+        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, McPerson person)
+    {
+        // determine how much cash you need on hand
+        var cashNeededTotal = Spend.CalculateCashNeedForNMonths(simParams, person, currentDate, simParams.NumMonthsCashOnHand);
+        
+        // set up return tuple
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        
+        // move funds if it's time
+        if (CalculateWhetherItsBucketRebalanceTime(currentDate, simParams))
+        {
+            var rebalanceCashResults = RebalanceMidToCash(
+                currentDate, results.newBookOfAccounts, recessionStats, currentPrices, simParams, results.newLedger,
+                cashNeededTotal);
+            results.newBookOfAccounts = rebalanceCashResults.newBookOfAccounts;
+            results.newLedger = rebalanceCashResults.newLedger;
+            
+            var rebalanceMidResults = RebalanceLongToMid(
+                currentDate, results.newBookOfAccounts, recessionStats, currentPrices, simParams, results.newLedger,
+                person);
+            results.newBookOfAccounts = rebalanceMidResults.newBookOfAccounts;
+            results.newLedger = rebalanceMidResults.newLedger;
+        }
+        // always check if you should invest excess cash
+        var investCashResults = InvestExcessCash(
+            currentDate, results.newBookOfAccounts, recessionStats, currentPrices, simParams, results.newLedger,
+            cashNeededTotal);
+
+        return results;
+    }
+
+    #endregion
+    
+
+   
 }

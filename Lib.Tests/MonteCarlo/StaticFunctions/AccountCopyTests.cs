@@ -33,7 +33,7 @@ public class AccountCopyTests
         };
 
         // Act
-        var copiedAccounts = Account.CopyDebtAccounts(originalAccounts);
+        var copiedAccounts = AccountCopy.CopyDebtAccounts(originalAccounts);
 
         // Assert
         Assert.Single(copiedAccounts);
@@ -88,7 +88,7 @@ public class AccountCopyTests
         };
 
         // Act
-        var copiedAccounts = Account.CopyInvestmentAccounts(originalAccounts);
+        var copiedAccounts = AccountCopy.CopyInvestmentAccounts(originalAccounts);
 
         // Assert
         Assert.Single(copiedAccounts);
@@ -153,7 +153,7 @@ public class AccountCopyTests
         var newAccountId = Guid.NewGuid();
 
         // Act
-        var copiedPositions = Account.CopyDebtPositions(originalPositions);
+        var copiedPositions = AccountCopy.CopyDebtPositions(originalPositions);
 
         // Assert
         Assert.Equal(originalPositions.Count, copiedPositions.Count);
@@ -206,7 +206,7 @@ public class AccountCopyTests
         var newAccountId = Guid.NewGuid();
 
         // Act
-        var copiedPositions = Account.CopyInvestmentPositions(originalPositions);
+        var copiedPositions = AccountCopy.CopyInvestmentPositions(originalPositions);
 
         // Assert
         Assert.Equal(originalPositions.Count, copiedPositions.Count);
@@ -239,8 +239,8 @@ public class AccountCopyTests
         var newAccountId = Guid.NewGuid();
 
         // Act
-        var copiedDebtPositions = Account.CopyDebtPositions(emptyDebtPositions);
-        var copiedInvestmentPositions = Account.CopyInvestmentPositions(emptyInvestmentPositions);
+        var copiedDebtPositions = AccountCopy.CopyDebtPositions(emptyDebtPositions);
+        var copiedInvestmentPositions = AccountCopy.CopyInvestmentPositions(emptyInvestmentPositions);
 
         // Assert
         Assert.Empty(copiedDebtPositions);
@@ -257,7 +257,7 @@ public class AccountCopyTests
         var newAccountId = Guid.NewGuid();
 
         // Act & Assert
-        Assert.Throws<ArgumentNullException>(() => Account.CopyDebtPositions(nullDebtPositions!));
-        Assert.Throws<ArgumentNullException>(() => Account.CopyInvestmentPositions(nullInvestmentPositions!));
+        Assert.Throws<ArgumentNullException>(() => AccountCopy.CopyDebtPositions(nullDebtPositions!));
+        Assert.Throws<ArgumentNullException>(() => AccountCopy.CopyInvestmentPositions(nullInvestmentPositions!));
     }
 }

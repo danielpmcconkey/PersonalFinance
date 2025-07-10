@@ -9,8 +9,7 @@ public static class Reconciliation
     public static void ExportToSpreadsheet()
     {
         if (StaticConfig.MonteCarloConfig.DebugMode == false || 
-            ReconciliationLedger._reconciliationLineItems == null ||
-            !ReconciliationLedger._reconciliationLineItems.Any()) 
+            ReconciliationLedger.ReconciliationLineItems.Count == 0) 
             return;
         
         string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
@@ -42,14 +41,14 @@ public static class Reconciliation
         ];
         
         SpreadsheetWriter writer = new SpreadsheetWriter(filePath, "Reconciliation", columns);
-        writer.CreateSpreadsheet(ReconciliationLedger._reconciliationLineItems);
+        writer.CreateSpreadsheet(ReconciliationLedger.ReconciliationLineItems);
     }
     public static void AddFullReconLine(MonteCarloSim sim, Decimal amount, string description)
     {
         if (StaticConfig.MonteCarloConfig.DebugMode == false) return;
         var line = CreateFullReconLine(sim, amount, description);
         if (line is null) throw new InvalidDataException("line is null in AddReconLine");
-        ReconciliationLedger.AddLine(line);
+        ReconciliationLedger.AddLine((ReconciliationLineItem)line);
     }
     public static void AddMessageLine(LocalDateTime? date, decimal? amount, string? description)
     {
@@ -102,12 +101,12 @@ public static class Reconciliation
                 description,
                 sim.CurrentPrices.CurrentLongTermGrowthRate,
                 sim.CurrentPrices.CurrentLongTermInvestmentPrice,
-                Account.CalculateNetWorth(sim.BookOfAccounts),
-                Account.CalculateLongBucketTotalBalance(sim.BookOfAccounts),
-                Account.CalculateMidBucketTotalBalance(sim.BookOfAccounts),
-                Account.CalculateShortBucketTotalBalance(sim.BookOfAccounts),
-                Account.CalculateCashBalance(sim.BookOfAccounts),
-                Account.CalculateDebtTotal(sim.BookOfAccounts),
+                AccountCalculation.CalculateNetWorth(sim.BookOfAccounts),
+                AccountCalculation.CalculateLongBucketTotalBalance(sim.BookOfAccounts),
+                AccountCalculation.CalculateMidBucketTotalBalance(sim.BookOfAccounts),
+                AccountCalculation.CalculateShortBucketTotalBalance(sim.BookOfAccounts),
+                AccountCalculation.CalculateCashBalance(sim.BookOfAccounts),
+                AccountCalculation.CalculateDebtTotal(sim.BookOfAccounts),
                 sim.LifetimeSpend.TotalSpendLifetime,
                 sim.LifetimeSpend.TotalInvestmentAccrualLifetime,
                 sim.LifetimeSpend.TotalDebtAccrualLifetime,

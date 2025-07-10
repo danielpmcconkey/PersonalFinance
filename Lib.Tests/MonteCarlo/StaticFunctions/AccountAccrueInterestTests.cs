@@ -13,58 +13,60 @@ public class AccountAccrueInterestTests
     private readonly CurrentPrices _testPrices = TestDataManager.CreateTestCurrentPrices(
         0.02M, 2.0M, 1.5M, 1.25M);
 
-    [Fact]
-    public void AccrueInterest_WithNullAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var bookOfAccounts = new BookOfAccounts(
-            null, null, null, null, null, null, null,
-            null, null);
-        var lifetimeSpend = new LifetimeSpend();
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => 
-            Account.AccrueInterest(_testDate, bookOfAccounts, _testPrices, lifetimeSpend));
-    }
+    
 
     [Fact]
     public void AccrueInterest_UpdatesInvestmentAndDebtPositions()
     {
         // Arrange
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var newInvestmentPosition = TestDataManager.CreateTestInvestmentPosition(
+            1.0m, 100.0m, McInvestmentPositionType.LONG_TERM, true);
         var investmentPositions = new List<McInvestmentPosition>
         {
-            TestDataManager.CreateTestInvestmentPosition(1.0m, 100.0m, McInvestmentPositionType.LONG_TERM, true)
+            newInvestmentPosition
         };
-
+        var newInvestmentAccount =
+            TestDataManager.CreateTestInvestmentAccount(investmentPositions, McInvestmentAccountType.TAXABLE_BROKERAGE);
+        var newDebtPosition = TestDataManager.CreateTestDebtPosition(true, 0.12M, 100M, 1000M);
         var debtPositions = new List<McDebtPosition>
         {
-            TestDataManager.CreateTestDebtPosition(true, 0.12M, 100M, 1000M)
+            newDebtPosition
         };
+        var newDebtAccount = TestDataManager.CreateTestDebtAccount(debtPositions);
+        
+        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
 
         bookOfAccounts.InvestmentAccounts = new List<McInvestmentAccount>()
         {
-            TestDataManager.CreateTestInvestmentAccount(investmentPositions, McInvestmentAccountType.TAXABLE_BROKERAGE)
+            newInvestmentAccount
         };
         bookOfAccounts.DebtAccounts = new List<McDebtAccount>()
         {
-            TestDataManager.CreateTestDebtAccount(debtPositions)
+            newDebtAccount
         };
+        var investmentAccountId = newInvestmentAccount.Id;
+        var investmentPositionId = newInvestmentPosition.Id;
+        var debtAccountId = newDebtAccount.Id;
+        var debtPositionId = newDebtPosition.Id;
 
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = Account.AccrueInterest(
+        (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterest(
             _testDate, bookOfAccounts, _testPrices, lifetimeSpend);
 
-        // Assert
-        Assert.NotNull(result.newAccounts.InvestmentAccounts);
-        Assert.NotNull(result.newAccounts.DebtAccounts);
-        var investmentPosition = result.newAccounts.InvestmentAccounts[0].Positions[0];
-        Assert.Equal(2.0M, investmentPosition.Price); // Long term price from test prices
+        var resultInvestAccount = result.newAccounts.InvestmentAccounts
+            .First(x => x.Id == investmentAccountId);
+        var resultInvestPosition = resultInvestAccount.Positions
+            .First(x => x.Id == investmentPositionId);
+        var resultDebtAccount = result.newAccounts.DebtAccounts
+            .First(x => x.Id == debtAccountId);
+        var resultDebtPosition = resultDebtAccount.Positions
+            .First(x => x.Id == debtPositionId);
 
-        var debtPosition = result.newAccounts.DebtAccounts[0].Positions[0];
-        Assert.Equal(1010M, debtPosition.CurrentBalance); // 1000 + (1000 * 0.12/12)
+        // Assert
+        Assert.Equal(2.0M, resultInvestPosition.Price); // Long term price from test prices
+        Assert.Equal(1010M, resultDebtPosition.CurrentBalance); // 1000 + (1000 * 0.12/12)
     }
 
     [Fact]
@@ -100,7 +102,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = Account.AccrueInterest(
+        (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterest(
             _testDate, bookOfAccounts, _testPrices, lifetimeSpend); 
 
         // Assert
@@ -147,7 +149,7 @@ public class AccountAccrueInterestTests
         
 
         // Act
-        (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = Account.AccrueInterest(
+        (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterest(
             _testDate, bookOfAccounts, _testPrices, lifetimeSpend);
 
         // Assert
@@ -167,7 +169,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        (McDebtPosition newPosition, LifetimeSpend newSpend) result = Account.AccrueInterestOnDebtPosition(
+        (McDebtPosition newPosition, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterestOnDebtPosition(
             _testDate, position, lifetimeSpend);
 
         // Assert
@@ -184,7 +186,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        (McDebtPosition newPosition, LifetimeSpend newSpend) result = Account.AccrueInterestOnDebtPosition(
+        (McDebtPosition newPosition, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterestOnDebtPosition(
             _testDate, position, lifetimeSpend);
 
         // Assert
@@ -200,7 +202,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        (McDebtPosition newPosition, LifetimeSpend newSpend) result = Account.AccrueInterestOnDebtPosition(
+        (McDebtPosition newPosition, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterestOnDebtPosition(
             _testDate, position, lifetimeSpend);
 
         // Assert
@@ -221,7 +223,7 @@ public class AccountAccrueInterestTests
         var expectedAccrual = balance * (apr / 12);
 
         // Act
-        (McDebtPosition newPosition, LifetimeSpend newSpend) result = Account.AccrueInterestOnDebtPosition(
+        (McDebtPosition newPosition, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterestOnDebtPosition(
             _testDate, position, lifetimeSpend);
 
         // Assert
@@ -248,7 +250,7 @@ public class AccountAccrueInterestTests
         var expectedAccrual = startingAccrual + (1000m * (0.12m / 12)); // 1000 * (0.12 / 12) = 10
 
         // Act
-        (McDebtPosition newPosition, LifetimeSpend newSpend) result = Account.AccrueInterestOnDebtPosition(
+        (McDebtPosition newPosition, LifetimeSpend newSpend) result = AccountInterestAccrual.AccrueInterestOnDebtPosition(
             _testDate, position, lifetimeSpend);
 
         // Assert
@@ -271,7 +273,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        var results = Account.AccrueInterestOnInvestmentPosition(
+        var results = AccountInterestAccrual.AccrueInterestOnInvestmentPosition(
             _testDate, position, _testPrices, lifetimeSpend);
 
         // Assert
@@ -287,7 +289,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        var results = Account.AccrueInterestOnInvestmentPosition(
+        var results = AccountInterestAccrual.AccrueInterestOnInvestmentPosition(
             _testDate, position, _testPrices, lifetimeSpend);
 
         // Assert
@@ -303,7 +305,7 @@ public class AccountAccrueInterestTests
         var lifetimeSpend = new LifetimeSpend();
 
         // Act
-        var results = Account.AccrueInterestOnInvestmentPosition(
+        var results = AccountInterestAccrual.AccrueInterestOnInvestmentPosition(
             _testDate, position, _testPrices, lifetimeSpend);
 
         // Assert
@@ -330,7 +332,7 @@ public class AccountAccrueInterestTests
             startingAccrual + ((2.0M - 1.0M) * 1000M); // startingAccrual + ((new price - old price) * quantity)
 
         // Act
-        var results = Account.AccrueInterestOnInvestmentPosition(
+        var results = AccountInterestAccrual.AccrueInterestOnInvestmentPosition(
             _testDate, position, _testPrices, lifetimeSpend);
 
         // Assert

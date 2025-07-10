@@ -7,7 +7,7 @@ using Lib.StaticConfig;
 
 public static class ReconciliationLedger
 {
-    public static List<ReconciliationLineItem>? _reconciliationLineItems;
+    public static List<ReconciliationLineItem>ReconciliationLineItems;
     private static int _ordinal = 0;
     private static bool _debugMode;
     
@@ -15,14 +15,14 @@ public static class ReconciliationLedger
     static ReconciliationLedger()
     {
         _debugMode = MonteCarloConfig.DebugMode;
-        if(_debugMode) _reconciliationLineItems = [];
-        else _reconciliationLineItems = null;
+        if(_debugMode) ReconciliationLineItems = [];
+        else ReconciliationLineItems = [];
     }
     public static void AddLine(ReconciliationLineItem item)
     {
-        if (_debugMode == false || _reconciliationLineItems is null) return;
+        if (_debugMode == false || ReconciliationLineItems is null) return;
         item.Ordinal = _ordinal;
-        _reconciliationLineItems.Add(item);
+        ReconciliationLineItems.Add(item);
         _ordinal++;
     }
 

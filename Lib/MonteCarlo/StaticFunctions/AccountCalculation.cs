@@ -98,6 +98,25 @@ public static class AccountCalculation
         }
         return totalBalance;
     }
+
+    public static Dictionary<Guid, decimal> CalculateDebtPaydownAmounts(List<McDebtAccount> debtAccounts)
+    {
+        Dictionary<Guid, decimal> result = [];
+        if (debtAccounts.Count == 0) return result;
+        foreach (var account in debtAccounts)
+        {
+            if (account.Positions is null) throw new InvalidDataException("Positions is null");
+            var positions = account.Positions
+                .Where(x => x.IsOpen && x.CurrentBalance > 0);
+            foreach (var p in positions)
+            {
+                var id = p.Id;
+                var amount = Math.Min(p.MonthlyPayment, p.CurrentBalance);
+                result.Add(id, amount);
+            }
+        }
+        return result;
+    }
     public static decimal CalculateDebtTotal(BookOfAccounts accounts)
     {
         if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");

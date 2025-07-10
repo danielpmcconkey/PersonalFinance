@@ -2,7 +2,7 @@ using NodaTime;
 
 namespace Lib.DataTypes.MonteCarlo;
 
-public struct ReconciliationLineItem
+public class ReconciliationLineItem
 {
     public int? Ordinal { get; set; }
     public LocalDateTime? Date { get; set; }

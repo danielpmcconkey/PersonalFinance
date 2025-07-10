@@ -107,10 +107,11 @@ public class Model
         }
     }
     
-    public static decimal MateDesiredMonthlySpend(McModel a, McModel b)
+    public static decimal MateRequiredMonthlySpend(McModel a, McModel b)
     {
         Func<decimal> getRandom = () =>
         {
+            // todo: think about the min and max values in MateRequiredMonthlySpend
             int min = 8000;
             int max = 16000;
                 
@@ -120,9 +121,79 @@ public class Model
         switch (heredetarySource)
         {
             case HeredetarySource.PARENT_A:
-                return a.DesiredMonthlySpend;
+                return a.RequiredMonthlySpend;
             case HeredetarySource.PARENT_B:
-                return b.DesiredMonthlySpend;
+                return b.RequiredMonthlySpend;
+            case HeredetarySource.RANDOM:
+                return getRandom();
+            default:
+                throw new NotImplementedException();
+        }
+    }
+    public static decimal MateRequiredMonthlySpendHealthCare(McModel a, McModel b)
+    {
+        Func<decimal> getRandom = () =>
+        {
+            // todo: think about the min and max values in MateRequiredMonthlySpendHealthCare
+            int min = 8000;
+            int max = 16000;
+                
+            return GetUnSeededRandomInt(min, max);
+        };
+        var heredetarySource = GetHeredetarySource();
+        switch (heredetarySource)
+        {
+            case HeredetarySource.PARENT_A:
+                return a.RequiredMonthlySpendHealthCare;
+            case HeredetarySource.PARENT_B:
+                return b.RequiredMonthlySpendHealthCare;
+            case HeredetarySource.RANDOM:
+                return getRandom();
+            default:
+                throw new NotImplementedException();
+        }
+    }
+    public static decimal MateDesiredMonthlySpendPreRetirement(McModel a, McModel b)
+    {
+        Func<decimal> getRandom = () =>
+        {
+            // todo: think about the min and max values in MateDesiredMonthlySpendPreRetirement
+            int min = 8000;
+            int max = 16000;
+                
+            return GetUnSeededRandomInt(min, max);
+        };
+        var heredetarySource = GetHeredetarySource();
+        switch (heredetarySource)
+        {
+            case HeredetarySource.PARENT_A:
+                return a.DesiredMonthlySpendPreRetirement;
+            case HeredetarySource.PARENT_B:
+                return b.DesiredMonthlySpendPreRetirement;
+            case HeredetarySource.RANDOM:
+                return getRandom();
+            default:
+                throw new NotImplementedException();
+        }
+    }
+    
+    public static decimal MateDesiredMonthlySpendPostRetirement(McModel a, McModel b)
+    {
+        Func<decimal> getRandom = () =>
+        {
+            // todo: think about the min and max values in MateDesiredMonthlySpendPostRetirement
+            int min = 8000;
+            int max = 16000;
+                
+            return GetUnSeededRandomInt(min, max);
+        };
+        var heredetarySource = GetHeredetarySource();
+        switch (heredetarySource)
+        {
+            case HeredetarySource.PARENT_A:
+                return a.DesiredMonthlySpendPostRetirement;
+            case HeredetarySource.PARENT_B:
+                return b.DesiredMonthlySpendPostRetirement;
             case HeredetarySource.RANDOM:
                 return getRandom();
             default:
@@ -193,7 +264,10 @@ public class Model
             MonthlyInvest401kRoth = investmentAmounts.roth,
             MonthlyInvest401kTraditional = investmentAmounts.trad,
             MonthlyInvestBrokerage = investmentAmounts.brokerage,
-            DesiredMonthlySpend = MateDesiredMonthlySpend(a, b),
+            RequiredMonthlySpend = MateRequiredMonthlySpend(a, b),
+            RequiredMonthlySpendHealthCare = MateRequiredMonthlySpendHealthCare(a, b),
+            DesiredMonthlySpendPreRetirement = MateDesiredMonthlySpendPreRetirement(a, b),
+            DesiredMonthlySpendPostRetirement = MateDesiredMonthlySpendPostRetirement(a, b),
             AusterityRatio = MateAusterityRatio(a, b),
             ExtremeAusterityRatio = MateExtremeAusterityRatio(a, b),
             ExtremeAusterityNetWorthTrigger = MateExtremeAusterityNetWorthTrigger(a, b),
@@ -204,7 +278,6 @@ public class Model
             NumMonthsPriorToRetirementToBeginRebalance = MateNumMonthsPriorToRetirementToBeginRebalance(a, b),
             RecessionCheckLookBackMonths = MateRecessionCheckLookBackMonths(a, b),
             RecessionRecoveryPointModifier = MateRecessionRecoveryPointModifier(a, b),
-            //BatchResults = [],
         };
     }
     

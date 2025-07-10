@@ -29,7 +29,7 @@ public class AccountCleanupFunctionsTests
         bookOfAccounts.InvestmentAccounts = [account];
 
         // Act
-        var cleanedBook = Account.RemoveClosedPositions(bookOfAccounts);
+        var cleanedBook = AccountCleanup.RemoveClosedPositions(bookOfAccounts);
 
         // Assert
         Assert.NotNull(cleanedBook.InvestmentAccounts);
@@ -53,7 +53,7 @@ public class AccountCleanupFunctionsTests
         bookOfAccounts.DebtAccounts = [account];
 
         // Act
-        var cleanedBook = Account.RemoveClosedPositions(bookOfAccounts);
+        var cleanedBook = AccountCleanup.RemoveClosedPositions(bookOfAccounts);
 
 
         // Assert
@@ -71,7 +71,7 @@ public class AccountCleanupFunctionsTests
         position.InitialCost = 1000M;
 
         // Act
-        var splitPositions = Account.SplitPositionInHalf(position);
+        var splitPositions = AccountCleanup.SplitPositionInHalf(position);
 
         // Assert
         Assert.Equal(2, splitPositions.Count);
@@ -103,7 +103,7 @@ public class AccountCleanupFunctionsTests
         ];
 
         // Act
-        bookOfAccounts = Account.SplitLargePositions(bookOfAccounts, _testPrices);
+        bookOfAccounts = AccountCleanup.SplitLargePositions(bookOfAccounts, _testPrices);
 
         // Assert
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
@@ -150,7 +150,7 @@ public class AccountCleanupFunctionsTests
         
 
         // Act
-        bookOfAccounts = Account.CleanUpAccounts(_testDate, bookOfAccounts, _testPrices);
+        bookOfAccounts = AccountCleanup.CleanUpAccounts(_testDate, bookOfAccounts, _testPrices);
 
         // Assert
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
@@ -200,7 +200,7 @@ public class AccountCleanupFunctionsTests
         
 
         // Act
-        bookOfAccounts = Account.SplitLargePositions(bookOfAccounts, _testPrices);
+        bookOfAccounts = AccountCleanup.SplitLargePositions(bookOfAccounts, _testPrices);
 
         // Assert
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);

@@ -15,7 +15,7 @@ public class AccountCalculationTests
         var accounts = TestDataManager.CreateTestBookOfAccounts();
 
         // Act
-        var result = Account.CalculateDebtTotal(accounts);
+        var result = AccountCalculation.CalculateDebtTotal(accounts);
 
         // Assert
         Assert.Equal(0, result);
@@ -29,7 +29,7 @@ public class AccountCalculationTests
         accounts.DebtAccounts = null;
 
         // Act & Assert
-        Assert.Throws<InvalidDataException>(() => Account.CalculateDebtTotal(accounts));
+        Assert.Throws<InvalidDataException>(() => AccountCalculation.CalculateDebtTotal(accounts));
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class AccountCalculationTests
         accounts.DebtAccounts.Add(TestDataManager.CreateTestDebtAccount(positions));
 
         // Act
-        var result = Account.CalculateDebtTotal(accounts);
+        var result = AccountCalculation.CalculateDebtTotal(accounts);
 
         // Assert
         Assert.Equal(1000m, result);
@@ -71,7 +71,7 @@ public class AccountCalculationTests
         
 
         // Act
-        var result = Account.CalculateDebtTotal(accounts);
+        var result = AccountCalculation.CalculateDebtTotal(accounts);
 
         // Assert
         Assert.Equal(6000m, result);
@@ -92,7 +92,7 @@ public class AccountCalculationTests
         accounts.DebtAccounts.Add(TestDataManager.CreateTestDebtAccount(positions));
 
         // Act
-        var result = Account.CalculateDebtTotal(accounts);
+        var result = AccountCalculation.CalculateDebtTotal(accounts);
 
         // Assert
         Assert.Equal(1000m, result);
@@ -111,7 +111,7 @@ public class AccountCalculationTests
         accounts.Cash.Positions = positions;
 
         // Act
-        var balance = Account.CalculateCashBalance(accounts);
+        var balance = AccountCalculation.CalculateCashBalance(accounts);
 
         // Assert
         Assert.Equal(1000.0m, balance);
@@ -131,7 +131,7 @@ public class AccountCalculationTests
         accounts.Cash.Positions = positions;
 
         // Act
-        var balance = Account.CalculateCashBalance(accounts);
+        var balance = AccountCalculation.CalculateCashBalance(accounts);
 
         // Assert
         Assert.Equal(1500.0m, balance);
@@ -152,7 +152,7 @@ public class AccountCalculationTests
         accounts.Cash.Positions = positions;
 
         // Act
-        var balance = Account.CalculateCashBalance(accounts);
+        var balance = AccountCalculation.CalculateCashBalance(accounts);
 
         // Assert
         Assert.Equal(1000.0m, balance);
@@ -167,7 +167,7 @@ public class AccountCalculationTests
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
 
         // Act
-        var balance = Account.CalculateCashBalance(accounts);
+        var balance = AccountCalculation.CalculateCashBalance(accounts);
 
         // Assert
         Assert.Equal(0m, balance);
@@ -183,7 +183,7 @@ public class AccountCalculationTests
         accounts.Cash = null!;
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidDataException>(() => Account.CalculateCashBalance(accounts));
+        var exception = Assert.Throws<InvalidDataException>(() => AccountCalculation.CalculateCashBalance(accounts));
         Assert.Equal("Cash is null", exception.Message);
     }
 
@@ -206,7 +206,7 @@ public class AccountCalculationTests
         
 
         // Act & Assert
-        var exception = Assert.Throws<InvalidDataException>(() => Account.CalculateCashBalance(accounts));
+        var exception = Assert.Throws<InvalidDataException>(() => AccountCalculation.CalculateCashBalance(accounts));
         Assert.Equal("Cash.Positions is null", exception.Message);
     }
     [Fact]
@@ -230,7 +230,7 @@ public class AccountCalculationTests
         var account = TestDataManager.CreateTestInvestmentAccount(positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
         // Act
-        var totalValue = Account.CalculateInvestmentAccountTotalValue(account);
+        var totalValue = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
 
         // Assert
         Assert.Equal(37.96875m, totalValue); // 10.125 * 3.75 = 37.96875
@@ -257,7 +257,7 @@ public class AccountCalculationTests
         var account = TestDataManager.CreateTestInvestmentAccount(positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
         // Act
-        var totalValue = Account.CalculateInvestmentAccountTotalValue(account);
+        var totalValue = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
 
         // Assert
         Assert.Equal(1000.0m, totalValue); // 100 * 10 = 1000
@@ -295,7 +295,7 @@ public class AccountCalculationTests
         var account = TestDataManager.CreateTestInvestmentAccount(positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
         // Act
-        var totalValue = Account.CalculateInvestmentAccountTotalValue(account);
+        var totalValue = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
 
         // Assert
         Assert.Equal(2000.0m, totalValue); // (100 * 10) + (50 * 20) = 1000 + 1000 = 2000
@@ -333,7 +333,7 @@ public class AccountCalculationTests
         var account = TestDataManager.CreateTestInvestmentAccount(positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
         // Act
-        var totalValue = Account.CalculateInvestmentAccountTotalValue(account);
+        var totalValue = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
 
         // Assert
         Assert.Equal(1000.0m, totalValue); // Only counts the open position: 100 * 10 = 1000
@@ -347,7 +347,7 @@ public class AccountCalculationTests
         var account = TestDataManager.CreateTestInvestmentAccount(positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
         // Act
-        var totalValue = Account.CalculateInvestmentAccountTotalValue(account);
+        var totalValue = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
 
         // Assert
         Assert.Equal(0m, totalValue);
@@ -366,7 +366,7 @@ public class AccountCalculationTests
 
         // Assert
         var exception = Assert.Throws<InvalidDataException>(() => 
-            Account.CalculateInvestmentAccountTotalValue(account));
+            AccountCalculation.CalculateInvestmentAccountTotalValue(account));
         Assert.Equal("Positions is null", exception.Message);
     }
 
@@ -388,7 +388,7 @@ public class AccountCalculationTests
         bookOfAccounts.InvestmentAccounts.Add(account1);
 
         // Act
-        var balance = Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
+        var balance = AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
 
         // Assert
         Assert.Equal(1000m, balance); 
@@ -418,7 +418,7 @@ public class AccountCalculationTests
         bookOfAccounts.InvestmentAccounts.Add(account2);
 
         // Act
-        var balance = Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
+        var balance = AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
 
         // Assert
         Assert.Equal(1600m, balance);
@@ -443,7 +443,7 @@ public class AccountCalculationTests
         bookOfAccounts.InvestmentAccounts.Add(account1);
 
         // Act
-        var longTermBalance = Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
+        var longTermBalance = AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
 
         // Assert
         Assert.Equal(1000m, longTermBalance); // Only counts long-term: 100 * 10 = 1000
@@ -468,7 +468,7 @@ public class AccountCalculationTests
         bookOfAccounts.InvestmentAccounts.Add(account1);
 
         // Act
-        var balance = Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
+        var balance = AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
 
         // Assert
         Assert.Equal(1000m, balance); // Only counts open position
@@ -497,7 +497,7 @@ public class AccountCalculationTests
         bookOfAccounts.InvestmentAccounts.Add(account1);
         bookOfAccounts.InvestmentAccounts.Add(account2);
         // Act
-        var balance = Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
+        var balance = AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM);
 
         // Assert
         Assert.Equal(600m, balance); // Primary residence should be excluded
@@ -528,7 +528,7 @@ public class AccountCalculationTests
         bookOfAccounts.InvestmentAccounts.Add(account2);
 
         // Act
-        var balance = Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.SHORT_TERM);
+        var balance = AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.SHORT_TERM);
 
         // Assert
         Assert.Equal(600m, balance); // Cash accounts should be excluded
@@ -543,7 +543,7 @@ public class AccountCalculationTests
 
         // Act & Assert
         var exception = Assert.Throws<InvalidDataException>(() => 
-            Account.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM));
+            AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM));
         Assert.Equal("InvestmentAccounts is null", exception.Message);
     }
 
