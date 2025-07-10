@@ -418,7 +418,7 @@ namespace Lib.MonteCarlo
             }
 
             var paymentResult = AccountDebtPayment.PayDownLoans(
-                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.Person, _sim.TaxLedger, _sim.LifetimeSpend);
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.TaxLedger, _sim.LifetimeSpend);
             _sim.BookOfAccounts = paymentResult.newBookOfAccounts;
             _sim.TaxLedger = paymentResult.newLedger;
             _sim.LifetimeSpend = paymentResult.newSpend;

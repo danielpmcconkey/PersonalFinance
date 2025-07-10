@@ -68,7 +68,7 @@ public static class AccountDebtPayment
 
     public static (bool isSuccessful, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, LifetimeSpend newSpend) 
         PayDownLoans(
-            BookOfAccounts accounts, LocalDateTime currentDate, McPerson person, TaxLedger taxLedger, LifetimeSpend lifetimeSpend)
+            BookOfAccounts accounts, LocalDateTime currentDate, TaxLedger taxLedger, LifetimeSpend lifetimeSpend)
     {
         if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
         
