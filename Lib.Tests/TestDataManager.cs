@@ -65,7 +65,7 @@ internal static class TestDataManager
             Id = Guid.NewGuid(),
             IsOpen = isOpen,
             Name = $"Test Position {positionType}",
-            Entry = new LocalDateTime(2025, 1, 1, 0, 0),
+            Entry = new LocalDateTime(2023, 1, 1, 0, 0),
             InvestmentPositionType = positionType,
             Price = price,
             Quantity = quantity,

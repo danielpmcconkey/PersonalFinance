@@ -3,9 +3,10 @@ using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using Lib.StaticConfig;
 using System.Collections.Generic;
+using Lib.MonteCarlo.StaticFunctions;
 using Lib.Tests;
 
-namespace Lib.MonteCarlo.StaticFunctions.Tests;
+namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
 public class AccountCleanupTests
 {

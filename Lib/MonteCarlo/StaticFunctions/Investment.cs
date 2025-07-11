@@ -13,8 +13,11 @@ public static class Investment
         return McInvestmentPositionType.LONG_TERM;
     }
     
-    
-    public static List<McInvestmentPosition> GetInvestmentPositionsByAccountTypeAndPositionType( 
+    /// <summary>
+    /// gets all positions that match the account and position types and are also ready to sell, meaning they're at
+    /// least a year old and won't invoke short-term capital gains taxes
+    /// </summary>
+    public static List<McInvestmentPosition> GetInvestmentPositionsToSellByAccountTypeAndPositionType( 
         List<McInvestmentAccount> investmentAccounts, McInvestmentAccountType accountType,
         McInvestmentPositionType mcInvestmentPositionType, LocalDateTime currentDate)
     {
@@ -103,12 +106,14 @@ public static class Investment
     /// function, we set all postions to the decimal-term, mid-term, or short-term costs and recalculate the quantity
     /// accordingly, such that the value of the position is the same, but it's now in simpler terms  
     /// </summary>
-    public static void NormalizeInvestmentPositions(BookOfAccounts bookOfAccounts, CurrentPrices prices)
+    public static BookOfAccounts NormalizeInvestmentPositions(BookOfAccounts bookOfAccounts, CurrentPrices prices)
     {
         if(bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
         
+        var result = AccountCopy.CopyBookOfAccounts(bookOfAccounts);
+        
         var relevantAccounts =
-            bookOfAccounts.InvestmentAccounts.Where(x =>
+            result.InvestmentAccounts.Where(x =>
                 x.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE 
                 && x.AccountType is not McInvestmentAccountType.CASH);
         foreach (var a in relevantAccounts)
@@ -129,6 +134,7 @@ public static class Investment
                 p.Price = newPrice;
             }
         }
+        return result;
     }
     
     

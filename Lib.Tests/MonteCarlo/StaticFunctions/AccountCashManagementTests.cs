@@ -1,10 +1,11 @@
 using Xunit;
 using NodaTime;
 using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
 using Lib.Tests;
 
-namespace Lib.MonteCarlo.StaticFunctions.Tests;
+namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
 public class AccountCashManagementTests
 {

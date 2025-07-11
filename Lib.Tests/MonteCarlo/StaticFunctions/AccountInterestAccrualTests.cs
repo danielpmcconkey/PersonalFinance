@@ -7,7 +7,7 @@ using Xunit;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
-public class AccountAccrueInterestTests
+public class AccountInterestAccrualTests
 {
     private readonly LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 0, 0);
     private readonly CurrentPrices _testPrices = TestDataManager.CreateTestCurrentPrices(

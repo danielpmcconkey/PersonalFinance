@@ -21,11 +21,12 @@ public static class Tax
     }
 
     #endregion
+    
     /// <summary>
     /// simply records the RMD distribution. Doesn't update any accounts. Only the ledger
     /// </summary>
     /// <returns>the new, updated ledger</returns>
-    public static TaxLedger AddRmdDistribution(TaxLedger ledger, LocalDateTime currentDate, decimal amount)
+    public static TaxLedger RecordRmdDistribution(TaxLedger ledger, LocalDateTime currentDate, decimal amount)
     {
         var result = CopyTaxLedger(ledger);
         

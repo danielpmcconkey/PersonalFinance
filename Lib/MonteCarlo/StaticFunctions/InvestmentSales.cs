@@ -22,7 +22,7 @@ public static class InvestmentSales
         );
         
         // grab the relevant positions
-        var positions = Investment.GetInvestmentPositionsByAccountTypeAndPositionType(
+        var positions = Investment.GetInvestmentPositionsToSellByAccountTypeAndPositionType(
             results.newBookOfAccounts.InvestmentAccounts, accountType, positionType, currentDate);
         
         foreach (var p in positions)
@@ -96,8 +96,9 @@ public static class InvestmentSales
         if (incomeRoom > 0)
         {
             // we have income room. sell tax deferred positions, up to the incomeRoom amount
+            var amountToSell = Math.Min(amountNeeded, incomeRoom);
             localResult = SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
-                incomeRoom, positionType,  StaticConfig.InvestmentConfig._salesOrderWithRoom, results.newBookOfAccounts,
+                amountToSell, positionType,  StaticConfig.InvestmentConfig._salesOrderWithRoom, results.newBookOfAccounts,
                 results.newLedger, currentDate);
             results.amountSold += localResult.amountSold;
             results.newBookOfAccounts = localResult.newBookOfAccounts;
@@ -184,6 +185,13 @@ public static class InvestmentSales
         position.IsOpen = false;
         results.newBookOfAccounts = AccountCashManagement.DepositCash(results.newBookOfAccounts, results.saleAmount, currentDate);
         results.newBookOfAccounts = RemovePositionFromBookOfAccounts(position, results.newBookOfAccounts);
+        
+        // if it was a tax deferred account, record the sale for RMD purposes
+        if (accountType == McInvestmentAccountType.TRADITIONAL_401_K ||
+            accountType == McInvestmentAccountType.TRADITIONAL_IRA)
+        {
+            results.newLedger = Tax.RecordRmdDistribution(results.newLedger, currentDate, results.saleAmount);
+        }
         return results;
     }
 

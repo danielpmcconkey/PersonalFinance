@@ -38,7 +38,7 @@ namespace Lib.MonteCarlo
             // set up a CurrentPrices sheet at the default starting rates
             var prices = new CurrentPrices();
             // set investment positions in terms of the default long, middle, and short-term prices
-            Investment.NormalizeInvestmentPositions(accounts, prices);
+            accounts = Investment.NormalizeInvestmentPositions(accounts, prices);
             // set up the sim struct to be used to keep track of all the sim data
             _sim = new MonteCarloSim()
             {
