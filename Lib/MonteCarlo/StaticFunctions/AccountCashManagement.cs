@@ -48,18 +48,18 @@ public static class AccountCashManagement
         BookOfAccounts accounts, decimal amount, LocalDateTime currentDate)
     {
         var totalCashOnHand = AccountCalculation.CalculateCashBalance(accounts);
-        if (totalCashOnHand >= amount)
+        if (totalCashOnHand < amount) return (false, accounts); // they hasn't gots it, precious
+        
+        // they gots it. Update and return
+        (bool isSuccessful, BookOfAccounts newAccounts) result = (true, accounts); // don't need to copy the accounts yet, we'll do it in the UpdateCashAccountBalance call
+        
+        var newBalance = totalCashOnHand - amount;
+        result.newAccounts = UpdateCashAccountBalance(accounts, newBalance, currentDate);
+        if (MonteCarloConfig.DebugMode == true)
         {
-            // we gots it. Update and return
-            var newBalance = totalCashOnHand - amount;
-            var newAccounts = UpdateCashAccountBalance(accounts, newBalance, currentDate);
-            if (MonteCarloConfig.DebugMode == true)
-            {
-                Reconciliation.AddMessageLine(currentDate, amount, "Cash withdrawal");
-            }
-            return (true, newAccounts);
+            Reconciliation.AddMessageLine(currentDate, amount, "Cash withdrawal");
         }
-        return (false, accounts);
+        return result;
     }
 
     /// <summary>

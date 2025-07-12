@@ -37,6 +37,10 @@ public static class Investment
         return positions;
     }
     
+    /// <summary>
+    /// note this only does the investment. it assumes that you withdrew the cash external to this method. The reason is
+    /// that we also use this to invest things like 401K contributions that come from outside of our cash account
+    /// </summary>
     public static BookOfAccounts InvestFunds(BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount, 
             McInvestmentPositionType mcInvestmentPositionType, McInvestmentAccountType accountType, CurrentPrices prices)
         {
