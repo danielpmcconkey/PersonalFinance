@@ -25,28 +25,62 @@ public static class Person
         };
         return person;
     }
+
     public static decimal CalculateMonthlySocialSecurityWage(McPerson person, LocalDateTime benefitElectionStart)
     {
-        var maxWage = person.MonthlyFullSocialSecurityBenefit;
-        var fullRetirementDate = person.BirthDate.PlusYears(67);
-        var timeSpanEarly = (fullRetirementDate - benefitElectionStart);
-        int monthsEarly = (int)Math.Round(
-            timeSpanEarly.Days / 365.25 * 12, 0);
-        decimal penalty = 0.0M;
-        if (monthsEarly <= 36)
+        const int fullRetirementAge = 67;
+        const int maxMonthsEarly = 59;
+        const int maxMonthsLate = 36;
+
+        var fullRetirementDate = person.BirthDate.PlusYears(fullRetirementAge);
+        if (benefitElectionStart == fullRetirementDate) return person.MonthlyFullSocialSecurityBenefit;
+
+        if (benefitElectionStart < fullRetirementDate)
         {
-            penalty += 0.01M * (5M / 9M) * monthsEarly;
+            // we're taking it early and getting a credit
+            var timeSpanEarly = (fullRetirementDate - benefitElectionStart);
+            var monthsEarly = (timeSpanEarly.Years * 12) + timeSpanEarly.Months;
+
+            if (monthsEarly > maxMonthsEarly)
+                throw new InvalidDataException("can't claim social security wage before age 62 and 1 month");
+            if (monthsEarly == 0)
+                return person.MonthlyFullSocialSecurityBenefit; // this could be because the birthdate is on the 18th of the month, but the election start date is the 1st
+            if (monthsEarly < 0)
+                throw new InvalidOperationException("months early should never be negative");
+            
+            var maxWage = person.MonthlyFullSocialSecurityBenefit;
+
+            decimal penalty = 0.0M;
+            if (monthsEarly <= 36)
+            {
+                penalty += 0.01M * (5M / 9M) * monthsEarly;
+            }
+
+            else
+            {
+                penalty += 0.01M * (5M / 9M) * 36;
+                penalty += 0.01M * (5M / 12M) * (monthsEarly - 36);
+            }
+
+            penalty = Math.Max(penalty, 0M); // don't want to add on to max if I made a date math error
+            return maxWage - (maxWage * penalty);;
         }
 
-        else
-        {
-            penalty += 0.01M * (5M / 9M) * 36;
-            penalty += 0.01M * (5M / 12M) * (monthsEarly - 36);
-        }
-
-        penalty = Math.Max(penalty, 0M); // don't want to add on to max if I made a date math error
-        var primaryWage = maxWage - (maxWage * penalty);
-        return primaryWage;
+        // we're taking it late and getting a credit for it
+        var timeSpanLate = (benefitElectionStart - fullRetirementDate);
+        var monthsLate = (timeSpanLate.Years * 12) + timeSpanLate.Months;
+        
+        if (monthsLate > maxMonthsLate)
+            throw new InvalidDataException("shouldn't claim social security wage after age 70");
+        if (monthsLate == 0)
+            return person.MonthlyFullSocialSecurityBenefit; // this could be because the birthdate is on the 18th of the month, but the election start date is the 1st
+        if (monthsLate < 0)
+            throw new InvalidOperationException("months late should never be negative");
+        
+        var minWage = person.MonthlyFullSocialSecurityBenefit;
+        decimal credit = (0.08m / 12m) * monthsLate;
+        credit = Math.Max(credit, 0M); // don't want to subtract from min if I made a date math error
+        return minWage + (minWage * credit);
     }
 
     public static decimal CalculateMonthly401kMatch(McPerson person)
@@ -55,7 +89,7 @@ public static class Person
     }
     /// <summary>
     /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
-    /// sim run updating another's stats
+    /// sim run updating another's stats. Also reset calculated fields like MonthlySocialSecurityWage, IsRetired, etc.
     /// </summary>
     public static McPerson CopyPerson(McPerson originalPerson)
     {
