@@ -57,8 +57,6 @@ public static class Person
     /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
     /// sim run updating another's stats
     /// </summary>
-    /// <param name="person"></param>
-    /// <returns></returns>
     public static McPerson CopyPerson(McPerson originalPerson)
     {
         var newInvestmentAccounts = AccountCopy.CopyInvestmentAccounts(originalPerson.InvestmentAccounts);
