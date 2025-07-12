@@ -83,7 +83,7 @@ public static class Person
         return minWage + (minWage * credit);
     }
 
-    public static decimal CalculateMonthly401kMatch(McPerson person)
+    public static decimal CalculateMonthly401KMatch(McPerson person)
     {
         return person.AnnualSalary * person.Annual401kMatchPercent / 12;
     }

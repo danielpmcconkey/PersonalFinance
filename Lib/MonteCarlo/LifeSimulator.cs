@@ -56,7 +56,7 @@ namespace Lib.MonteCarlo
             _measurements = [];
             _sim.Person.MonthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(_sim.Person,
                 _sim.SimParameters.SocialSecurityStart);
-            _sim.Person.Monthly401kMatch = Person.CalculateMonthly401kMatch(_sim.Person);
+            _sim.Person.Monthly401kMatch = Person.CalculateMonthly401KMatch(_sim.Person);
         }
         public List<NetWorthMeasurement> Run()
         {

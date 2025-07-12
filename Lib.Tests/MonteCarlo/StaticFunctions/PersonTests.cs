@@ -105,7 +105,7 @@ public class PersonTests
         var expectedMatch = (60000M * 0.05M) / 12;
 
         // Act
-        var result = Person.CalculateMonthly401kMatch(person);
+        var result = Person.CalculateMonthly401KMatch(person);
 
         // Assert
         Assert.Equal(expectedMatch, result);

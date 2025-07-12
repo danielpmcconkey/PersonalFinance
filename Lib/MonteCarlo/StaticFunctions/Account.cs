@@ -44,6 +44,7 @@ public static class Account
         return book;
     }
 
+    // todo: change the way net worth measurement works
     public static NetWorthMeasurement CreateNetWorthMeasurement(MonteCarloSim sim)
     {
         if (sim.BookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
