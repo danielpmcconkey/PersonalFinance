@@ -6,6 +6,7 @@ namespace Lib.Tests;
 
 internal static class TestDataManager
 {
+    private static Dictionary<LocalDateTime, decimal>[]? _hypotheticalPrices = null;
     /// <summary>
     /// creates a book of accounts with empty positions
     /// </summary>
@@ -120,5 +121,19 @@ internal static class TestDataManager
             CurrentShortTermInvestmentPrice = shortTermInvestmentPrice,
             LongRangeInvestmentCostHistory = []
         };
+    }
+    
+    /// <summary>
+    /// this process takes about 15 seconds to run and it always produces the same result. so only do it once
+    /// </summary>
+    internal static Dictionary<LocalDateTime, decimal>[] CreateOrFetchHypotheticalPricingForRuns()
+    {
+        // return it if it already exists
+        if (_hypotheticalPrices != null) return _hypotheticalPrices;
+        
+        // create it
+        var sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
+        _hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(sAndP500HistoricalTrends);
+        return _hypotheticalPrices;
     }
 }

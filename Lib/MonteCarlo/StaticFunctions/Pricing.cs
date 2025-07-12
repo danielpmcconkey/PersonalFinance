@@ -70,16 +70,36 @@ public static class Pricing
             .ToArray();
         return historicalGrowthRates;
     }
-    public static void SetLongTermGrowthRateAndPrices(CurrentPrices prices, decimal longTermGrowthRate)
+    public static CurrentPrices SetLongTermGrowthRateAndPrices(CurrentPrices prices, decimal longTermGrowthRate)
     {
-        prices.CurrentLongTermGrowthRate = longTermGrowthRate;
-        prices.CurrentLongTermInvestmentPrice +=
-            (prices.CurrentLongTermInvestmentPrice * prices.CurrentLongTermGrowthRate);
-
+        var result = Pricing.CopyPrices(prices);
+        
+        // long term growth
+        result.CurrentLongTermGrowthRate = longTermGrowthRate;
+        
+        // calculate mid and short-term growth rates based on long-term growth rate
         var midTermGrowthRate = longTermGrowthRate * InvestmentConfig.MidTermGrowthRateModifier;
         var shortTermGrowthRate = longTermGrowthRate * InvestmentConfig.ShortTermGrowthRateModifier;
+        
+        // calculate the new prices
+        result.CurrentLongTermInvestmentPrice += (result.CurrentLongTermInvestmentPrice * longTermGrowthRate);
+        result.CurrentMidTermInvestmentPrice += (result.CurrentMidTermInvestmentPrice * midTermGrowthRate);
+        result.CurrentShortTermInvestmentPrice += (result.CurrentShortTermInvestmentPrice * shortTermGrowthRate);
+        
+        // add to history
+        result.LongRangeInvestmentCostHistory.Add(result.CurrentLongTermInvestmentPrice);
+        return result;
+    }
 
-        prices.CurrentMidTermInvestmentPrice += (prices.CurrentMidTermInvestmentPrice * midTermGrowthRate);
-        prices.CurrentShortTermInvestmentPrice += (prices.CurrentShortTermInvestmentPrice * shortTermGrowthRate);
+    public static CurrentPrices CopyPrices(CurrentPrices originalPrices)
+    {
+        return new CurrentPrices()
+        {
+            CurrentLongTermGrowthRate = originalPrices.CurrentLongTermGrowthRate,
+            CurrentLongTermInvestmentPrice = originalPrices.CurrentLongTermInvestmentPrice,
+            CurrentMidTermInvestmentPrice = originalPrices.CurrentMidTermInvestmentPrice,
+            CurrentShortTermInvestmentPrice = originalPrices.CurrentShortTermInvestmentPrice,
+            LongRangeInvestmentCostHistory = originalPrices.LongRangeInvestmentCostHistory,
+        };
     }
 }

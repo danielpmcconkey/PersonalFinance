@@ -6,7 +6,7 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class AccountInterestAccrual
 {
-        public static (BookOfAccounts newAccounts, LifetimeSpend newSpend) AccrueInterest(
+    public static (BookOfAccounts newAccounts, LifetimeSpend newSpend) AccrueInterest(
         LocalDateTime currentDate, BookOfAccounts bookOfAccounts, CurrentPrices prices, LifetimeSpend lifetimeSpend)
     {
         var newAccounts = AccountCopy.CopyBookOfAccounts(bookOfAccounts);
@@ -22,7 +22,7 @@ public static class AccountInterestAccrual
         
         return (newAccounts, newSpend);
     }
-    
+
     public static (McDebtAccount newAccount, LifetimeSpend newSpend) AccrueInterestOnDebtAccount
         (LocalDateTime currentDate, McDebtAccount account, LifetimeSpend lifetimeSpend)
     {

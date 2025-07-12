@@ -5,6 +5,7 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public class Model
 {
+    // todo: add Model unit tests
     public static HeredetarySource GetHeredetarySource()
     {
         int diceRoll = GetUnSeededRandomInt(1, 10);
