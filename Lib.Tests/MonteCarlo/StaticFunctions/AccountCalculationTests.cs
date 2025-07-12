@@ -546,6 +546,235 @@ public class AccountCalculationTests
             AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM));
         Assert.Equal("InvestmentAccounts is null", exception.Message);
     }
+    
+    [Theory]
+    [InlineData(100, 10, 1000)] // Regular case
+    [InlineData(0, 10, 0)]      // Zero price
+    [InlineData(100, 0, 0)]     // Zero quantity
+    public void CalculateInvestmentAccountTotalValue_WithValidPositions_ReturnsTotalValue(
+        decimal price, decimal quantity, decimal expectedValue)
+    {
+        // Arrange
+        var position = TestDataManager.CreateTestInvestmentPosition(
+            price, quantity, McInvestmentPositionType.LONG_TERM);
+        var account = TestDataManager.CreateTestInvestmentAccount(
+            new List<McInvestmentPosition> { position }, 
+            McInvestmentAccountType.TAXABLE_BROKERAGE);
+
+        // Act
+        var result = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
+
+        // Assert
+        Assert.Equal(expectedValue, result);
+    }
+    
+    [Fact]
+    public void CalculateInvestmentAccountTotalValue_WithMultiplePositions_AddsAllValuesCorrectly()
+    {
+        var price1 = 100m;
+        var quantity1 = 10m;
+        var price2 = 50m;
+        var quantity2 = 20m;
+        var expectedValue = (price1 * quantity1) + (price2 * quantity2);
+        // Arrange
+        var positions = new List<McInvestmentPosition> {
+                TestDataManager.CreateTestInvestmentPosition(price1, quantity1, McInvestmentPositionType.LONG_TERM),
+                TestDataManager.CreateTestInvestmentPosition(price2, quantity2, McInvestmentPositionType.LONG_TERM),
+            };
+        
+        var account = TestDataManager.CreateTestInvestmentAccount(positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
+
+        // Act
+        var result = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
+
+        // Assert
+        Assert.Equal(expectedValue, result);
+    }
+
+    [Fact]
+    public void CalculateInvestmentAccountTotalValue_WithNullPositions_ThrowsInvalidDataException()
+    {
+        // Arrange
+        var account = TestDataManager.CreateTestInvestmentAccount([], McInvestmentAccountType.TAXABLE_BROKERAGE);
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+        // we disable the warning because that's the point of the test
+        account.Positions = null;
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+
+        // Act & Assert
+        Assert.Throws<InvalidDataException>(() => 
+            AccountCalculation.CalculateInvestmentAccountTotalValue(account));
+    }
+
+    [Fact]
+    public void CalculateInvestmentAccountTotalValue_WithClosedPositions_ExcludesFromTotal()
+    {
+        // Arrange
+        var positions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(
+                100m, 1m, McInvestmentPositionType.LONG_TERM, true),
+            TestDataManager.CreateTestInvestmentPosition(
+                100m, 1m, McInvestmentPositionType.LONG_TERM, false)
+        };
+        var account = TestDataManager.CreateTestInvestmentAccount(
+            positions, McInvestmentAccountType.TAXABLE_BROKERAGE);
+
+        // Act
+        var result = AccountCalculation.CalculateInvestmentAccountTotalValue(account);
+
+        // Assert
+        Assert.Equal(100m, result); // Only counts the open position
+    }
+
+    [Fact]
+    public void CalculateLongBucketTotalBalance_WithMixedPositions_OnlyCountsLongTerm()
+    {
+        // Arrange
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var positions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM),
+            TestDataManager.CreateTestInvestmentPosition(200m, 1m, McInvestmentPositionType.MID_TERM),
+            TestDataManager.CreateTestInvestmentPosition(300m, 1m, McInvestmentPositionType.SHORT_TERM)
+        };
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
+            positions, McInvestmentAccountType.TAXABLE_BROKERAGE));
+
+        // Act
+        var result = AccountCalculation.CalculateLongBucketTotalBalance(accounts);
+
+        // Assert
+        Assert.Equal(100m, result); // Only the long-term position value
+    }
+
+    [Fact]
+    public void CalculateMidBucketTotalBalance_WithMixedPositions_OnlyCountsMidTerm()
+    {
+        // Arrange
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var positions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM),
+            TestDataManager.CreateTestInvestmentPosition(200m, 1m, McInvestmentPositionType.MID_TERM),
+            TestDataManager.CreateTestInvestmentPosition(300m, 1m, McInvestmentPositionType.SHORT_TERM)
+        };
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
+            positions, McInvestmentAccountType.TAXABLE_BROKERAGE));
+
+        // Act
+        var result = AccountCalculation.CalculateMidBucketTotalBalance(accounts);
+
+        // Assert
+        Assert.Equal(200m, result); // Only the mid-term position value
+    }
+
+    [Fact]
+    public void CalculateShortBucketTotalBalance_WithMixedPositions_OnlyCountsShortTerm()
+    {
+        // Arrange
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var positions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM),
+            TestDataManager.CreateTestInvestmentPosition(200m, 1m, McInvestmentPositionType.MID_TERM),
+            TestDataManager.CreateTestInvestmentPosition(300m, 1m, McInvestmentPositionType.SHORT_TERM)
+        };
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
+            positions, McInvestmentAccountType.TAXABLE_BROKERAGE));
+
+        // Act
+        var result = AccountCalculation.CalculateShortBucketTotalBalance(accounts);
+
+        // Assert
+        Assert.Equal(300m, result); // Only the short-term position value
+    }
+
+    [Fact]
+    public void CalculateNetWorth_WithValidAccounts_ReturnsCorrectBalance()
+    {
+        // Arrange
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        
+        // Add investment position
+        var investmentPositions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM)
+        };
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
+            investmentPositions, McInvestmentAccountType.TAXABLE_BROKERAGE));
+
+        // Add debt position
+        var debtPosition = TestDataManager.CreateTestDebtPosition(true, 0.05m, 10m, 50m);
+        var debtAccount = TestDataManager.CreateTestDebtAccount(
+            new List<McDebtPosition> { debtPosition });
+        accounts.DebtAccounts = new List<McDebtAccount> { debtAccount };
+
+        // Act
+        var result = AccountCalculation.CalculateNetWorth(accounts);
+
+        // Assert
+        Assert.Equal(50m, result); // 100 (assets) - 50 (liabilities)
+    }
+
+    [Fact]
+    public void CalculateNetWorth_ExcludesPrimaryResidence()
+    {
+        // Arrange
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var positions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(1000m, 1m, McInvestmentPositionType.LONG_TERM)
+        };
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
+            positions, McInvestmentAccountType.PRIMARY_RESIDENCE));
+
+        // Act
+        var result = AccountCalculation.CalculateNetWorth(accounts);
+
+        // Assert
+        Assert.Equal(0m, result); // Primary residence should be excluded
+    }
+
+    [Fact]
+    public void CalculateNetWorth_WithNullAccounts_ThrowsInvalidDataException()
+    {
+        // Arrange
+        var accounts = new BookOfAccounts
+        {
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+            InvestmentAccounts = null,
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+            DebtAccounts = []
+        };
+
+        // Act & Assert
+        Assert.Throws<InvalidDataException>(() => 
+            AccountCalculation.CalculateNetWorth(accounts));
+    }
+
+    [Fact]
+    public void CalculateNetWorth_WithClosedPositions_ExcludesFromCalculation()
+    {
+        // Arrange
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var positions = new List<McInvestmentPosition>
+        {
+            TestDataManager.CreateTestInvestmentPosition(
+                200m, 1m, McInvestmentPositionType.LONG_TERM, true),
+            TestDataManager.CreateTestInvestmentPosition(
+                100m, 1m, McInvestmentPositionType.LONG_TERM, false)
+        };
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
+            positions, McInvestmentAccountType.TAXABLE_BROKERAGE));
+
+        // Act
+        var result = AccountCalculation.CalculateNetWorth(accounts);
+
+        // Assert
+        Assert.Equal(200m, result); // Only the open position
+    }
+
 
     
 }
