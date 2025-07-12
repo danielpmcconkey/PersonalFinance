@@ -63,7 +63,7 @@ public static class Person
         var newDebtAccounts = AccountCopy.CopyDebtAccounts(originalPerson.DebtAccounts);
         var newPerson = new McPerson()
         {
-            Id = new Guid(),
+            Id = new (),
             Name = originalPerson.Name,
             BirthDate = originalPerson.BirthDate,
             AnnualSalary = originalPerson.AnnualSalary,
