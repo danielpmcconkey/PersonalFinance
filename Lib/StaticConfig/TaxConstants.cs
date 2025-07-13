@@ -28,6 +28,9 @@ public static class TaxConstants
             (0.15M, 94050.0M, 583750.0M),
             (0.20M, 583750.0M, decimal.MaxValue),
         ];
+        
+        // lifetime expectancy factor table: https://www.irs.gov/publications/p590b#en_US_2024_publink100089977
+        // see Appendix B. Uniform Lifetime Table for my situation
         _rmdTable = [];
         _rmdTable[2048] = 26.5M; // age 73
         _rmdTable[2049] = 25.5M; // age 74

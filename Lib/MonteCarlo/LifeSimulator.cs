@@ -203,7 +203,7 @@ namespace Lib.MonteCarlo
             }
 
             var grossMonthlyPay = _sim.Person.AnnualBonus;
-            Tax.LogIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
+            Tax.RecordIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
             AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
             {
@@ -219,7 +219,7 @@ namespace Lib.MonteCarlo
             }
 
             var grossMonthlyPay = _sim.Person.AnnualSalary / 12m;
-            Tax.LogIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
+            Tax.RecordIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
             AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
             {
@@ -337,7 +337,7 @@ namespace Lib.MonteCarlo
             
             _sim.LifetimeSpend = Spend.RecordSocialSecurityWage(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
             
-            Tax.LogSocialSecurityIncome(_sim.TaxLedger, _sim.CurrentDateInSim, amount);
+            Tax.RecordSocialSecurityIncome(_sim.TaxLedger, _sim.CurrentDateInSim, amount);
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddFullReconLine(_sim, amount, "Social Security check processed");

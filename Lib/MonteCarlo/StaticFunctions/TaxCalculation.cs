@@ -46,6 +46,14 @@ public static class TaxCalculation
             .Sum(x => x.amount);
     }
     
+    public static decimal? CalculateRmdRateByYear(int year)
+    {
+        if(!TaxConstants._rmdTable.TryGetValue(year, out var rmd))
+            return null;
+        return rmd;
+
+    }
+    
     
     /// <summary>
     /// Assumes that all of my social security and income benifit will add

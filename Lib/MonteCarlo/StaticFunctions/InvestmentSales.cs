@@ -180,7 +180,7 @@ public static class InvestmentSales
                 AccountCopy.CopyBookOfAccounts(bookOfAccounts),
                 Tax.CopyTaxLedger(taxLedger)
             );
-        results.newLedger = Tax.LogInvestmentSale(taxLedger, currentDate, position, accountType);
+        results.newLedger = Tax.RecordInvestmentSale(taxLedger, currentDate, position, accountType);
         position.Quantity = 0;
         position.IsOpen = false;
         results.newBookOfAccounts = AccountCashManagement.DepositCash(results.newBookOfAccounts, results.saleAmount, currentDate);
