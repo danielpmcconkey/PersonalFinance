@@ -35,6 +35,8 @@ public static class Spend
         const decimal oneToOneHalfAge = 90m;
         const decimal noPenalty = 1.0m;
         const decimal fullPenalty = 0.5m;
+        var minFunPoints = 0.5m * funSpend;
+        var maxFunPoints = funSpend;
         
         var distanceBetweenPenaltyLevels = noPenalty - fullPenalty; // 0.5
         var distanceBetweenAgeLevels = oneToOneHalfAge - oneToOneAge; // 40
@@ -44,7 +46,8 @@ public static class Spend
         var totalPenaltyAmount = penaltyPerYear * numPenaltyYears;
         var funPointsPerDollar = noPenalty - totalPenaltyAmount;
         var funPoints = funPointsPerDollar * funSpend;
-        
+        funPoints = Math.Max(funPoints, minFunPoints); // cap the penalty at 1/2
+        funPoints = Math.Min(funPoints, maxFunPoints); // no extra bucks for being younger than 50
         return funPoints;
     }
     public static decimal CalculateMonthlyFunSpend(McModel simParams, McPerson person, LocalDateTime currentDate)
@@ -58,13 +61,13 @@ public static class Spend
         if (currentDate < simParams.RetirementDate) return simParams.DesiredMonthlySpendPreRetirement;
         
         var age = currentDate.Year - person.BirthDate.Year;
-        if (age < 66) return simParams.DesiredMonthlySpendPreRetirement;
+        if (age < 66) return simParams.DesiredMonthlySpendPostRetirement;
         if (age >= 88) return 0;
         
-        var declineAmountPerYear = simParams.DesiredMonthlySpendPreRetirement / (88 - 66);
+        var declineAmountPerYear = simParams.DesiredMonthlySpendPostRetirement / (88 - 65); 
         var howManyYearsAbove65 = age - 65;
         var declineAmount = declineAmountPerYear * howManyYearsAbove65;
-        return simParams.DesiredMonthlySpendPreRetirement - declineAmount;
+        return simParams.DesiredMonthlySpendPostRetirement - declineAmount;
     }
     public static decimal CalculateMonthlyHealthSpend(McModel simParams, McPerson person, LocalDateTime currentDate)
     {
@@ -100,9 +103,9 @@ public static class Spend
         // before retirement, primary employmentt will fund healthcare and doesn't need to be tracked separately
         if (currentDate < simParams.RetirementDate) return 0; 
         
-        // between ages of 62 and 65 (if retired), we have no medicare and need to pay for everything out of pocket
+        // before age 65 (if retired), we have no medicare and need to pay for everything out of pocket
         var age = currentDate.Year - person.BirthDate.Year;
-        if (age > 62 && age < 65) return simParams.RequiredMonthlySpendHealthCare;
+        if (age < 65) return simParams.RequiredMonthlySpendHealthCare;
         
         // between ages of 88 and 90 we simulate assisted living
         if (age >= 88) return simParams.RequiredMonthlySpendHealthCare * 2m;
@@ -166,7 +169,6 @@ public static class Spend
     {
         var spend = new LifetimeSpend()
         {
-
             TotalSpendLifetime = lifetimeSpend.TotalSpendLifetime,
             TotalInvestmentAccrualLifetime = lifetimeSpend.TotalInvestmentAccrualLifetime,
             TotalDebtAccrualLifetime = lifetimeSpend.TotalDebtAccrualLifetime,
