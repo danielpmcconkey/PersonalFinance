@@ -4,16 +4,31 @@ public static class TaxConstants
 {
     public static (decimal rate, decimal min, decimal max)[] _incomeTaxBrackets;
     public static (decimal rate, decimal min, decimal max)[] _capitalGainsBrackets;
+
+    public static (decimal rate, decimal min, decimal max, decimal subtractions)[]
+        Fed1040TaxComputationWorksheetBrackets;
     public static Dictionary<int, decimal> _rmdTable;
     
 
     public static decimal _standardDeduction = 30000.0M;
     public static decimal _ncFiatTaxRate = 0.0399M;
     public static decimal MaxSocialSecurityTaxPercent = 0.85M;
-    public static decimal BaseIncomeTarget = 80000.0M; // the income target you start with to minimize income tax. this will get adjusted over time in the tax ledger class
+    // public static decimal BaseIncomeTarget = 80000.0M; // the income target you start with to minimize income tax. this will get adjusted over time in the tax ledger class
+    public static decimal PlaceholderLastYearsSocialSecurityIncome = 48000.0M; // in case you're calculating income head room and haven't had any social security yet.
 
     static TaxConstants()
     {
+        Fed1040TaxComputationWorksheetBrackets = [
+            /*
+             * https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
+             * page 76, section B
+             */
+            (.22m, 100000m, 201050m, 9894m),
+            (.24m, 201050m, 383900m, 13915m),
+            (.32m, 383900m, 487450m, 44627m),
+            (.35m, 487450m, 731200m, 59250.5m),
+            (.37m, 731200m, decimal.MaxValue, 73874.5m),
+        ];
         _incomeTaxBrackets = [
             (0.1M, 0M, 23850.0M),
             (0.12M, 23850.0M, 96950.0M),

@@ -186,12 +186,7 @@ public static class InvestmentSales
         results.newBookOfAccounts = AccountCashManagement.DepositCash(results.newBookOfAccounts, results.saleAmount, currentDate);
         results.newBookOfAccounts = RemovePositionFromBookOfAccounts(position, results.newBookOfAccounts);
         
-        // if it was a tax deferred account, record the sale for RMD purposes
-        if (accountType == McInvestmentAccountType.TRADITIONAL_401_K ||
-            accountType == McInvestmentAccountType.TRADITIONAL_IRA)
-        {
-            results.newLedger = Tax.RecordRmdDistribution(results.newLedger, currentDate, results.saleAmount);
-        }
+        
         return results;
     }
 

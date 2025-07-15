@@ -87,7 +87,7 @@ public class InvestmentSalesTests
         var result = InvestmentSales.SellInvestmentPosition(
             position, book, _testDate, taxLedger, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
-        var recordedIncome = result.newLedger.CapitalGains.Sum(x => x.amount);
+        var recordedIncome = result.newLedger.LongTermCapitalGains.Sum(x => x.amount);
 
         // Assert
         Assert.Equal(profit, recordedIncome);
@@ -109,7 +109,7 @@ public class InvestmentSalesTests
         var result = InvestmentSales.SellInvestmentPosition(
             position, book, _testDate, taxLedger, McInvestmentAccountType.TRADITIONAL_IRA);
 
-        var recordedIncome = result.newLedger.OrdinaryIncome.Sum(x => x.amount);
+        var recordedIncome = result.newLedger.TaxableIraDistribution.Sum(x => x.amount);
 
         // Assert
         Assert.Equal(1000m, recordedIncome);
@@ -126,15 +126,15 @@ public class InvestmentSalesTests
         var taxLedger = new TaxLedger();
         const decimal preSetCapitalGains = 200m;
         const decimal preSetIncome = 300m;
-        taxLedger.CapitalGains.Add((_testDate, preSetCapitalGains));
-        taxLedger.OrdinaryIncome.Add((_testDate, preSetIncome));
+        taxLedger.LongTermCapitalGains.Add((_testDate, preSetCapitalGains));
+        taxLedger.TaxableIraDistribution.Add((_testDate, preSetIncome));
 
         // Act
         var result = InvestmentSales.SellInvestmentPosition(
             position, book, _testDate, taxLedger, McInvestmentAccountType.ROTH_401_K);
 
-        var recordedGains = result.newLedger.CapitalGains.Sum(x => x.amount);
-        var recordedIncome = result.newLedger.OrdinaryIncome.Sum(x => x.amount);
+        var recordedGains = result.newLedger.LongTermCapitalGains.Sum(x => x.amount);
+        var recordedIncome = result.newLedger.TaxableIraDistribution.Sum(x => x.amount);
 
         // Assert
         Assert.Equal(preSetIncome, recordedIncome);
@@ -228,7 +228,9 @@ public class InvestmentSalesTests
             amountNeeded, book, taxLedger, _testDate);
         
         var newCash = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
-        var recordedRmd = result.newLedger.RmdDistributions.Sum(x => x.Value);
+        var recordedRmd = result.newLedger.TaxableIraDistribution
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
 
         // Assert
         Assert.Equal(expectedSaleAmount, recordedRmd);
@@ -363,12 +365,16 @@ public class InvestmentSalesTests
         
         var book = Account.CreateBookOfAccounts([taxDeferredAccount, brokerageAccount], []);
         var taxLedger = new TaxLedger();
-        var incomeNeededToCreateMinimalRoom = TaxConstants.BaseIncomeTarget - 1500m;
-        taxLedger.OrdinaryIncome.Add((_testDate, incomeNeededToCreateMinimalRoom));
+        var incomeNeededToCreateMinimalRoom = 
+              TaxConstants._incomeTaxBrackets[1].max // the max 12% income value
+              + TaxConstants._standardDeduction
+              - (TaxConstants.PlaceholderLastYearsSocialSecurityIncome * TaxConstants.MaxSocialSecurityTaxPercent)
+              - 1500m; // the amount of headroom we should have after we add income
+        taxLedger.W2Income.Add((_testDate, incomeNeededToCreateMinimalRoom));
+        var actualRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, _testDate.Year);
         var amountNeeded = 2500m;
         var expectedTaxDeferredSaleAmount = 2000m;
         var expectedBrokerageSaleAmount = 1000m;
-        var expectedOrdinaryIncome = incomeNeededToCreateMinimalRoom + expectedTaxDeferredSaleAmount;
         var expectedCapitalGains = expectedBrokerageSaleAmount - brokerageCost;
 
         // Act
@@ -379,11 +385,12 @@ public class InvestmentSalesTests
             taxLedger,
             _testDate);
         
-        var incomeRecorded = result.newLedger.OrdinaryIncome.Sum(x => x.amount);
-        var capitalGainsRecorded = result.newLedger.CapitalGains.Sum(x => x.amount);
+        
+        var taxDistributionRecorded = result.newLedger.TaxableIraDistribution.Sum(x => x.amount);
+        var capitalGainsRecorded = result.newLedger.LongTermCapitalGains.Sum(x => x.amount);
 
         // Assert
-        Assert.Equal(expectedOrdinaryIncome, incomeRecorded);
+        Assert.Equal(expectedTaxDeferredSaleAmount, taxDistributionRecorded);
         Assert.Equal(expectedCapitalGains, capitalGainsRecorded);
     }
 

@@ -12,11 +12,16 @@ public static class Tax
     {
         return new TaxLedger()
         {
-            CapitalGains = ledger.CapitalGains,
-            IncomeTarget = ledger.IncomeTarget,
-            OrdinaryIncome = ledger.OrdinaryIncome,
-            RmdDistributions = ledger.RmdDistributions,
             SocialSecurityIncome = ledger.SocialSecurityIncome,
+            W2Income = ledger.W2Income,
+            TaxableIraDistribution = ledger.TaxableIraDistribution,
+            TaxableInterestReceived = ledger.TaxableInterestReceived,
+            TaxFreeInterestPaid = ledger.TaxFreeInterestPaid,
+            FederalWithholdings = ledger.FederalWithholdings,
+            StateWithholdings = ledger.StateWithholdings,
+            LongTermCapitalGains = ledger.LongTermCapitalGains,
+            ShortTermCapitalGains = ledger.ShortTermCapitalGains,
+            TotalTaxPaid = ledger.TotalTaxPaid,
         };
     }
 
@@ -25,24 +30,44 @@ public static class Tax
     #region record functions
     
      
-    public static TaxLedger RecordCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static TaxLedger RecordLongTermCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         var result = CopyTaxLedger(ledger);
-        result.CapitalGains.Add((earnedDate, amount));
+        result.LongTermCapitalGains.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Capital gain logged");
+            Reconciliation.AddMessageLine(earnedDate, amount, "Long term capital gain logged");
+        }
+        return result;
+    }
+    public static TaxLedger RecordShortTermCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    {
+        var result = CopyTaxLedger(ledger);
+        result.ShortTermCapitalGains.Add((earnedDate, amount));
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(earnedDate, amount, "Short term capital gain logged");
         }
         return result;
     }
     
-    public static TaxLedger RecordIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static TaxLedger RecordW2Income(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         var result = CopyTaxLedger(ledger);
-        result.OrdinaryIncome.Add((earnedDate, amount));
+        result.W2Income.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Income logged");
+        }
+        return result;
+    }
+    public static TaxLedger RecordIraDistribution(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    {
+        var result = CopyTaxLedger(ledger);
+        result.TaxableIraDistribution.Add((earnedDate, amount));
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(earnedDate, amount, "Taxable distribution logged");
         }
         return result;
     }
@@ -60,12 +85,12 @@ public static class Tax
                 break; 
             case McInvestmentAccountType.TAXABLE_BROKERAGE:
                 // taxed on growth only
-                return RecordCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost);
+                return RecordLongTermCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost);
                 break;
             case McInvestmentAccountType.TRADITIONAL_401_K:
             case McInvestmentAccountType.TRADITIONAL_IRA:
                 // tax deferred. everything is counted as income
-                return RecordIncome(ledger, saleDate, position.CurrentValue);
+                return RecordIraDistribution(ledger, saleDate, position.CurrentValue);
                 break;
             case McInvestmentAccountType.PRIMARY_RESIDENCE:
             case McInvestmentAccountType.CASH:
@@ -75,30 +100,18 @@ public static class Tax
         throw new InvalidDataException("Unknown account type");
     }
     
-    /// <summary>
-    /// simply records the RMD distribution. Doesn't update any accounts. Only the ledger
-    /// </summary>
-    /// <returns>the new, updated ledger</returns>
-    public static TaxLedger RecordRmdDistribution(TaxLedger ledger, LocalDateTime currentDate, decimal amount)
+    
+    
+    public static TaxLedger RecordSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         var result = CopyTaxLedger(ledger);
-        
-        var year = currentDate.Year;
-        if (!result.RmdDistributions.TryAdd(year, amount))
-        {
-            result.RmdDistributions[year] += amount;
-        }
-
-        return result;
-    }
-    
-    public static void RecordSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
-    {
-        ledger.SocialSecurityIncome.Add((earnedDate, amount));
+        result.SocialSecurityIncome.Add((earnedDate, amount));
         if (StaticConfig.MonteCarloConfig.DebugMode == true)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Social security income logged");
         }
+
+        return result;
     }
 
     
@@ -110,12 +123,8 @@ public static class Tax
     public static decimal CalculateAdditionalRmdSales(int year, decimal totalRmdRequirement, TaxLedger ledger, LocalDateTime currentDate)
     {
         // figure out how much we've already withdrawn
-        if (!ledger.RmdDistributions.TryGetValue(year, out var totalRmdSoFar))
-        {
-            ledger.RmdDistributions[year] = 0;
-            totalRmdSoFar = 0;
-        }
-
+        var totalRmdSoFar = ledger.TaxableIraDistribution.Where(x => x.earnedDate.Year == year).Sum(x => x.amount);
+        
         if (totalRmdSoFar >= totalRmdRequirement) 
         {
             if (MonteCarloConfig.DebugMode == true)
@@ -206,34 +215,5 @@ public static class Tax
         return results;
     }
 
-    /// <summary>
-    /// sets the income target for next year based on this year's social security income. the idea is that, below
-    /// $96,950 in adjusted gross income, the tax on ordinary income is only 12%. Anything above that amount is taxed at
-    /// 22%. Since long-term capital gains is only 15% (below 0.5MM), it's cheaper to receive income (tax deferred
-    /// sales) than it is to receive capital gains (brokerage account sales). So we want to take out just enough to hit
-    /// that 12% ceiling from our traditional accounts and then move over to capital gains accounts beyond that point.
-    /// </summary>
-    /// todo: vet out this logic (and all other tax calcs) 
-    public static TaxLedger UpdateIncomeTarget(TaxLedger ledger, int year)
-    {
-        var result = CopyTaxLedger(ledger);
-
-        // update the income target for next year
-        var ceiling = TaxConstants._incomeTaxBrackets[1].max;
-        
-        // add up all income and multiplies by the max percent (85%) that is taxable
-        var expectedTaxableIncome =
-            TaxCalculation.CalculateTaxableSocialSecurityIncomeForYear(ledger, year); 
-        // take out the standard deduction
-        expectedTaxableIncome =
-            expectedTaxableIncome - TaxConstants._standardDeduction;
-        // don't let it go below zero
-        expectedTaxableIncome = Math.Max(expectedTaxableIncome, 0); 
-
-        // calculate the amount of actual income room we'll have next year before we'll jump tax brackets
-        result.IncomeTarget = Math.Max(ceiling - expectedTaxableIncome, 0); // don't let this go below zero
-
-        return result;
-    }
 
 }

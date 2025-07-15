@@ -265,7 +265,9 @@ public class RebalanceTests
         var actualCashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
         var actualMidBalance = AccountCalculation.CalculateMidBucketTotalBalance(result.newBookOfAccounts);
         var actualLongBalance = AccountCalculation.CalculateLongBucketTotalBalance(result.newBookOfAccounts);
-        var actualCapitalGains = TaxCalculation.CalculateCapitalGainsForYear(result.newLedger, currentDate.Year);
+        var actualCapitalGains = result.newLedger.LongTermCapitalGains
+            .Where(x => x.earnedDate.Year == currentDate.Year)
+            .Sum(x => x.amount);
 
         // Assert
         Assert.Equal(Math.Round(expectedCashBalance  ,2),  Math.Round(actualCashBalance, 2));

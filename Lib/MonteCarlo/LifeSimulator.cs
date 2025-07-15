@@ -203,7 +203,7 @@ namespace Lib.MonteCarlo
             }
 
             var grossMonthlyPay = _sim.Person.AnnualBonus;
-            Tax.RecordIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
+            Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
             AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
             {
@@ -219,7 +219,7 @@ namespace Lib.MonteCarlo
             }
 
             var grossMonthlyPay = _sim.Person.AnnualSalary / 12m;
-            Tax.RecordIncome(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
+            Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
             AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
             {
@@ -309,9 +309,7 @@ namespace Lib.MonteCarlo
             var taxLiability = TaxCalculation.CalculateTaxLiabilityForYear(newTaxLedger, taxYear);
             newTaxLedger.TotalTaxPaid += taxLiability;
             
-            // set the ledger's income target for next year
-            newTaxLedger = Tax.UpdateIncomeTarget(newTaxLedger, taxYear);
-
+            
             // todo: don't spend cash in the PayTax function. Use some other non-fun means of recording this spend
             SpendCash(taxLiability);
             

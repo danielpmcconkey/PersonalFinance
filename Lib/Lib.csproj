@@ -16,4 +16,8 @@
       <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="8.0.4" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Folder Include="MonteCarlo\TaxForms\NC\" />
+    </ItemGroup>
+
 </Project>

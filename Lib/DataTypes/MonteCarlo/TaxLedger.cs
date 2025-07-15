@@ -8,20 +8,14 @@ public struct TaxLedger
     public TaxLedger()
     {
     }
-
     public List<(LocalDateTime earnedDate, decimal amount)> SocialSecurityIncome { get; set; } = [];
-    public List<(LocalDateTime earnedDate, decimal amount)> OrdinaryIncome { get; set; } = [];
-    public List<(LocalDateTime earnedDate, decimal amount)> CapitalGains { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> W2Income { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> TaxableIraDistribution { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> TaxableInterestReceived { get; set; } = []; // todo: record taxable interest received
+    public List<(LocalDateTime earnedDate, decimal amount)> TaxFreeInterestPaid { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> FederalWithholdings { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> StateWithholdings { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> LongTermCapitalGains { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> ShortTermCapitalGains { get; set; } = []; // todo: manage long term vs short term gains
     public decimal TotalTaxPaid { get; set; } = 0; // lifetime total
-
-    /// <summary>
-    /// list of total distributions by year that qualify against RMD requirements
-    /// </summary>
-    public Dictionary<int, decimal> RmdDistributions { get; set; } = [];
-    
-    /// <summary>
-    /// this is the amount of income above social security that you want to maximize the 12% tax bracket. every year, we
-    /// will reevaluate this based on the prior year's social security income
-    /// </summary>
-    public decimal IncomeTarget { get; set; } = TaxConstants.BaseIncomeTarget;
 }

@@ -10,70 +10,148 @@ public class TaxTests
 {
     private readonly LocalDateTime _baseDate = new(2025, 1, 1, 0, 0);
 
-    private TaxLedger CreateTestLedger(decimal incomeTarget)
+    private TaxLedger CreateTestLedger()
     {
         return new TaxLedger
         {
-            IncomeTarget = incomeTarget
+            
         };
+    }
+    
+    [Fact]
+    public void RecordLongTermCapitalGain_AddsGainCorrectly()
+    {
+        // Arrange
+        var ledger = CreateTestLedger();
+        var amount = 1000m;
+
+        // Act
+        var result = Tax.RecordLongTermCapitalGain(ledger, _baseDate, amount);
+        var recordAdded = result.LongTermCapitalGains.First(x => x.earnedDate == _baseDate); 
+
+        // Assert
+        Assert.Single(result.LongTermCapitalGains);
+        Assert.Equal(amount, result.LongTermCapitalGains[0].amount);
+        Assert.Equal(amount, recordAdded.amount);
+        Assert.Equal(_baseDate, result.LongTermCapitalGains[0].earnedDate);
+    }
+    
+    [Fact]
+    public void RecordShortTermCapitalGain_AddsGainCorrectly()
+    {
+        // Arrange
+        var ledger = CreateTestLedger();
+        var amount = 1000m;
+
+        // Act
+        var result = Tax.RecordShortTermCapitalGain(ledger, _baseDate, amount);
+        var recordAdded = result.ShortTermCapitalGains.First(x => x.earnedDate == _baseDate); 
+
+        // Assert
+        Assert.Single(result.ShortTermCapitalGains);
+        Assert.Equal(amount, result.ShortTermCapitalGains[0].amount);
+        Assert.Equal(amount, recordAdded.amount);
+        Assert.Equal(_baseDate, result.ShortTermCapitalGains[0].earnedDate);
     }
 
     [Fact]
-    public void CopyTaxLedger_CreatesDeepCopy()
+    public void CopyTaxLedger_CopiesAccurately()
     {
         // Arrange
-        var original = CreateTestLedger(50000m);
-        original.CapitalGains.Add((_baseDate, 1000m));
-        original.OrdinaryIncome.Add((_baseDate, 2000m));
-        original.RmdDistributions[2025] = 3000m;
-        original.SocialSecurityIncome.Add((_baseDate, 4000m));
+        var socialSecurityIncome = 4000m;
+        var w2Income = 2000m;
+        var taxableIraDistribution = 20200m;
+        var taxableInterestReceived = 2300m;
+        var taxFreeInterestPaid = 12m;
+        var federalWithholdings = 122m;
+        var stateWithholdings = 152m;
+        var shortTermCapitalGains = 412m;
+        var longTermCapitalGains = 10004m;
+        var totalTaxPaid = 19.99m;
+        
+        
+        var original = CreateTestLedger();
+        original.SocialSecurityIncome.Add((_baseDate, socialSecurityIncome));
+        original.W2Income.Add((_baseDate, w2Income));
+        original.TaxableIraDistribution.Add((_baseDate, taxableIraDistribution));
+        original.TaxableInterestReceived.Add((_baseDate, taxableInterestReceived));
+        original.TaxFreeInterestPaid.Add((_baseDate, taxFreeInterestPaid));
+        original.FederalWithholdings.Add((_baseDate, federalWithholdings));
+        original.StateWithholdings.Add((_baseDate, stateWithholdings));
+        original.ShortTermCapitalGains.Add((_baseDate, shortTermCapitalGains));
+        original.LongTermCapitalGains.Add((_baseDate, longTermCapitalGains));
+        original.TotalTaxPaid = totalTaxPaid;
 
         // Act
         var copy = Tax.CopyTaxLedger(original);
+        var socialSecurityIncomeResults = copy.SocialSecurityIncome.Sum(x => x.amount);
+        var w2IncomeResults = copy.W2Income.Sum(x => x.amount);
+        var taxableIraDistributionResults = copy.TaxableIraDistribution.Sum(x => x.amount);
+        var taxableInterestReceivedResults = copy.TaxableInterestReceived.Sum(x => x.amount);
+        var taxFreeInterestPaidResults = copy.TaxFreeInterestPaid.Sum(x => x.amount);
+        var federalWithholdingsResults = copy.FederalWithholdings.Sum(x => x.amount);
+        var stateWithholdingsResults = copy.StateWithholdings.Sum(x => x.amount);
+        var shortTermCapitalGainsResults = copy.ShortTermCapitalGains.Sum(x => x.amount);
+        var longTermCapitalGainsResults = copy.LongTermCapitalGains.Sum(x => x.amount);
 
         // Assert
 #pragma warning disable xUnit2005
         Assert.NotSame(original, copy); // NotEqual doesn't work
 #pragma warning restore xUnit2005
-        Assert.Equal(original.CapitalGains.Count, copy.CapitalGains.Count);
-        Assert.Equal(original.OrdinaryIncome.Count, copy.OrdinaryIncome.Count);
-        Assert.Equal(original.RmdDistributions.Count, copy.RmdDistributions.Count);
         Assert.Equal(original.SocialSecurityIncome.Count, copy.SocialSecurityIncome.Count);
-        Assert.Equal(original.IncomeTarget, copy.IncomeTarget);
+        Assert.Equal(original.W2Income.Count, copy.W2Income.Count);
+        Assert.Equal(original.TaxableIraDistribution.Count, copy.TaxableIraDistribution.Count);
+        Assert.Equal(original.TaxableInterestReceived.Count, copy.TaxableInterestReceived.Count);
+        Assert.Equal(original.TaxFreeInterestPaid.Count, copy.TaxFreeInterestPaid.Count);
+        Assert.Equal(original.FederalWithholdings.Count, copy.FederalWithholdings.Count);
+        Assert.Equal(original.StateWithholdings.Count, copy.StateWithholdings.Count);
+        Assert.Equal(original.ShortTermCapitalGains.Count, copy.ShortTermCapitalGains.Count);
+        Assert.Equal(original.LongTermCapitalGains.Count, copy.LongTermCapitalGains.Count);
+        
+        Assert.Equal(socialSecurityIncome, socialSecurityIncomeResults);
+        Assert.Equal(w2Income, w2IncomeResults);
+        Assert.Equal(taxableIraDistribution, taxableIraDistributionResults);
+        Assert.Equal(taxableInterestReceived, taxableInterestReceivedResults);
+        Assert.Equal(taxFreeInterestPaid, taxFreeInterestPaidResults);
+        Assert.Equal(federalWithholdings, federalWithholdingsResults);
+        Assert.Equal(stateWithholdings, stateWithholdingsResults);
+        Assert.Equal(shortTermCapitalGains, shortTermCapitalGainsResults);
+        Assert.Equal(longTermCapitalGains, longTermCapitalGainsResults);
+        
+        Assert.Equal(original.TotalTaxPaid, copy.TotalTaxPaid);
+        
     }
-
+    
     [Fact]
-    public void RecordCapitalGain_AddsGainCorrectly()
+    public void RecordW2Income_AddsIncomeCorrectly()
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
-        var amount = 1000m;
-
-        // Act
-        var result = Tax.RecordCapitalGain(ledger, _baseDate, amount);
-        var recordAdded = result.CapitalGains.First(x => x.earnedDate == _baseDate); 
-
-        // Assert
-        Assert.Single(result.CapitalGains);
-        Assert.Equal(amount, result.CapitalGains[0].amount);
-        Assert.Equal(amount, recordAdded.amount);
-        Assert.Equal(_baseDate, result.CapitalGains[0].earnedDate);
-    }
-
-    [Fact]
-    public void RecordIncome_AddsIncomeCorrectly()
-    {
-        // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var amount = 2000m;
 
         // Act
-        var result = Tax.RecordIncome(ledger, _baseDate, amount);
+        var result = Tax.RecordW2Income(ledger, _baseDate, amount);
 
         // Assert
-        Assert.Single(result.OrdinaryIncome);
-        Assert.Equal(amount, result.OrdinaryIncome[0].amount);
-        Assert.Equal(_baseDate, result.OrdinaryIncome[0].earnedDate);
+        Assert.Single(result.W2Income);
+        Assert.Equal(amount, result.W2Income[0].amount);
+        Assert.Equal(_baseDate, result.W2Income[0].earnedDate);
+    }
+    
+    [Fact]
+    public void RecordTaxableIraDistribution_AddsDistributionCorrectly()
+    {
+        // Arrange
+        var ledger = CreateTestLedger();
+        var amount = 2000m;
+
+        // Act
+        var result = Tax.RecordIraDistribution(ledger, _baseDate, amount);
+
+        // Assert
+        Assert.Single(result.TaxableIraDistribution);
+        Assert.Equal(amount, result.TaxableIraDistribution[0].amount);
+        Assert.Equal(_baseDate, result.TaxableIraDistribution[0].earnedDate);
     }
 
     [Theory]
@@ -83,7 +161,7 @@ public class TaxTests
     public void RecordInvestmentSale_TaxFreeAccounts_NoChanges(McInvestmentAccountType accountType)
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var position = TestDataManager.CreateTestInvestmentPosition(
             150, 10, McInvestmentPositionType.LONG_TERM, true);
         position.InitialCost = 1000m;
@@ -92,15 +170,17 @@ public class TaxTests
         var result = Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType);
 
         // Assert
-        Assert.Empty(result.CapitalGains);
-        Assert.Empty(result.OrdinaryIncome);
+        Assert.Empty(result.LongTermCapitalGains);
+        Assert.Empty(result.ShortTermCapitalGains);
+        Assert.Empty(result.W2Income);
+        Assert.Empty(result.TaxableIraDistribution);
     }
 
     [Fact]
     public void RecordInvestmentSale_TaxableBrokerage_RecordsCapitalGains()
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var position = TestDataManager.CreateTestInvestmentPosition(
             150, 10, McInvestmentPositionType.LONG_TERM, true);
         position.InitialCost = 1000m;
@@ -110,17 +190,17 @@ public class TaxTests
             ledger, _baseDate, position, McInvestmentAccountType.TAXABLE_BROKERAGE);
 
         // Assert
-        Assert.Single(result.CapitalGains);
-        Assert.Equal(500m, result.CapitalGains[0].amount); // Growth only
+        Assert.Single(result.LongTermCapitalGains);
+        Assert.Equal(500m, result.LongTermCapitalGains[0].amount); // Growth only
     }
 
     [Theory]
     [InlineData(McInvestmentAccountType.TRADITIONAL_401_K)]
     [InlineData(McInvestmentAccountType.TRADITIONAL_IRA)]
-    public void RecordInvestmentSale_TraditionalAccounts_RecordsFullValueAsIncome(McInvestmentAccountType accountType)
+    public void RecordInvestmentSale_TraditionalAccounts_RecordsFullValueAsIraDistribution(McInvestmentAccountType accountType)
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var position = TestDataManager.CreateTestInvestmentPosition(
             150, 10, McInvestmentPositionType.LONG_TERM, true);
         position.InitialCost = 1000m;
@@ -129,8 +209,8 @@ public class TaxTests
         var result = Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType);
 
         // Assert
-        Assert.Single(result.OrdinaryIncome);
-        Assert.Equal(1500m, result.OrdinaryIncome[0].amount); // Full value
+        Assert.Single(result.TaxableIraDistribution);
+        Assert.Equal(1500m, result.TaxableIraDistribution[0].amount); // Full value
     }
 
     [Theory]
@@ -139,7 +219,7 @@ public class TaxTests
     public void RecordInvestmentSale_InvalidAccounts_ThrowsException(McInvestmentAccountType accountType)
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var position = TestDataManager.CreateTestInvestmentPosition(
             150, 10, McInvestmentPositionType.LONG_TERM, true);
         position.InitialCost = 1000m;
@@ -148,77 +228,12 @@ public class TaxTests
         Assert.Throws<InvalidDataException>(() => 
             Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType));
     }
-
-    [Fact]
-    public void RecordRmdDistribution_AddsNewDistribution()
-    {
-        // Arrange
-        var ledger = CreateTestLedger(50000m);
-        var amount = 5000m;
-
-        // Act
-        var result = Tax.RecordRmdDistribution(ledger, _baseDate, amount);
-
-        // Assert
-        Assert.Single(result.RmdDistributions);
-        Assert.Equal(amount, result.RmdDistributions[2025]);
-    }
     
-    [Fact]
-    public void RecordRmdDistribution_WithExistingDistribution_UpdatesNotAdds()
-    {
-        // Arrange
-        var ledger = CreateTestLedger(50000m);
-        var amount1 = 5000m;
-        var amount2 = 2000m;
-
-        // Act
-        var result = Tax.RecordRmdDistribution(ledger, _baseDate, amount1);
-        result = Tax.RecordRmdDistribution(result, _baseDate, amount2);
-
-        // Assert
-        Assert.Single(result.RmdDistributions);
-        Assert.Equal(amount1 + amount2, result.RmdDistributions[2025]);
-    }
-    
-    [Fact]
-    public void RecordRmdDistribution_WithExistingDistributionFromPriorYear_AddsNotUpdates()
-    {
-        // Arrange
-        var ledger = CreateTestLedger(50000m);
-        var amount1 = 5000m;
-        var amount2 = 2000m;
-
-        // Act
-        var result = Tax.RecordRmdDistribution(ledger, _baseDate.PlusYears(-1), amount1);
-        result = Tax.RecordRmdDistribution(result, _baseDate, amount2);
-
-        // Assert
-        Assert.True(result.RmdDistributions.Count == 2);
-        Assert.Equal(amount1, result.RmdDistributions[2024]);
-        Assert.Equal(amount2, result.RmdDistributions[2025]);
-    }
-
-    [Fact]
-    public void RecordRmdDistribution_UpdatesExistingDistribution()
-    {
-        // Arrange
-        var ledger = CreateTestLedger(50000m);
-        ledger.RmdDistributions[2025] = 3000m;
-        var additionalAmount = 2000m;
-
-        // Act
-        var result = Tax.RecordRmdDistribution(ledger, _baseDate, additionalAmount);
-
-        // Assert
-        Assert.Equal(5000m, result.RmdDistributions[2025]);
-    }
-
     [Fact]
     public void RecordSocialSecurityIncome_AddsIncomeCorrectly()
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var amount = 2500m;
 
         // Act
@@ -253,7 +268,7 @@ public class TaxTests
     public void CalculateRmdRequirement_CalculatesCorrectly(int year, decimal expectatedRmdAmount)
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         // we want $500k in tax deferred accounts
         accounts.Traditional401K.Positions = [
@@ -283,8 +298,8 @@ public class TaxTests
     public void CalculateAdditionalRmdSales_WithNoPriorDistributions_ReturnsFullAmount()
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
-        ledger.RmdDistributions = [];
+        var ledger = CreateTestLedger();
+        ledger.TaxableIraDistribution = [];
         var year = 2047;
         var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
         var totalRmdRequirement = 100000m;
@@ -302,10 +317,10 @@ public class TaxTests
         // Arrange
         var priorDistribution = 9000m;
         var year = 2047;
-        var ledger = CreateTestLedger(50000m);
-        ledger.RmdDistributions = [];
-        ledger.RmdDistributions[year] = priorDistribution;
+        var ledger = CreateTestLedger();
+        ledger.TaxableIraDistribution = [];
         var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
+        ledger = Tax.RecordIraDistribution(ledger, currentDate, priorDistribution);
         var totalRmdRequirement = 100000m;
         
         // Act
@@ -321,10 +336,10 @@ public class TaxTests
         // Arrange
         var priorDistribution = 190000m;
         var year = 2047;
-        var ledger = CreateTestLedger(50000m);
-        ledger.RmdDistributions = [];
-        ledger.RmdDistributions[year] = priorDistribution;
+        var ledger = CreateTestLedger();
+        ledger.TaxableIraDistribution = [];
         var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
+        ledger = Tax.RecordIraDistribution(ledger, currentDate, priorDistribution);
         var totalRmdRequirement = 100000m;
         
         // Act
@@ -357,7 +372,7 @@ public class TaxTests
     public void MeetRmdRequirements_CalculatesAndSellsCorrectly(int year, decimal expectatedRmdAmount)
     {
         // Arrange
-        var ledger = CreateTestLedger(50000m);
+        var ledger = CreateTestLedger();
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         // we want $500k in tax deferred accounts
         for (int i = 0; i < 250; i++)
@@ -389,48 +404,5 @@ public class TaxTests
         // Assert
         Assert.Equal(expectedSale, result.amountSold);
         Assert.Equal(expectedAmountLeft, amountLeft);
-    }
-
-    [Theory]
-    [InlineData(24000, 96950)]
-    [InlineData(29000, 96950)]
-    [InlineData(34000, 96950)]
-    [InlineData(39000, 93800)]
-    [InlineData(44000, 89550)]
-    [InlineData(49000, 85300)]
-    [InlineData(54000, 81050)]
-    [InlineData(59000, 76800)]
-    [InlineData(64000, 72550)]
-    [InlineData(69000, 68300)]
-    [InlineData(74000, 64050)]
-    [InlineData(79000, 59800)]
-    [InlineData(84000, 55550)]
-    [InlineData(89000, 51300)]
-    [InlineData(94000, 47050)]
-    [InlineData(99000, 42800)]
-    [InlineData(104000, 38550)]
-    [InlineData(109000, 34300)]
-    [InlineData(114000, 30050)]
-    [InlineData(119000, 25800)]
-    [InlineData(124000, 21550)]
-    [InlineData(129000, 17300)]
-    [InlineData(134000, 13050)]
-    [InlineData(139000, 8800)]
-    [InlineData(144000, 4550)]
-    [InlineData(149000, 300)]
-    [InlineData(154000, 0)]
-    public void UpdateIncomeTarget_CalculatesCorrectTarget(decimal socialSecurityIncome, decimal expectedTarget)
-    {
-        // todo: dive deeper on these calculations. I'm not sure I got the tax law right here
-        
-        // Arrange
-        var ledger = CreateTestLedger(50000m);
-        ledger.SocialSecurityIncome.Add((_baseDate, socialSecurityIncome)); // Annual amount
-
-        // Act
-        var result = Tax.UpdateIncomeTarget(ledger, 2025);
-
-        // Assert
-        Assert.Equal(Math.Round(expectedTarget * 1m, 2), Math.Round(result.IncomeTarget, 2));
     }
 }
