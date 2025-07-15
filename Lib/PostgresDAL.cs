@@ -49,10 +49,22 @@ namespace Lib
                 else throw;
             }
         }
+        
+        private static string GetConnectionString()
+        {
+            string? pgPassHex = Environment.GetEnvironmentVariable("PGPASS");
+            if(pgPassHex == null) throw new InvalidDataException("PGPASS environment variable not found");
+            var converted = Convert.FromHexString(pgPassHex);
+            string passNew = System.Text .Encoding.Unicode.GetString(converted);
+            
+            var connectionString = $"Host=localhost;Username=dansdev;Password='{passNew}';Database=householdbudget;" +
+                                   "Timeout=15;Command Timeout=300;";
+            return connectionString;
+        }
         public static NpgsqlConnection getConnection()
         {
 
-            string connectionString = "Host=localhost;Username=dansdev;Password='R#x8QA4tGV?zB^|h';Database=householdbudget;Timeout=15;Command Timeout=300;";
+            string connectionString = GetConnectionString();
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
             return conn;
         }
