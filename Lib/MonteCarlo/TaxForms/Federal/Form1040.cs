@@ -3,149 +3,109 @@ using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
-public class Form1040
+public static class Form1040
 {
-    public decimal Line15TaxableIncome
-    {
-        get { return _line15TaxableIncome; }
-    }
-
-    private TaxLedger _ledger;
-    private int _taxYear;
-    
-    private decimal _line1A = 0m; // Total amount from Form(s) W-2, box 1 (see instructions)
-    private decimal _line1B = 0m; // Household employee wages not reported on Form(s) W-2
-    private decimal _line1C = 0m; // Tip income not reported on line 1a (see instructions)
-    private decimal _line1D = 0m; // Medicaid waiver payments not reported on Form(s) W-2 (see instructions)
-    private decimal _line1E = 0m; // Taxable dependent care benefits from Form 2441, line 26
-    private decimal _line1F = 0m; // Employer-provided adoption benefits from Form 8839, line 29 
-    private decimal _line1G = 0m; // Wages from Form 8919, line 6 (Uncollected Social Security and Medicare Tax on Wages)
-    private decimal _line1H = 0m; // Other earned income (see instructions) 
-    private decimal _line1I = 0m; // Nontaxable combat pay election (see instructions) 
-    private decimal _line1Z = 0m; // line 1Z: Add lines 1a through 1h 
-    private decimal _line2A = 0m; // Tax-exempt interest received
-    private decimal _line2B = 0m; // Taxable interest received
-    private decimal _line3A = 0m; // Qualified dividends
-    private decimal _line3B = 0m; // Ordinary dividends
-    private decimal _line4B = 0m; // Taxable IRA Distributions
-    private decimal _line5B = 0m; // Pensions and annuities
-    private decimal _line7 = 0m; // Capital gain or (loss)
-    private decimal _line8 = 0m; // Additional income from Schedule 1, line 10 
-    private decimal _line6B = 0m; // Taxable Social Security benefits
-    private decimal _line9TotalIncome = 0m;
-    private decimal _line10 = 0m; // Adjustments to income from Schedule 1, line 26 
-    private decimal _line11AdjustedGrossIncome = 0m;
-    private decimal _line12 = 0m; //
-    private decimal _line13 = 0m; // Qualified business income deduction from Form 8995 or Form 8995-A 
-    private decimal _line14 = 0m; 
-    private decimal _line15TaxableIncome = 0m;
-    private decimal _line16Tax = 0m;
-    private decimal _line17 = 0m; // additional taxes
-    private decimal _line18 = 0m;
-    private decimal _line19 = 0m; // child tax credit
-    private decimal _line20 = 0m; // add'l credits
-    private decimal _line21 = 0m;
-    private decimal _line22 = 0m;
-    private decimal _line23 = 0m;
-    private decimal _line24TotalTax = 0m;
-    private decimal _line25FederalWithholding = 0m;
-    private decimal _line26 = 0m;
-    private decimal _line27 = 0m;
-    private decimal _line28 = 0m;
-    private decimal _line29 = 0m;
-    private decimal _line30 = 0m;
-    private decimal _line31 = 0m;
-    private decimal _line32 = 0m;
-    private decimal _line33TotalPayments = 0m;
-    
-
-    public Form1040(TaxLedger ledger, int year)
-    {
-        _ledger = ledger;
-        _taxYear = year;
-    }
-    
     /// <summary>
-    /// Line 38: Estimated tax penalty (see instructions)
+    /// Line 38: AmountYouOwe
     /// </summary>
-    public decimal CalculateTotalTaxLiability()
+    public static (decimal liability, decimal taxableIncome) CalculateLine38AmountYouOwe(TaxLedger ledger, int taxYear)
     {
         // https://www.irs.gov/pub/irs-pdf/f1040.pdf
-        
-        _line1A = CalculateTotalW2();
-        _line1B = 0m; // Household employee wages not reported on Form(s) W-2
-        _line1C = 0m; // Tip income not reported on line 1a (see instructions)
-        _line1D = 0m; // Medicaid waiver payments not reported on Form(s) W-2 (see instructions)
-        _line1E = 0m; // Taxable dependent care benefits from Form 2441, line 26
-        _line1F = 0m; // Employer-provided adoption benefits from Form 8839, line 29 
-        _line1G = 0m; // Wages from Form 8919, line 6 (Uncollected Social Security and Medicare Tax on Wages)
-        _line1H = 0m; // Other earned income (see instructions) 
-        _line1I = 0m; // Nontaxable combat pay election (see instructions) 
-        
-        // line 1Z: Add lines 1a through 1h 
-        _line1Z = _line1A + _line1B + _line1C + _line1D + _line1E + _line1F + _line1G + _line1H + _line1I;
 
-        _line2A = 0m; // Tax-exempt interest received
-        _line2B = CalculateTaxableInterestReceived();
-        _line3A = CalculateQualifiedDividendsEarned();
-        _line3B = CalculateOrdinaryDividendsEarned();
-        _line4B = CalculateTaxableIraDistributions();
-        _line5B = 0m; // Pensions and annuities
-        _line7 = CalculateCapitalGainOrLoss();
-        _line8 = 0m; // Additional income from Schedule 1, line 10 
-        _line6B = CalculateTaxableSocialSecurityBenefits();
-        _line9TotalIncome = _line1Z + _line2B + _line3B + _line4B + _line5B + _line6B + _line7 + _line8;
-        _line10 = 0m; // Adjustments to income from Schedule 1, line 26 
-        _line11AdjustedGrossIncome = _line9TotalIncome - _line10;
-        _line12 = CalculateDeductions();
-        _line13 = 0m; // Qualified business income deduction from Form 8995 or Form 8995-A 
-        _line14 = _line12 + _line13;
-        _line15TaxableIncome = Math.Max(_line11AdjustedGrossIncome - _line14, 0);
-        _line16Tax = CalculateTax();
-        _line17 = 0m; // we won't model additional taxes and the AMT only kicks in above 1.2MM in income
-        _line18 = _line16Tax + _line17;
-        _line19 = 0m; // kids be growned up
-        _line20 = 0m; // we may be able to model some of these credits later todo: review prior returns
-        _line21 = _line19 + _line20;
-        _line22 = Math.Min(0, _line18 - _line21);
-        _line23 = 0m; // no other taxes
-        _line24TotalTax = _line22 + _line23;
-        _line25FederalWithholding = CalculateFederalWitholding();
-        _line26 = 0m; // no prior payments
-        _line27 = 0m; // no EIC
-        _line28 = 0m; // no add'l child tax credit
-        _line29 = 0m; 
-        _line30 = 0m; 
-        _line31 = 0m; 
-        _line32 = _line27 + _line28 + _line29 + _line31;
-        _line33TotalPayments = _line25FederalWithholding + _line26 + _line32;
-        return _line24TotalTax - _line33TotalPayments;
+        var totalTaxResults = CalculateLine24TotalTax(ledger, taxYear);
+        var line15TaxableIncome = totalTaxResults.line15TaxableIncome;
+        var line24TotalTax = totalTaxResults.line24TotalTax;
+        var line33TotalPayments = CalculateLine33TotalPayments(ledger, taxYear);
+        return (line24TotalTax - line33TotalPayments, line15TaxableIncome);
+    }
+
+    public static decimal CalculateLine33TotalPayments(TaxLedger ledger, int taxYear)
+    {
+        var line25FederalWithholding = CalculateFederalWitholding(ledger, taxYear);
+        var line26 = 0m; // no prior payments
+        var line27 = 0m; // no EIC
+        var line28 = 0m; // no add'l child tax credit
+        var line29 = 0m; 
+        var line30 = 0m; 
+        var line31 = 0m; 
+        var line32 = line27 + line28 + line29 + line31;
+        var line33TotalPayments = line25FederalWithholding + line26 + line32;
+        return line33TotalPayments;
+    }
+    public static (decimal line15TaxableIncome, decimal line24TotalTax) CalculateLine24TotalTax(
+        TaxLedger ledger, int taxYear)
+    {
+        var line3A = CalculateQualifiedDividendsEarned();
+        var line15TaxableIncome = CalculateLine15TaxableIncome(ledger, taxYear);
+        var line16Tax = CalculateTax(ledger, taxYear, line15TaxableIncome, line3A);
+        var line17 = 0m; // we won't model additional taxes and the AMT only kicks in above 1.2MM in income
+        var line18 = line16Tax + line17;
+        var line19 = 0m; // kids be growned up
+        var line20 = 0m; // we may be able to model some of these credits later todo: review prior returns
+        var line21 = line19 + line20;
+        var line22 = Math.Min(0, line18 - line21);
+        var line23 = 0m; // no other taxes
+        var line24TotalTax = line22 + line23;
+        return (line15TaxableIncome, line24TotalTax);
     }
     /// <summary>
     /// Line 1A: Total amount from Form(s) W-2, box 1 (see instructions) 
     /// </summary>
-    public decimal CalculateTotalW2()
+    public static decimal CalculateTotalW2(TaxLedger ledger, int taxYear)
     {
-        return _ledger.W2Income
-            .Where(x => x.earnedDate.Year == _taxYear)
+        return ledger.W2Income
+            .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
-    
+    /// <summary>
+    /// Line 1Z: Total of all line 1 sub items 
+    /// </summary>
+    public static decimal CalculateLine1Z(TaxLedger ledger, int taxYear)
+    {
+        var line1A = CalculateTotalW2(ledger, taxYear);
+        var line1B = 0m; // Household employee wages not reported on Form(s) W-2
+        var line1C = 0m; // Tip income not reported on line 1a (see instructions)
+        var line1D = 0m; // Medicaid waiver payments not reported on Form(s) W-2 (see instructions)
+        var line1E = 0m; // Taxable dependent care benefits from Form 2441, line 26
+        var line1F = 0m; // Employer-provided adoption benefits from Form 8839, line 29 
+        var line1G = 0m; // Wages from Form 8919, line 6 (Uncollected Social Security and Medicare Tax on Wages)
+        var line1H = 0m; // Other earned income (see instructions) 
+        var line1I = 0m; // Nontaxable combat pay election (see instructions) 
+        return line1A + line1B + line1C + line1D + line1E + line1F + line1G + line1H + line1I;
+    }
+
+    /// <summary>
+    /// Line 9: Total of all income
+    /// </summary>
+    public static decimal CalculateLine9TotalIncome(TaxLedger ledger, int taxYear)
+    {
+        var line1Z = CalculateLine1Z(ledger, taxYear);
+        var line2A = 0m; // Tax-exempt interest received
+        var line2B = CalculateTaxableInterestReceived(ledger, taxYear);
+        var line3B = CalculateOrdinaryDividendsEarned();
+        var line4B = CalculateTaxableIraDistributions(ledger, taxYear);
+        var line5B = 0m; // Pensions and annuities
+        var line7 = CalculateCapitalGainOrLoss(ledger, taxYear);
+        var line8 = 0m; // Additional income from Schedule 1, line 10 
+        var line6B = CalculateTaxableSocialSecurityBenefits(ledger, taxYear, line1Z, line2A, line2B, line3B, line4B, line5B, line7, line8);
+        return line1Z + line2B + line3B + line4B + line5B + line6B + line7 + line8;
+    }
+
     /// <summary>
     /// Line 2B: Taxable interest received
     /// </summary>
-    public decimal CalculateTaxableInterestReceived()
+    public static decimal CalculateTaxableInterestReceived(TaxLedger ledger, int taxYear)
     {
         
-        return _ledger.TaxableInterestReceived
-            .Where(x => x.earnedDate.Year == _taxYear)
+        return ledger.TaxableInterestReceived
+            .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
     
     /// <summary>
     /// Line 3A: Qualified dividends 
     /// </summary>
-    public decimal CalculateQualifiedDividendsEarned()
+    public static decimal CalculateQualifiedDividendsEarned()
     {
         // we're not gonna model dividend income as it'd be impractical
         return 0m;
@@ -153,7 +113,7 @@ public class Form1040
     // <summary>
     /// Line 3B: Ordinary dividends 
     /// </summary>
-    public decimal CalculateOrdinaryDividendsEarned()
+    public static decimal CalculateOrdinaryDividendsEarned()
     {
         // we're not gonna model dividend income as it'd be impractical
         return 0m;
@@ -162,46 +122,64 @@ public class Form1040
     /// <summary>
     /// Line 4B: Taxable IRA Distributions 
     /// </summary>
-    public decimal CalculateTaxableIraDistributions()
+    public static decimal CalculateTaxableIraDistributions(TaxLedger ledger, int taxYear)
     {
-        return _ledger.TaxableIraDistribution
-            .Where(x => x.earnedDate.Year == _taxYear)
+        return ledger.TaxableIraDistribution
+            .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
     
     /// <summary>
     /// Line 6B: Taxable Social Security benefits
     /// </summary>
-    public decimal CalculateTaxableSocialSecurityBenefits()
+    public static decimal CalculateTaxableSocialSecurityBenefits(
+        TaxLedger ledger, int taxYear, decimal line1Z, decimal line2A, decimal line2B, decimal line3B, decimal line4B,
+        decimal line5B, decimal line7, decimal line8)
     {
         var combinedIncome = 
-            _line1Z + _line2B + _line3B + _line4B + _line5B + _line7 + _line8;
-        SocialSecurityBenefitsWorksheet worksheet = new SocialSecurityBenefitsWorksheet(
-            _ledger, _taxYear, combinedIncome, _line2A);
-        return worksheet.CalculateTaxableSocialSecurityBenefits();
+            line1Z + line2B + line3B + line4B + line5B + line7 + line8;
+        // SocialSecurityBenefitsWorksheet worksheet = new SocialSecurityBenefitsWorksheet(
+        //     ledger, taxYear, combinedIncome, line2A);
+        return SocialSecurityBenefitsWorksheet.CalculateTaxableSocialSecurityBenefits(
+            ledger, taxYear, combinedIncome, line2A);
     }
     
     /// <summary>
     /// Line 7: Capital gain or (loss) 
     /// </summary>
-    public decimal CalculateCapitalGainOrLoss()
+    public static decimal CalculateCapitalGainOrLoss(TaxLedger ledger, int taxYear)
     {
         // we're assuming everything is long-term
-        return _ledger.LongTermCapitalGains
-            .Where(x => x.earnedDate.Year == _taxYear)
+        return ledger.LongTermCapitalGains
+            .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
     
     /// <summary>
     /// Line 12: Standard deduction or itemized deductions
     /// </summary>
-    public decimal CalculateDeductions()
+    public static decimal CalculateDeductions()
     {
         // let's just take the standard deduction to make things easier
-        return 29200m;
+        return TaxConstants.FederalStandardDeduction;
+    }
+    /// <summary>
+    /// Line 15: Taxable income
+    /// </summary>
+    public static decimal CalculateLine15TaxableIncome(TaxLedger ledger, int taxYear)
+    {
+        var line9TotalIncome = CalculateLine9TotalIncome(ledger, taxYear);
+        var line10 = 0m; // Adjustments to income from Schedule 1, line 26 
+        var line11AdjustedGrossIncome = line9TotalIncome - line10;
+        var line12 = CalculateDeductions();
+        var line13 = 0m; // Qualified business income deduction from Form 8995 or Form 8995-A 
+        var line14 = line12 + line13;
+        var line15TaxableIncome = Math.Max(line11AdjustedGrossIncome - line14, 0);
+        return line15TaxableIncome;
     }
 
-    public decimal CalculateTax()
+
+    public static decimal CalculateTax(TaxLedger ledger, int taxYear, decimal line15TaxableIncome, decimal line3A)
     {
         /*
          * https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
@@ -236,13 +214,14 @@ public class Form1040
          */
         
         
-        if (_line15TaxableIncome < 100000) 
-            return TaxTable.CalculateTaxOwed(_line15TaxableIncome);
+        if (line15TaxableIncome < 100000) 
+            return TaxTable.CalculateTaxOwed(line15TaxableIncome);
         
-        return CalculateTaxFromWorksheet();
+        return CalculateTaxFromWorksheet(ledger, taxYear, line15TaxableIncome, line3A);
     }
     
-    public decimal CalculateTaxFromWorksheet()
+    public static decimal CalculateTaxFromWorksheet(TaxLedger ledger, int taxYear, decimal line15TaxableIncome,
+        decimal line3A)
     {
         /*
          * https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
@@ -253,27 +232,29 @@ public class Form1040
          *
          * there are 2 worksheets to use, depending on how schedule D works out
          */
-        if (_line15TaxableIncome < 100000)
+        if (line15TaxableIncome < 100000)
             throw new InvalidDataException("can't use the tax worksheet with income under 100k");
         
-        var scheduleD = new ScheduleD(_ledger, _taxYear);
-        if (scheduleD.Line20Are18And19BothZero || scheduleD.Line22DoYouHaveQualifiedDividendsOnCapitalGains)
+        var scheduleD = ScheduleD.PopulateScheduleDAndCalculateFinalValue(ledger, taxYear);
+        if (scheduleD.scheduleDLine20Are18And19BothZero || scheduleD.scheduleDLine22DoYouHaveQualifiedDividendsOnCapitalGains)
         {
             // gotta use the big boy worksheet
-            var worksheet = new QualifiedDividendsAndCapitalGainTaxWorksheet(
-                scheduleD, _line3A, _line15TaxableIncome);
-            return worksheet.CalculateTaxOwed();
+            
+            return QualifiedDividendsAndCapitalGainTaxWorksheet.CalculateTaxOwed(
+                scheduleD.scheduleDLine15NetLongTermCapitalGain, scheduleD.scheduleDLine16CombinedCapitalGains, line3A,
+                line15TaxableIncome);
         }
 
-        return TaxComputationWorksheet.CalculateTaxOwed(_line15TaxableIncome);
+        return TaxComputationWorksheet.CalculateTaxOwed(line15TaxableIncome);
     }
     /// <summary>
     /// Line 25: Federal income tax withholding
     /// </summary>
-    public decimal CalculateFederalWitholding()
+    public static decimal CalculateFederalWitholding(TaxLedger ledger, int taxYear)
     {
-        return _ledger.FederalWithholdings
-            .Where(x => x.earnedDate.Year == _taxYear)
+        // todo: model witholding
+        return ledger.FederalWithholdings
+            .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
     

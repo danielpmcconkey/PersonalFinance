@@ -41,7 +41,7 @@ public static class TaxTable
         // this calculates the to-the-penny amount.
         var totalLiability = 0m;
         // tax on ordinary income
-        foreach (var bracket in TaxConstants._incomeTaxBrackets)
+        foreach (var bracket in TaxConstants.Federal1040TaxTableBrackets)
         {
             var amountInBracket =
                     amount

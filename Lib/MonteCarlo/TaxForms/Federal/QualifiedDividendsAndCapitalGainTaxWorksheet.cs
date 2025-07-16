@@ -1,19 +1,10 @@
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
-public class QualifiedDividendsAndCapitalGainTaxWorksheet
+public static class QualifiedDividendsAndCapitalGainTaxWorksheet
 {
-    private ScheduleD _scheduleD;
-    private decimal _fed1040Line3A = 0m;
-    private decimal _fed1040Line15 = 0m;
-
-    public QualifiedDividendsAndCapitalGainTaxWorksheet(
-        ScheduleD scheduleD, decimal fed1040Line3A, decimal fed1040Line15)
-    {
-        _scheduleD = scheduleD;
-        _fed1040Line3A = fed1040Line3A;
-        _fed1040Line15 = fed1040Line15;
-    }
-    public decimal CalculateTaxOwed()
+    public static decimal CalculateTaxOwed(
+        decimal scheduleDLine15NetLongTermCapitalGain, decimal scheduleDLine16CombinedCapitalGains,
+        decimal fed1040Line3A, decimal fed1040Line15)
     {
 
         /*
@@ -21,12 +12,12 @@ public class QualifiedDividendsAndCapitalGainTaxWorksheet
          * page 36
          */
 
-        var line1 = _fed1040Line15;
-        var line2 = _fed1040Line3A;
+        var line1 = fed1040Line15;
+        var line2 = fed1040Line3A;
         var line3 = 
-            (_scheduleD.Line15NetLongTermCapitalGain <= 0m || _scheduleD.Line16CombinedCapitalGains <= 0m) 
+            (scheduleDLine15NetLongTermCapitalGain <= 0m || scheduleDLine16CombinedCapitalGains <= 0m) 
                 ? 0m
-                : Math.Min(_scheduleD.Line15NetLongTermCapitalGain, _scheduleD.Line16CombinedCapitalGains);
+                : Math.Min(scheduleDLine15NetLongTermCapitalGain, scheduleDLine16CombinedCapitalGains);
         var line4 = line2 + line3;
         var line5 = line1 - line4;
         var line6 = 94050m;

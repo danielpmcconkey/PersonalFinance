@@ -2,34 +2,23 @@ using Lib.DataTypes.MonteCarlo;
 
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
-public class SocialSecurityBenefitsWorksheet
+public static class SocialSecurityBenefitsWorksheet
 {
-    private TaxLedger _ledger;
-    private int _taxYear;
-    private decimal _combinedIncomeFrom1040 = 0m;
-    private decimal _line2AFrom1040 = 0m;
-
-    public SocialSecurityBenefitsWorksheet(
-        TaxLedger ledger, int taxYear, decimal combinedIncomeFrom1040, decimal line2AFrom1040)
-    {
-        _ledger = ledger;
-        _taxYear = taxYear;
-        _combinedIncomeFrom1040 = combinedIncomeFrom1040;
-        _line2AFrom1040 = line2AFrom1040;
-    }
     
-    public decimal CalculateTaxableSocialSecurityBenefits()
+    
+    public static decimal CalculateTaxableSocialSecurityBenefits(
+        TaxLedger ledger, int taxYear, decimal combinedIncomeFrom1040, decimal line2AFrom1040)
     {
         // Social Security Benefits Worksheet
         // https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
         // page 32
         
-        var line1 = _ledger.SocialSecurityIncome
-            .Where(x => x.earnedDate.Year == _taxYear)
+        var line1 = ledger.SocialSecurityIncome
+            .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
         var line2 = line1 * 0.5m;
-        var line3 = _combinedIncomeFrom1040;
-        var line4 = _line2AFrom1040;
+        var line3 = combinedIncomeFrom1040;
+        var line4 = line2AFrom1040;
         var line5 = line2 + line3 + line4;
         var line6 = 0m; // not modelling schedule 1 here
         

@@ -60,11 +60,11 @@ public class TaxCalculationTests
         ledger.TaxableIraDistribution.Add((_baseDate, 20000m));
         
         
-        var expectedHeadroom = TaxConstants._incomeTaxBrackets[1].max 
+        var expectedHeadroom = TaxConstants.Federal1040TaxTableBrackets[1].max 
                                - (24000m * TaxConstants.MaxSocialSecurityTaxPercent)
                                - 10000m
                                - 20000m
-                               + TaxConstants._standardDeduction;
+                               + TaxConstants.FederalStandardDeduction;
         
         
         // Act
@@ -85,11 +85,11 @@ public class TaxCalculationTests
         ledger.TaxableIraDistribution.Add((_baseDate, 20000m));
         
         
-        var expectedHeadroom = TaxConstants._incomeTaxBrackets[1].max 
+        var expectedHeadroom = TaxConstants.Federal1040TaxTableBrackets[1].max 
                - (TaxConstants.PlaceholderLastYearsSocialSecurityIncome * TaxConstants.MaxSocialSecurityTaxPercent)
                - 10000m 
                - 20000m
-               + TaxConstants._standardDeduction;
+               + TaxConstants.FederalStandardDeduction;
         
         
         // Act

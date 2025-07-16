@@ -1,4 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -36,10 +37,10 @@ public static class TaxCalculation
     public static decimal CalculateIncomeRoom(TaxLedger ledger, int year)
     {
         // start with the _incomeTaxBrackets 12% max
-        var headRoom = TaxConstants._incomeTaxBrackets[1].max;
+        var headRoom = TaxConstants.Federal1040TaxTableBrackets[1].max;
         
         // add the standard deduction 
-        headRoom += TaxConstants._standardDeduction;
+        headRoom += TaxConstants.FederalStandardDeduction;
         
         // remove last year's social security, but only 85% of it
         var taxableSocialSecurity = CalculateTaxableSocialSecurityIncomeForYear(ledger, year - 1);
@@ -91,7 +92,7 @@ public static class TaxCalculation
     
     public static decimal? CalculateRmdRateByYear(int year)
     {
-        if(!TaxConstants._rmdTable.TryGetValue(year, out var rmd))
+        if(!TaxConstants.RmdTable.TryGetValue(year, out var rmd))
             return null;
         return rmd;
 
@@ -158,9 +159,9 @@ public static class TaxCalculation
     public static decimal CalculateTaxLiabilityForYear(TaxLedger ledger, int taxYear)
     {
         decimal totalLiability = 0M;
-        var form1040 = new TaxForms.Federal.Form1040(ledger, taxYear);
-        totalLiability += form1040.CalculateTotalTaxLiability();
-        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(form1040.Line15TaxableIncome);
+        var federalResults = Form1040.CalculateLine38AmountYouOwe(ledger, taxYear);
+        totalLiability += federalResults.liability;
+        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(federalResults.taxableIncome);
         return totalLiability;
     }
 
@@ -169,7 +170,7 @@ public static class TaxCalculation
         // todo: actually work through NC tax rules
         decimal totalLiability = 0M;
         // NC state income tax
-        totalLiability += taxableIncomeFrom1040 * TaxConstants._ncFiatTaxRate;
+        totalLiability += taxableIncomeFrom1040 * TaxConstants.NorthCarolinaFlatTaxRate;
         return totalLiability;
     }
 }
