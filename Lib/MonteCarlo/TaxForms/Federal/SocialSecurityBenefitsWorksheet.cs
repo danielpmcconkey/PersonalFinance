@@ -1,11 +1,18 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
 public static class SocialSecurityBenefitsWorksheet
 {
-    
-    
+
+    public static decimal CalculateLine1SocialSecurityIncome(TaxLedger ledger, int taxYear)
+    {
+        return ledger.SocialSecurityIncome
+            .Where(x => x.earnedDate.Year == taxYear)
+            .Sum(x => x.amount);
+    }
+   
     public static decimal CalculateTaxableSocialSecurityBenefits(
         TaxLedger ledger, int taxYear, decimal combinedIncomeFrom1040, decimal line2AFrom1040)
     {
@@ -13,9 +20,7 @@ public static class SocialSecurityBenefitsWorksheet
         // https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
         // page 32
         
-        var line1 = ledger.SocialSecurityIncome
-            .Where(x => x.earnedDate.Year == taxYear)
-            .Sum(x => x.amount);
+        var line1 = CalculateLine1SocialSecurityIncome(ledger, taxYear);
         var line2 = line1 * 0.5m;
         var line3 = combinedIncomeFrom1040;
         var line4 = line2AFrom1040;
@@ -28,7 +33,7 @@ public static class SocialSecurityBenefitsWorksheet
         if ((line6 < line5) == false) return 0m; 
         
         var line7 = line5 - line6;
-        var line8 = 32000m;
+        var line8 = TaxConstants.SocialSecurityWorksheetCreditLine8;
         
         // Is the amount on line 8 less than the amount on line 7?
         // No.STOP None of your social security benefits are taxable. Enter -0- on Form 1040 or
@@ -36,7 +41,7 @@ public static class SocialSecurityBenefitsWorksheet
         if ((line8 < line7) == false) return 0m; 
         
         var line9 = line7 - line8;
-        var line10 = 12000m;
+        var line10 = TaxConstants.SocialSecurityWorksheetCreditLine10;
         var line11 = line9 - line10;
         if (line11 < 0) line11 = 0m;
         var line12 = Math.Min(line9, line10);

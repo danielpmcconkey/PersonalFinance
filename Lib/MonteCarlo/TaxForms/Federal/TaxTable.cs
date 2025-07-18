@@ -11,6 +11,7 @@ public static class TaxTable
     public static decimal CalculateTaxOwed(decimal amount)
     {
         if (amount > 100000) throw new InvalidDataException("can't use the tax table with income over 100k");
+        if (amount <= 0) return 0;
         const decimal tableGrain = 50m; // the table increases in lumps of 50
         /*
          * the actual table uses an average between a low round number and a high round number. for example:
@@ -33,7 +34,9 @@ public static class TaxTable
         }
         var liabilityAtFloor = CalculatePreciseLiability(floor * tableGrain);
         var liabilityAtCeiling = CalculatePreciseLiability(ceiling * tableGrain);
-        return (liabilityAtFloor + liabilityAtCeiling) / 2m;
+        // round between the two values, but use AwayFromZero mode to match the IRS's table (standard dot net seems to
+        // use banker's rounding)
+        return Math.Round((liabilityAtFloor + liabilityAtCeiling) / 2m, 0, MidpointRounding.AwayFromZero);
         
     }
     private static decimal CalculatePreciseLiability(decimal amount)
@@ -43,11 +46,10 @@ public static class TaxTable
         // tax on ordinary income
         foreach (var bracket in TaxConstants.Federal1040TaxTableBrackets)
         {
-            var amountInBracket =
-                    amount
-                    - (Math.Max(amount, bracket.max) - bracket.max) // amount above max
-                    - (Math.Min(amount, bracket.min)) // amount below min
-                ;
+            if(amount < bracket.min) continue;
+            var amountInBracket = 0m;
+            if(amount >= bracket.max) amountInBracket = bracket.max - bracket.min;
+            else amountInBracket = amount - bracket.min;
             totalLiability += (amountInBracket * bracket.rate);
         }
         return totalLiability;

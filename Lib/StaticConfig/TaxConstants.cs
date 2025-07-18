@@ -2,14 +2,18 @@ namespace Lib.StaticConfig;
 
 public static class TaxConstants
 {
+    
     public static readonly (decimal rate, decimal min, decimal max)[] Federal1040TaxTableBrackets = [
-        (0.1M, 0M, 23850.0M),
-        (0.12M, 23850.0M, 96950.0M),
-        (0.22M, 96950.0M, 206700.0M),
-        (0.24M, 206700.0M, 394600.0M),
-        (0.32M, 394600.0M, 501050.0M),
-        (0.35M, 501050.0M, 751600.0M),
-        (0.37M, 751600.0M, decimal.MaxValue),
+        /*
+         * https://taxfoundation.org/data/all/federal/2024-tax-brackets/
+         */
+        (0.1M, 0M, 23200.0M),
+        (0.12M, 23200.0M, 94300.0M),
+        (0.22M, 94300.0M, 201050.0M),
+        (0.24M, 201050.0M, 383900.0M),
+        (0.32M, 383900.0M, 487450.0M),
+        (0.35M, 487450.0M, 731200.0M),
+        (0.37M, 731200.0M, decimal.MaxValue),
     ];
     
     public static readonly (decimal rate, decimal min, decimal max, decimal subtractions)[]
@@ -33,7 +37,8 @@ public static class TaxConstants
     public static readonly decimal NorthCarolinaFlatTaxRate = 0.0399M;
     public static readonly decimal MaxSocialSecurityTaxPercent = 0.85M;
     public static readonly decimal PlaceholderLastYearsSocialSecurityIncome = 48000.0M; // in case you're calculating income head room and haven't had any social security yet.
-
+    public static readonly decimal SocialSecurityWorksheetCreditLine8 = 32000m;
+    public static readonly decimal SocialSecurityWorksheetCreditLine10 = 12000m;
     static TaxConstants()
     {
         
