@@ -1,4 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
@@ -14,7 +15,7 @@ public static class ScheduleD
         var line7NetShortTermCapitalGain = CalculateTotalShortTermCapitalGainsAndLosses(ledger, taxYear);
         var line15NetLongTermCapitalGain = CalculateTotalLongTermCapitalGainsAndLosses(ledger, taxYear);
         var summaryResults = RunSummaryAndCalculateFinalValue(ledger, line7NetShortTermCapitalGain, line15NetLongTermCapitalGain);;
-        return (line15NetLongTermCapitalGain, summaryResults.line16CombinedCapitalGains,
+        return (line15NetLongTermCapitalGain, summaryResults.line16Or21CombinedCapitalGains,
             summaryResults.line20Are18And19BothZero, summaryResults.line22DoYouHaveQualifiedDividendsOnCapitalGains);
     }
     public static decimal CalculateTotalShortTermCapitalGainsAndLosses(TaxLedger ledger, int taxYear)
@@ -30,23 +31,22 @@ public static class ScheduleD
             .Sum(x => x.amount);
     }
 
-    public static (decimal line16CombinedCapitalGains, bool line20Are18And19BothZero,
-        bool line22DoYouHaveQualifiedDividendsOnCapitalGains)
+    public static (decimal line16Or21CombinedCapitalGains, bool line20Are18And19BothZero, bool line22DoYouHaveQualifiedDividendsOnCapitalGains)
         RunSummaryAndCalculateFinalValue(
             TaxLedger ledger, decimal line7NetShortTermCapitalGain, decimal line15NetLongTermCapitalGain)
     {
-        (decimal line16, bool Line20Are18And19BothZero, bool Line22DoYouHaveQualifiedDividendsOnCapitalGains) results = 
-            (0m, false, false);
-        results.line16 = line7NetShortTermCapitalGain + line15NetLongTermCapitalGain;
-        if (results.line16 == 0) return results;
-        if (results.line16 < 0)
+        (decimal line16Or21, bool Line20Are18And19BothZero, bool Line22DoYouHaveQualifiedDividendsOnCapitalGains) results = 
+            (0m, true, false);
+        results.line16Or21 = line7NetShortTermCapitalGain + line15NetLongTermCapitalGain;
+        if (results.line16Or21 == 0) return results;
+        if (results.line16Or21 < 0)
         {
-            var line21SmallerOfTheLoss = Math.Min(30000m, Math.Abs(results.line16));
-            results.line16 = -1 * line21SmallerOfTheLoss;
+            var line21SmallerOfTheLoss = Math.Min(TaxConstants.ScheduleDMaximumCapitalLoss, Math.Abs(results.line16Or21));
+            results.line16Or21 = -1 * line21SmallerOfTheLoss;
             return results;
         }
         // positive gains, bro
-        var line17 = (results.line16 > 0 && line15NetLongTermCapitalGain > 0);
+        var line17 = (results.line16Or21 > 0 && line15NetLongTermCapitalGain > 0);
         if (line17 == false) return results;
         var line18CollectiblesRateGain = 0;
         var line19UnrecapturedSection1250Gain = 0;

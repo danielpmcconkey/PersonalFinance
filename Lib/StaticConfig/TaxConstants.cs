@@ -33,12 +33,14 @@ public static class TaxConstants
     /*
      * Married filing jointly or Qualifying surviving spouse, $29,200
      */
-    public static readonly decimal FederalStandardDeduction = 29200.0M;
-    public static readonly decimal NorthCarolinaFlatTaxRate = 0.0399M;
-    public static readonly decimal MaxSocialSecurityTaxPercent = 0.85M;
-    public static readonly decimal PlaceholderLastYearsSocialSecurityIncome = 48000.0M; // in case you're calculating income head room and haven't had any social security yet.
-    public static readonly decimal SocialSecurityWorksheetCreditLine8 = 32000m;
-    public static readonly decimal SocialSecurityWorksheetCreditLine10 = 12000m;
+    public const decimal FederalStandardDeduction = 29200.0M;
+    public const decimal NorthCarolinaFlatTaxRate = 0.0399M;
+    public const decimal MaxSocialSecurityTaxPercent = 0.85M;
+    public const decimal PlaceholderLastYearsSocialSecurityIncome = 48000.0M; // in case you're calculating income head room and haven't had any social security yet.
+    public const decimal SocialSecurityWorksheetCreditLine8 = 32000m;
+    public const decimal SocialSecurityWorksheetCreditLine10 = 12000m;
+    public const decimal ScheduleDMaximumCapitalLoss = 3000m;
+
     static TaxConstants()
     {
         
