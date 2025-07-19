@@ -85,6 +85,9 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
         }
 
         [Theory]
+        /*
+         * these expectations were calculated using the "FedScheduleD" tab of the TaxTesting.ods file
+         */
         [InlineData(1000, 20000, 21000, true, false)] // both positive
         [InlineData(-900, -1500, -2400, true, false)] // both small losses
         [InlineData(-3000, -4000, -3000, true, false)] // both big losses
@@ -116,6 +119,9 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
 
         
         [Theory]
+        /*
+         * these expectations were calculated using the "FedScheduleD" tab of the TaxTesting.ods file
+         */
         [InlineData(1000, 20000, 21000, true, false)] // both positive
         [InlineData(-900, -1500, -2400, true, false)] // both small losses
         [InlineData(-3000, -4000, -3000, true, false)] // both big losses

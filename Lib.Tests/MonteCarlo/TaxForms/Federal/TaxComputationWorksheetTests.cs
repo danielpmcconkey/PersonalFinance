@@ -7,6 +7,9 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
     public class TaxComputationWorksheetTests
     {
         [Theory]
+        /*
+         * these expectations were calculated using the "FedTaxComputationWorksheet" tab of the TaxTesting.ods file
+         */
         [InlineData(100000, 12106)]
         [InlineData(125000, 17606)]
         [InlineData(156250, 24481)]
@@ -18,6 +21,7 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
         [InlineData(596046.48, 149365.77)]
         [InlineData(745058.1, 201797)]
         [InlineData(931322.63, 270714.87)]
+
         public void CalculateTaxOwed_WithValidAmounts_ReturnsCorrectTax(decimal income, decimal expectedTax)
         {
             // Act

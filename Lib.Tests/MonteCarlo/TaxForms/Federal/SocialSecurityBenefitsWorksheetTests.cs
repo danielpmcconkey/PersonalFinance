@@ -69,8 +69,12 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
         }
 
         [Theory]
-        [InlineData(500, 10000, 100, 0)]	
-        [InlineData(625, 12500, 125, 0)]	
+        /*
+         * these expectations were calculated using the "FedSocialSecurityBenefitsWorksheet" tab of the TaxTesting.ods
+         * file
+         */
+        [InlineData(500, 10000, 100, 0)]
+        [InlineData(625, 12500, 125, 0)]
         [InlineData(781.25, 15625, 156.25, 0)]
         [InlineData(976.56, 19531.25, 195.31, 0)]
         [InlineData(1220.7, 24414.06, 244.14, 0)]
@@ -78,7 +82,7 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
         [InlineData(1907.35, 38146.98, 381.48, 11076.68)]
         [InlineData(2384.19, 47683.73, 476.85, 21695.86)]
         [InlineData(2980.24, 59604.66, 596.06, 30398.45)]
-        [InlineData(3725.3, 74505.83, 745.08, 37998.06)]	
+        [InlineData(3725.3, 74505.83, 745.08, 37998.06)]
         [InlineData(4656.63, 93132.29, 931.35, 47497.63)]
         [InlineData(5820.79, 116415.36, 1164.19, 59372.06)]
         [InlineData(7275.99, 145519.2, 1455.24, 74215.1)]

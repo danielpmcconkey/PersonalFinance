@@ -115,16 +115,20 @@ public class SpendTests
     }
 
     [Theory]
-    [InlineData(2025, 0)]
+    /*
+     * these expectations were calculated using the "HealthcareSpend" tab of the TaxTesting.ods file
+     */
+    [InlineData(2025, 0)] 
     [InlineData(2030, 3000)] // retirement age, no medicare
-    [InlineData(2035, 3000)]
+    [InlineData(2035, 3000)] 
     [InlineData(2040, 865.33)] // age 65, medicare kicks in
-    [InlineData(2045, 935.17)]
-    [InlineData(2050, 1005)]
-    [InlineData(2055, 1074.83)]
-    [InlineData(2060, 1144.67)]
-    [InlineData(2063, 6000)] // age 88 first year of assisted living
-    [InlineData(2065, 6000)]
+    [InlineData(2045, 935.17)] 
+    [InlineData(2050, 1005)] 
+    [InlineData(2055, 1074.83)] 
+    [InlineData(2060, 1144.67)] 
+    [InlineData(2065, 6000)] 
+    [InlineData(2063, 6000)] // age 88, first year of assisted living
+
     public void CalculateMonthlyHealthSpend_AgeAffectsHealthCosts(int currentYear, decimal expectedSpend)
     {
         // Arrange
