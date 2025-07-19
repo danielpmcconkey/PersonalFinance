@@ -85,12 +85,13 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
         }
 
         [Theory]
-        [InlineData(1000, 20000, 21000, true, false)]// both positive
-        [InlineData(-900, -1500, -2400, true, false)]// both small losses
-        [InlineData(-3000, -4000, -3000, true, false)]// both big losses
-        [InlineData(10000, -900, 9100, true, false)]// short gain, long loss, overall gain
-        [InlineData(-9000, 1000, -3000, true, false)]// short loss, long gain, overall loss
-        [InlineData(1000, -9000, -3000, true, false)]// short gain, long loss, overall loss
+        [InlineData(1000, 20000, 21000, true, false)] // both positive
+        [InlineData(-900, -1500, -2400, true, false)] // both small losses
+        [InlineData(-3000, -4000, -3000, true, false)] // both big losses
+        [InlineData(-900, 10000, 9100, true, false)] // short loss, long gain, overall gain
+        [InlineData(10000, -900, 9100, true, false)] // short gain, long loss, overall gain
+        [InlineData(-9000, 1000, -3000, true, false)] // short loss, long gain, overall loss
+        [InlineData(1000, -9000, -3000, true, false)] // short gain, long loss, overall loss
         public void RunSummaryAndCalculateFinalValue_VariousScenarios(
             decimal shortTermGains,
             decimal longTermGains,
@@ -115,12 +116,13 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
 
         
         [Theory]
-        [InlineData(1000, 20000, 21000, true, false)]// both positive
-        [InlineData(-900, -1500, -2400, true, false)]// both small losses
-        [InlineData(-3000, -4000, -3000, true, false)]// both big losses
-        [InlineData(10000, -900, 9100, true, false)]// short gain, long loss, overall gain
-        [InlineData(-9000, 1000, -3000, true, false)]// short loss, long gain, overall loss
-        [InlineData(1000, -9000, -3000, true, false)]// short gain, long loss, overall loss
+        [InlineData(1000, 20000, 21000, true, false)] // both positive
+        [InlineData(-900, -1500, -2400, true, false)] // both small losses
+        [InlineData(-3000, -4000, -3000, true, false)] // both big losses
+        [InlineData(-900, 10000, 9100, true, false)] // short loss, long gain, overall gain
+        [InlineData(10000, -900, 9100, true, false)] // short gain, long loss, overall gain
+        [InlineData(-9000, 1000, -3000, true, false)] // short loss, long gain, overall loss
+        [InlineData(1000, -9000, -3000, true, false)] // short gain, long loss, overall loss
         public void PopulateScheduleDAndCalculateFinalValue_CompleteCalculation(
             decimal shortTermGains,
             decimal longTermGains,
