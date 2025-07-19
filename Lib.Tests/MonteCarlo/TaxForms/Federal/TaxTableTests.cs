@@ -7,6 +7,30 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
     public class TaxTableTests
     {
         [Theory]
+        /*
+         * these expectations were calculated using the "FedTaxTableWorksheet" tab of the TaxTesting.ods file
+         */
+        [InlineData(10000, 1000)]
+        [InlineData(17500, 1750)]
+        [InlineData(30625, 3211)]
+        [InlineData(53593.75, 5967.25)]
+        [InlineData(93789.06, 10790.69)]
+        [InlineData(164130.86, 26214.79)]
+        [InlineData(287229.01, 55019.96)]
+        [InlineData(502650.77, 116677.27)]
+        [InlineData(879638.85, 251591.87)]
+        [InlineData(1539367.99, 495691.66)]
+        [InlineData(2693893.98, 922866.27)]
+        public void CalculatePreciseLiability_WithValidAmounts_ReturnsCorrectTax(decimal income, decimal expectedTax)
+        {
+            // Act
+            decimal actualTax = TaxTable.CalculatePreciseLiability(income);
+
+            // Assert
+            Assert.Equal(expectedTax, Math.Round(actualTax, 2));
+        }
+        
+        [Theory]
         [InlineData(23200, 2323)] // First bracket boundary
         [InlineData(50000, 5539)] // Middle income test
         [InlineData(50050, 5545)] // Test with amount just over $50 increment

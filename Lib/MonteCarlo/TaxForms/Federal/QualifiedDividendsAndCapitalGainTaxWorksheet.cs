@@ -19,7 +19,7 @@ public static class QualifiedDividendsAndCapitalGainTaxWorksheet
                 ? 0m
                 : Math.Min(scheduleDLine15NetLongTermCapitalGain, scheduleDLine16CombinedCapitalGains);
         var line4 = line2 + line3;
-        var line5 = line1 - line4;
+        var line5 = (Math.Max(0, line1 - line4));
         var line6 = 94050m;
         var line7 = Math.Min(line1, line6);
         var line8 = Math.Min(line5, line7);
@@ -27,7 +27,7 @@ public static class QualifiedDividendsAndCapitalGainTaxWorksheet
         var line10 = Math.Min(line1, line4);
         var line11 = line9;
         var line12 = line10 - line11;
-        var line13 = 583750m;
+        var line13 = 583750m; // todo: move this to tax constants
         var line14 = Math.Min(line1, line13);
         var line15 = line5 + line9;
         var line16 = Math.Max(0m, line14 - line15);

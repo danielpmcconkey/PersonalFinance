@@ -39,7 +39,7 @@ public static class TaxTable
         return Math.Round((liabilityAtFloor + liabilityAtCeiling) / 2m, 0, MidpointRounding.AwayFromZero);
         
     }
-    private static decimal CalculatePreciseLiability(decimal amount)
+    public static decimal CalculatePreciseLiability(decimal amount)
     {
         // this calculates the to-the-penny amount.
         var totalLiability = 0m;
