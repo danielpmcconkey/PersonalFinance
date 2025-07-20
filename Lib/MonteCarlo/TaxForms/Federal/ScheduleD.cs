@@ -1,59 +1,81 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
 /// <summary>
 /// Schedule D Capital Gains and Losses
+/// https://www.irs.gov/pub/irs-pdf/f1040sd.pdf
+/// https://www.irs.gov/pub/irs-pdf/i1040sd.pdf
 /// </summary>
-public static class ScheduleD
+public class ScheduleD
 {
-    public static (decimal scheduleDLine15NetLongTermCapitalGain, decimal scheduleDLine16CombinedCapitalGains,
-        bool scheduleDLine20Are18And19BothZero, bool scheduleDLine22DoYouHaveQualifiedDividendsOnCapitalGains)
-        PopulateScheduleDAndCalculateFinalValue(TaxLedger ledger, int taxYear)
+    private TaxLedger _ledger;
+    private int _taxYear;
+    private decimal _form1040Line7 = 0m;
+    private bool _isRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet = false;
+    private decimal _line16CombinedCapitalGains = 0m;
+    private decimal _line15LongTermCapitalGains = 0m;
+    public decimal Form1040Line7 => _form1040Line7;
+    public bool IsRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet =>
+        _isRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet;
+    public decimal Line15LongTermCapitalGains => _line15LongTermCapitalGains;
+    public decimal Line16CombinedCapitalGains => _line16CombinedCapitalGains;
+    
+    public ScheduleD(TaxLedger ledger, int taxYear)
     {
-        var line7NetShortTermCapitalGain = CalculateTotalShortTermCapitalGainsAndLosses(ledger, taxYear);
-        var line15NetLongTermCapitalGain = CalculateTotalLongTermCapitalGainsAndLosses(ledger, taxYear);
-        var summaryResults = RunSummaryAndCalculateFinalValue(ledger, line7NetShortTermCapitalGain, line15NetLongTermCapitalGain);;
-        return (line15NetLongTermCapitalGain, summaryResults.line16Or21CombinedCapitalGains,
-            summaryResults.line20Are18And19BothZero, summaryResults.line22DoYouHaveQualifiedDividendsOnCapitalGains);
-    }
-    public static decimal CalculateTotalShortTermCapitalGainsAndLosses(TaxLedger ledger, int taxYear)
-    {
-        return ledger.ShortTermCapitalGains
-            .Where(x => x.earnedDate.Year == taxYear)
-            .Sum(x => x.amount);
-    }
-    public static decimal CalculateTotalLongTermCapitalGainsAndLosses(TaxLedger ledger, int taxYear)
-    {
-        return ledger.LongTermCapitalGains
-            .Where(x => x.earnedDate.Year == taxYear)
-            .Sum(x => x.amount);
+        _ledger = ledger;
+        _taxYear = taxYear;
     }
 
-    public static (decimal line16Or21CombinedCapitalGains, bool line20Are18And19BothZero, bool line22DoYouHaveQualifiedDividendsOnCapitalGains)
-        RunSummaryAndCalculateFinalValue(
-            TaxLedger ledger, decimal line7NetShortTermCapitalGain, decimal line15NetLongTermCapitalGain)
+    public void Complete()
     {
-        (decimal line16Or21, bool Line20Are18And19BothZero, bool Line22DoYouHaveQualifiedDividendsOnCapitalGains) results = 
-            (0m, true, false);
-        results.line16Or21 = line7NetShortTermCapitalGain + line15NetLongTermCapitalGain;
-        if (results.line16Or21 == 0) return results;
-        if (results.line16Or21 < 0)
+        var line7 = TaxCalculation.CalculateLongTermCapitalGainsForYear(_ledger, _taxYear);
+        _line15LongTermCapitalGains = TaxCalculation.CalculateLongTermCapitalGainsForYear(_ledger, _taxYear);
+        _line16CombinedCapitalGains = line7 + _line15LongTermCapitalGains;
+        if (_line16CombinedCapitalGains > 0)
         {
-            var line21SmallerOfTheLoss = Math.Min(TaxConstants.ScheduleDMaximumCapitalLoss, Math.Abs(results.line16Or21));
-            results.line16Or21 = -1 * line21SmallerOfTheLoss;
-            return results;
+            CompleteBothGainsPath();
+            return;
         }
-        // positive gains, bro
-        var line17 = (results.line16Or21 > 0 && line15NetLongTermCapitalGain > 0);
-        if (line17 == false) return results;
-        var line18CollectiblesRateGain = 0;
-        var line19UnrecapturedSection1250Gain = 0;
-       
-        results.Line20Are18And19BothZero = (line18CollectiblesRateGain == 0 && line19UnrecapturedSection1250Gain == 0);
-        results.Line22DoYouHaveQualifiedDividendsOnCapitalGains = false; // we're not modelling dividends
 
-        return results;
+        if (_line16CombinedCapitalGains < 0)
+        {
+            var reportedLoss = Math.Max(TaxConstants.ScheduleDMaximumCapitalLoss, _line16CombinedCapitalGains);
+            _form1040Line7 = reportedLoss;
+            CompleteLine22();
+            return;
+        }
+        // line16 == 0;
+        _form1040Line7 = 0m;
+        CompleteLine22();
+        return;
+    }
+
+    private void CompleteBothGainsPath()
+    {
+        _form1040Line7 = _line16CombinedCapitalGains;
+        var line17 = (_line15LongTermCapitalGains > 0 && _line16CombinedCapitalGains > 0);
+        if (line17 == false)
+        {
+            CompleteLine22();
+            return;
+        }
+
+        const decimal line18 = 0m; // 28% rate gain worksheet
+        const decimal line19 = 0m; // unrecaptured something
+        const bool line20 = true;
+        _isRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet = true;
+        return;
+    }
+
+    private void CompleteLine22()
+    {
+        var dividends = TaxCalculation.CalculateQualifiedDividendsForYear(_ledger, _taxYear);
+        if (dividends > 0)
+        {
+            _isRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet = true;
+        }
     }
 }

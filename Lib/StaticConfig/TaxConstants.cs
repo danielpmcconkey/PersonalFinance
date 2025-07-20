@@ -39,7 +39,9 @@ public static class TaxConstants
     public const decimal PlaceholderLastYearsSocialSecurityIncome = 48000.0M; // in case you're calculating income head room and haven't had any social security yet.
     public const decimal SocialSecurityWorksheetCreditLine8 = 32000m;
     public const decimal SocialSecurityWorksheetCreditLine10 = 12000m;
-    public const decimal ScheduleDMaximumCapitalLoss = 3000m;
+    public const decimal ScheduleDMaximumCapitalLoss = -3000m;
+    public const decimal FxaixAnnualDividendYield = 0.012m; // based on July 20, 2025 // todo: take dividends out of stock price and record them for tax purposes
+    public const decimal DividendPercentQualified = 0.95m; // 5% ordinary, 95% qualified
 
     static TaxConstants()
     {

@@ -108,7 +108,7 @@ public class TaxCalculationTests
         ledger.SocialSecurityIncome.Add((_baseDate, socialSecurityIncome));
 
         // Act
-        var result = TaxCalculation.CalculateTaxableSocialSecurityIncomeForYear(ledger, _testYear);
+        var result = TaxCalculation.CalculateSocialSecurityIncomeForYear(ledger, _testYear);
 
         // Assert
         Assert.Equal(socialSecurityIncome * TaxConstants.MaxSocialSecurityTaxPercent, result);
