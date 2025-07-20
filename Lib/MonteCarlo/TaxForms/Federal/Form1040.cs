@@ -42,10 +42,10 @@ public class Form1040
     /// This is a combination of Line 38 (Amount you owe) and Line 34 (Refund amount). If you would get a refund, that
     /// returns as a negative here.
     /// </summary>
-    public decimal CalculateTaxLiability(TaxLedger ledger, int taxYear)
+    public decimal CalculateTaxLiability()
     {
         // https://www.irs.gov/pub/irs-pdf/f1040.pdf
-        var line1A = TaxCalculation.CalculateW2IncomeForYear(ledger, taxYear);
+        var line1A = TaxCalculation.CalculateW2IncomeForYear(_ledger, _taxYear);
         var line1B = 0m; // Household employee wages not reported on Form(s) W-2
         var line1C = 0m; // Tip income not reported on line 1a (see instructions)
         var line1D = 0m; // Medicaid waiver payments not reported on Form(s) W-2 (see instructions)
@@ -56,12 +56,12 @@ public class Form1040
         var line1I = 0m; // Nontaxable combat pay election (see instructions) 
         var line1Z = line1A + line1B + line1C + line1D + line1E + line1F + line1G + line1H + line1I;
         var line2A = 0m; // Tax-exempt interest received
-        var line2B = TaxCalculation.CalculateTaxableInterestReceivedForYear(ledger, taxYear);
-        _line3AQualifiedDividends = TaxCalculation.CalculateQualifiedDividendsForYear(ledger, taxYear);
-        var line3B = TaxCalculation.CalculateTotalDividendsForYear(ledger, taxYear);
-        var line4B = TaxCalculation.CalculateTaxableIraDistributionsForYear(ledger, taxYear);
+        var line2B = TaxCalculation.CalculateTaxableInterestReceivedForYear(_ledger, _taxYear);
+        _line3AQualifiedDividends = TaxCalculation.CalculateQualifiedDividendsForYear(_ledger, _taxYear);
+        var line3B = TaxCalculation.CalculateTotalDividendsForYear(_ledger, _taxYear);
+        var line4B = TaxCalculation.CalculateTaxableIraDistributionsForYear(_ledger, _taxYear);
         var line5B = 0m; // Pensions and annuities
-        var line6A = TaxCalculation.CalculateSocialSecurityIncomeForYear(ledger, taxYear);
+        var line6A = TaxCalculation.CalculateSocialSecurityIncomeForYear(_ledger, _taxYear);
         // need to skip line 6B for now because it needs line 7 as part of the combined income
         var line6B = 0m;
         // need to complete schedule D here before we can answer line 7
@@ -71,7 +71,7 @@ public class Form1040
         // revisit line 6B now that you know all the inputs
         var combinedIncome = line1Z + line2B + line3B + line4B + line5B + line7 + line8;
         line6B = SocialSecurityBenefitsWorksheet.CalculateTaxableSocialSecurityBenefits(
-            ledger, taxYear, combinedIncome, line2A);
+            _ledger, _taxYear, combinedIncome, line2A);
         var line9TotalIncome =  combinedIncome + line6B; // This is your total income
         var line10 = 0m; // Adjustments to income from Schedule 1, line 26 
         _adjustedGrossIncome = line9TotalIncome - line10;
@@ -79,7 +79,7 @@ public class Form1040
         var line13 = 0m; // Qualified business income deduction from Form 8995 or Form 8995-A 
         var line14 = line12 + line13;
         _line15TaxableIncome = Math.Max(_adjustedGrossIncome - line14, 0);
-        _line16TaxLiability = CalculateTaxLiability();
+        _line16TaxLiability = CalculateTax();
         var line17 = 0m; // we won't model additional taxes and the AMT only kicks in above 1.2MM in income
         var line18 = _line16TaxLiability + line17;
         var line19 = 0m; // kids be growned up
@@ -88,7 +88,7 @@ public class Form1040
         var line22 = Math.Min(0, line18 - line21);
         var line23 = 0m; // no other taxes
         var line24TotalTax = line22 + line23;
-        var line25FederalWithholding = TaxCalculation.CalculateFederalWithholdingForYear(ledger, taxYear);
+        var line25FederalWithholding = TaxCalculation.CalculateFederalWithholdingForYear(_ledger, _taxYear);
         var line26 = 0m; // no prior payments
         var line27 = 0m; // no EIC
         var line28 = 0m; // no add'l child tax credit
@@ -100,7 +100,7 @@ public class Form1040
         return line24TotalTax - line33TotalPayments;
     }
 
-    private decimal CalculateTaxLiability()
+    private decimal CalculateTax()
     {
         if (_scheduleD.IsRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet)
         {

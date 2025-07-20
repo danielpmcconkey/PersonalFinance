@@ -6,9 +6,6 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class TaxCalculation
 {
-    
-    
-    
     /// <summary>
     /// sets the income target for next year based on this year's social security income. the idea is that, below
     /// $96,950 in adjusted gross income, the tax on ordinary income is only 12%. Anything above that amount is taxed at
@@ -69,8 +66,6 @@ public static class TaxCalculation
         return rmd;
 
     }
-    
-    
     /// <summary>
     /// Assumes that all of my social security and income benifit will add
     /// up to enough to be maximally taxable, which is 85% of the total
@@ -82,7 +77,6 @@ public static class TaxCalculation
             .Where(x => x.earnedDate.Year == year)
             .Sum(x => x.amount)) * TaxConstants.MaxSocialSecurityTaxPercent;
     }
-
     public static decimal CalculateTaxableInterestReceivedForYear(TaxLedger ledger, int taxYear)
     {
         return ledger.TaxableInterestReceived
@@ -104,18 +98,17 @@ public static class TaxCalculation
     public static decimal CalculateTaxLiabilityForYear(TaxLedger ledger, int taxYear)
     {
         decimal totalLiability = 0M;
-        var federalResults = Form1040.CalculateTaxLiability(ledger, taxYear);
-        totalLiability += federalResults.liability;
-        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(federalResults.taxableIncome);
+        var form1040 = new Form1040(ledger, taxYear);
+        totalLiability += form1040.CalculateTaxLiability();
+        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(form1040.AdjustedGrossIncome);
         return totalLiability;
     }
-
-    public static decimal CalculateNorthCarolinaTaxLiabilityForYear(decimal taxableIncomeFrom1040)
+    public static decimal CalculateNorthCarolinaTaxLiabilityForYear(decimal adjustedGrossIncomeFrom1040)
     {
         // todo: actually work through NC tax rules
         decimal totalLiability = 0M;
         // NC state income tax
-        totalLiability += taxableIncomeFrom1040 * TaxConstants.NorthCarolinaFlatTaxRate;
+        totalLiability += adjustedGrossIncomeFrom1040 * TaxConstants.NorthCarolinaFlatTaxRate;
         return totalLiability;
     }
     public static decimal CalculateTaxableIraDistributionsForYear(TaxLedger ledger, int taxYear)
@@ -130,7 +123,6 @@ public static class TaxCalculation
             .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
-    
     public static decimal CalculateStateWithholdingForYear(TaxLedger ledger, int taxYear)
     {
         return ledger.StateWithholdings
