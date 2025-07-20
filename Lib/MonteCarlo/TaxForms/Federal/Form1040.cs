@@ -18,16 +18,6 @@ public class Form1040
     private decimal _adjustedGrossIncome = 0m;
     private decimal _line16TaxLiability = 0m;
     
-    /*
-     *
-     * 
-     * you are here
-     * you just refactored the 1040 after changing the spreadsheet
-     * you need to now fix all your tests
-     *
-     *
-     * 
-     */
     
     public Form1040(TaxLedger ledger, int taxYear)
     {
@@ -85,7 +75,7 @@ public class Form1040
         var line19 = 0m; // kids be growned up
         var line20 = 0m; // we may be able to model some of these credits later todo: review prior returns
         var line21 = line19 + line20;
-        var line22 = Math.Min(0, line18 - line21);
+        var line22 = Math.Max(0, line18 - line21);
         var line23 = 0m; // no other taxes
         var line24TotalTax = line22 + line23;
         var line25FederalWithholding = TaxCalculation.CalculateFederalWithholdingForYear(_ledger, _taxYear);

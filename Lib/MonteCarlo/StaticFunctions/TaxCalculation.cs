@@ -75,7 +75,7 @@ public static class TaxCalculation
     {
         return (ledger.SocialSecurityIncome
             .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount)) * TaxConstants.MaxSocialSecurityTaxPercent;
+            .Sum(x => x.amount)) ;
     }
     public static decimal CalculateTaxableInterestReceivedForYear(TaxLedger ledger, int taxYear)
     {

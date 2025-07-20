@@ -31,7 +31,7 @@ public class ScheduleD
 
     public void Complete()
     {
-        var line7 = TaxCalculation.CalculateLongTermCapitalGainsForYear(_ledger, _taxYear);
+        var line7 = TaxCalculation.CalculateShortTermCapitalGainsForYear(_ledger, _taxYear);
         _line15LongTermCapitalGains = TaxCalculation.CalculateLongTermCapitalGainsForYear(_ledger, _taxYear);
         _line16CombinedCapitalGains = line7 + _line15LongTermCapitalGains;
         if (_line16CombinedCapitalGains > 0)

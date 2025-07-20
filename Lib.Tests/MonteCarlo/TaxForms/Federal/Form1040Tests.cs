@@ -50,7 +50,21 @@ namespace Lib.Tests.MonteCarlo.TaxForms.Federal
         }
 
         [Theory]
-        [InlineData(48000, 200000,0, 0, 2100, 2000, 73000, 7000, 125000, 0,-27219)]
+        /*
+         * these testing scenarios are built using the TaxTest.ods spreadsheet tab named "Fed1040"
+         */
+// setup 1
+        [InlineData(48000, 200000,0, 0, 2100, 2000, 73000, 7000, 125000, 1535,-16688.6)]
+// setup 2
+        [InlineData(48000, 50000,0, 0, 2100, 2000, 0, 0, 7000, -8000,5815)]
+// all wages + withholding
+        [InlineData(0, 324000,0, 0, 0, 0, 40000, 12000, 0, 0,16837)]
+// early retirement
+        [InlineData(48000, 0,60000, 0, 1000, 0, 0, 0, 10000, 0,8251)]
+// lavish retirement
+        [InlineData(48000, 0,100000, 0, 2100, 2000, 0, 0, 50000, -4500,21805)]
+// broke
+        [InlineData(32000, 0,0, 0, 0, 0, 0, 0, 0, 0,0)]
         public void CalculateTaxLiability_VariousScenarios_CalculatesCorrectly(
             decimal socialSecurityIncome, 
             decimal w2Income, 

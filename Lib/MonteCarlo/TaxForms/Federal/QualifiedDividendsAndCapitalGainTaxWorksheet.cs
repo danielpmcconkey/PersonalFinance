@@ -32,7 +32,7 @@ public static class QualifiedDividendsAndCapitalGainTaxWorksheet
         var line15 = line5 + line9;
         var line16 = Math.Max(0m, line14 - line15);
         var line17 = Math.Min(line12, line16);
-        var line18 = line17 * 0.15m;
+        var line18 = line17 * 0.15m; // todo: read from the tax constants brackets
         var line19 = line9 + line17;
         var line20 = line10 - line19;
         var line21 = line20 * 0.20m;
