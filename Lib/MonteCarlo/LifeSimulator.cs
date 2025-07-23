@@ -39,23 +39,30 @@ namespace Lib.MonteCarlo
             var prices = new CurrentPrices();
             // set investment positions in terms of the default long, middle, and short-term prices
             accounts = Investment.NormalizeInvestmentPositions(accounts, prices);
+            // set up the monthly social security wage, add it to both person and ledger
+            var monthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(person,
+                simParams.SocialSecurityStart);
+            var copiedPerson = Person.CopyPerson(person);
+            copiedPerson.MonthlySocialSecurityWage = monthlySocialSecurityWage;
+            var ledger = new TaxLedger();
+            ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
+            ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
+            
             // set up the sim struct to be used to keep track of all the sim data
             _sim = new MonteCarloSim()
             {
                 Log = logger,
                 SimParameters = simParams,
                 BookOfAccounts = accounts,
-                Person = person,
+                Person = copiedPerson,
                 CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
                 CurrentPrices = prices,
                 RecessionStats = new RecessionStats(),
-                TaxLedger = new TaxLedger(),
+                TaxLedger = ledger,
                 LifetimeSpend = new LifetimeSpend(),
             };
             _hypotheticalPrices = hypotheticalPrices;
             _measurements = [];
-            _sim.Person.MonthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(_sim.Person,
-                _sim.SimParameters.SocialSecurityStart);
             _sim.Person.Monthly401kMatch = Person.CalculateMonthly401KMatch(_sim.Person);
         }
         public List<NetWorthMeasurement> Run()

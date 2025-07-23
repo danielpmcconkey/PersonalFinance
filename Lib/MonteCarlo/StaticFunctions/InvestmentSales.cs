@@ -89,7 +89,7 @@ public static class InvestmentSales
             0M, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
         
         // calculate the amount of income room we have so we can sell tax deferred account positions first
-        var incomeRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, currentDate.Year);
+        var incomeRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, currentDate);
 
         // set up an "empty" localresult so you can use that variable name multiple times later
         (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) localResult = (0, bookOfAccounts, taxLedger);

@@ -12,67 +12,82 @@ public class TaxCalculationTests
     private readonly LocalDateTime _baseDate = new(2025, 1, 1, 0, 0);
     
 
-    [Fact]
-    public void CalculateIncomeRoom_ReturnsCorrectAmount()
+    [Theory]
+    /*
+     * these came from the TaxTesting.ods sheet titled "headroom calc"
+     */
+    [InlineData(2034,2,108700)]
+    [InlineData(2034,3,108700)]
+    [InlineData(2034,4,108700)]
+    [InlineData(2034,5,108700)]
+    [InlineData(2034,6,108700)]
+    [InlineData(2034,7,108700)]
+    [InlineData(2034,8,108700)]
+    [InlineData(2034,9,108700)]
+    [InlineData(2034,10,108700)]
+    [InlineData(2034,11,108700)]
+    [InlineData(2034,12,108700)]
+    [InlineData(2035,1,78100)]
+    [InlineData(2035,2,78100)]
+    [InlineData(2035,3,78100)]
+    [InlineData(2035,4,78100)]
+    [InlineData(2035,5,78100)]
+    [InlineData(2035,6,78100)]
+    [InlineData(2035,7,78100)]
+    [InlineData(2035,8,78100)]
+    [InlineData(2035,9,78100)]
+    [InlineData(2035,10,78100)]
+    [InlineData(2035,11,78100)]
+    [InlineData(2035,12,78100)]
+    [InlineData(2036,1,47500)]
+    [InlineData(2036,2,47500)]
+    [InlineData(2036,3,47500)]
+    [InlineData(2036,4,47500)]
+    [InlineData(2036,5,47500)]
+    [InlineData(2036,6,47500)]
+    [InlineData(2036,7,47500)]
+    [InlineData(2036,8,47500)]
+    [InlineData(2036,9,47500)]
+    [InlineData(2036,10,47500)]
+    [InlineData(2036,11,47500)]
+    [InlineData(2036,12,47500)]
+
+
+
+    public void CalculateIncomeRoom_ReturnsCorrectAmount(int currentYear, int currentMonth, decimal expectedHeadroom)
     {
+        
         // Arrange
+        var currentDate = new LocalDateTime(currentYear, currentMonth, 1, 0, 0);
         var ledger = new TaxLedger();
-        // add last year's social security wages
-        ledger.SocialSecurityIncome.Add((_baseDate.PlusYears(-1), 24000m));
-        // add some long term cap gains
-        ledger.LongTermCapitalGains.Add((_baseDate, 10000m));
-        // add some IRA distributions
-        ledger.TaxableIraDistribution.Add((_baseDate, 20000m));
-        
-        
-        var expectedHeadroom = TaxConstants.Federal1040TaxTableBrackets[1].max 
-                               - (24000m * TaxConstants.MaxSocialSecurityTaxPercent)
-                               - 10000m
-                               - 20000m
-                               + TaxConstants.FederalStandardDeduction;
-        
+        ledger.W2Income.Add((currentDate, 1000m));
+        ledger.TaxableIraDistribution.Add((currentDate, 2000m));
+        ledger.TaxableInterestReceived.Add((currentDate, 3000m));
+        ledger.DividendsReceived.Add((currentDate, 4000m));
+        ledger.QualifiedDividendsReceived.Add((currentDate, 200m));
+        ledger.ShortTermCapitalGains.Add((currentDate, 5000));
+        ledger.SocialSecurityElectionStartDate = new(2035,7,1,0,0);
+        ledger.SocialSecurityWageMonthly = 6000m;
         
         // Act
-        var result = TaxCalculation.CalculateIncomeRoom(ledger, _testYear);
+        var result = TaxCalculation.CalculateIncomeRoom(ledger, currentDate);
 
         // Assert
         Assert.Equal(expectedHeadroom, result);
     }
 
-    [Fact]
-    public void CalculateIncomeRoom_WithNoPriorSocialSecurityIncome_UsesPlaceholderValue()
-    {
-        // Arrange
-        var ledger = new TaxLedger();
-        // add some long term cap gains
-        ledger.LongTermCapitalGains.Add((_baseDate, 10000m));
-        // add some IRA distributions
-        ledger.TaxableIraDistribution.Add((_baseDate, 20000m));
-        
-        
-        var expectedHeadroom = TaxConstants.Federal1040TaxTableBrackets[1].max 
-               - (TaxConstants.PlaceholderLastYearsSocialSecurityIncome * TaxConstants.MaxSocialSecurityTaxPercent)
-               - 10000m 
-               - 20000m
-               + TaxConstants.FederalStandardDeduction;
-        
-        
-        // Act
-        var result = TaxCalculation.CalculateIncomeRoom(ledger, _testYear);
-
-        // Assert
-        Assert.Equal(expectedHeadroom, result);
-    }
+    
 
     [Fact]
     public void CalculateIncomeRoom_NegativeRoom_ReturnsZero()
     {
         // Arrange
         var ledger = new TaxLedger();
-        // add last year's social security wages
-        ledger.SocialSecurityIncome.Add((_baseDate.PlusYears(-1), 48000m));
+        // should result in 6k * 12 * .85 ss income projection on the year
+        ledger.SocialSecurityElectionStartDate = _baseDate.PlusYears(-2);
+        ledger.SocialSecurityWageMonthly = 6000m;
         // add some long term cap gains
-        ledger.LongTermCapitalGains.Add((_baseDate, 50000m));
+        ledger.W2Income.Add((_baseDate, 50000m));
         // add some IRA distributions
         ledger.TaxableIraDistribution.Add((_baseDate, 65000));
 
@@ -81,7 +96,7 @@ public class TaxCalculationTests
         
         
         // Act
-        var result = TaxCalculation.CalculateIncomeRoom(ledger, _testYear);
+        var result = TaxCalculation.CalculateIncomeRoom(ledger, _baseDate);
 
         // Assert
         Assert.Equal(expectedHeadroom, result);
@@ -98,39 +113,25 @@ public class TaxCalculationTests
         // Assert
         Assert.Equal(shouldHaveRate, result.HasValue);
     }
-
-    [Fact]
-    public void CalculateTaxableSocialSecurityIncome_AppliesCorrectPercentage()
-    {
-        // Arrange
-        var socialSecurityIncome = 24000m;
-        var ledger = new TaxLedger();
-        ledger.SocialSecurityIncome.Add((_baseDate, socialSecurityIncome));
-
-        // Act
-        var result = TaxCalculation.CalculateSocialSecurityIncomeForYear(ledger, _testYear);
-
-        // Assert
-        Assert.Equal(socialSecurityIncome * TaxConstants.MaxSocialSecurityTaxPercent, result);
-    }
-
    
     [Theory]
     /*
      * these expectations were calculated using the "NorthCarolinaTaxLiability" tab of the TaxTesting.ods file
      */
-    [InlineData(10000, 10000, 798)]
-    [InlineData(25000, 30000, 2194.5)]
-    [InlineData(62500, 90000, 6084.75)]
-    [InlineData(156250, 270000, 17007.38)]
-    [InlineData(390625, 810000, 47904.94)]
-    [InlineData(976562.5, 2430000, 135921.84)]
-
+    [InlineData(10000,5, -5)]
+    [InlineData(25000,10, -10)]
+    [InlineData(62500,20, 1645)]
+    [InlineData(156250,40, 5843.75)]
+    [InlineData(390625,80, 16350.63)]
+    [InlineData(976562.5,160, 42637.81)]
     public void CalculateNorthCarolinaTaxLiabilityForYear_CalculatesCorrectTax(
-        decimal earnedIncome, decimal totalCapitalGains, decimal expectation)
+        decimal adjustedGrossIncome, decimal withholding, decimal expectation)
     {
+        // Arrange
+        var ledger = new TaxLedger();
+        ledger.StateWithholdings.Add((_baseDate, withholding));
         var result = TaxCalculation.CalculateNorthCarolinaTaxLiabilityForYear(
-            earnedIncome + totalCapitalGains);
-        Assert.Equal(expectation, Math.Round(result, 2));
+            ledger, _baseDate.Year, adjustedGrossIncome);
+        Assert.Equal(expectation, Math.Round(result, 2, MidpointRounding.AwayFromZero));
     }
 }

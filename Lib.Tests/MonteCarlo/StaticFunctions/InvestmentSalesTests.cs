@@ -365,13 +365,11 @@ public class InvestmentSalesTests
         
         var book = Account.CreateBookOfAccounts([taxDeferredAccount, brokerageAccount], []);
         var taxLedger = new TaxLedger();
-        var incomeNeededToCreateMinimalRoom = 
-              TaxConstants.Federal1040TaxTableBrackets[1].max // the max 12% income value
-              + TaxConstants.FederalStandardDeduction
-              - (TaxConstants.PlaceholderLastYearsSocialSecurityIncome * TaxConstants.MaxSocialSecurityTaxPercent)
-              - 1500m; // the amount of headroom we should have after we add income
+        var incomeNeededToCreateMinimalRoom =
+            TaxCalculation.CalculateIncomeRoom(taxLedger, _testDate)
+              - 1500m; 
         taxLedger.W2Income.Add((_testDate, incomeNeededToCreateMinimalRoom));
-        var actualRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, _testDate.Year);
+        var actualRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, _testDate);
         var amountNeeded = 2500m;
         var expectedTaxDeferredSaleAmount = 2000m;
         var expectedBrokerageSaleAmount = 1000m;

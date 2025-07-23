@@ -1,6 +1,8 @@
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.TaxForms.Federal;
+using Lib.MonteCarlo.TaxForms.NC;
 using Lib.StaticConfig;
+using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
 
@@ -14,39 +16,54 @@ public static class TaxCalculation
     /// that 12% ceiling from our traditional accounts and then move over to capital gains accounts beyond that point.
     /// </summary>
     /// todo: vet out this logic (and all other tax calcs) 
-    public static decimal CalculateIncomeRoom(TaxLedger ledger, int year)
+    public static decimal CalculateIncomeRoom(TaxLedger ledger, LocalDateTime currentDate)
     {
         // start with the _incomeTaxBrackets 12% max
-        var headRoom = TaxConstants.Federal1040TaxTableBrackets[1].max;
+        var maxAtBracket = TaxConstants.Federal1040TaxTableBrackets[1].max;
         
         // add the standard deduction 
-        headRoom += TaxConstants.FederalStandardDeduction;
+        var standardDeduction= TaxConstants.FederalStandardDeduction;
+
+        var spanUntilSsElectionStart = ledger.SocialSecurityElectionStartDate - currentDate;
+        var monthsUntilSsElectionStart = (spanUntilSsElectionStart.Years * 12) + spanUntilSsElectionStart.Months;
+        var currentYear = currentDate.Year;
+        var benefitsStartYear = ledger.SocialSecurityElectionStartDate.Year;
+
+        // determine total social security wage
+        decimal projectedTotalSsIncomeThisYear = 0m;
+        if (currentYear < benefitsStartYear) projectedTotalSsIncomeThisYear = 0m;
+        else if (currentYear > benefitsStartYear) projectedTotalSsIncomeThisYear = ledger.SocialSecurityWageMonthly * 12m;
+        else
+        {
+            // we're in the election year, so we'll only get wages for part of it
+            var nextJan1 = new LocalDateTime(currentYear + 1, 1, 1, 0, 0);
+            var benefitMonths = (nextJan1 - ledger.SocialSecurityElectionStartDate).Months;
+            projectedTotalSsIncomeThisYear = ledger.SocialSecurityWageMonthly * benefitMonths;
+        }
+        // determine taxable % of social security wage projection
+        var taxableSocialSecurityProjection = projectedTotalSsIncomeThisYear * TaxConstants.MaxSocialSecurityTaxPercent;
         
-        // remove last year's social security, but only 85% of it
-        var taxableSocialSecurity = CalculateSocialSecurityIncomeForYear(ledger, year - 1);
-        // in case this is the first year we need to do this, but haven't logged any social security income, use a min
-        // value placeholder so we don't wildly overestimate our head room
-        if (taxableSocialSecurity <= 0) taxableSocialSecurity = 
-            TaxConstants.PlaceholderLastYearsSocialSecurityIncome * 
-            TaxConstants.MaxSocialSecurityTaxPercent;
-        headRoom -= taxableSocialSecurity;
         
-        // remove any other income, capital gains, or taxable distribution
-        headRoom -= ledger.W2Income
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
-        headRoom -= ledger.LongTermCapitalGains
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
-        headRoom -= ledger.ShortTermCapitalGains
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
-        headRoom -= ledger.TaxableIraDistribution
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
-        headRoom -= ledger.TaxableInterestReceived
-            .Where(x => x.earnedDate.Year == year)
-            .Sum(x => x.amount);
+         
+        
+        
+        // remove any other revenue that would be taxed as income
+        var w2Income = CalculateW2IncomeForYear(ledger, currentYear);
+        var taxableIraDistributions = CalculateTaxableIraDistributionsForYear(ledger, currentYear);
+        var taxableInterestReceived = CalculateTaxableInterestReceivedForYear(ledger, currentYear);
+        var qualifiedDividends = CalculateQualifiedDividendsForYear(ledger, currentYear);
+        var totalDividends = CalculateTotalDividendsForYear(ledger, currentYear);
+        var dividendThatCount = totalDividends - qualifiedDividends;
+        var shortTermCapitalGains = CalculateShortTermCapitalGainsForYear(ledger, currentYear);
+        var headRoom = 0m
+                       + maxAtBracket
+                       + standardDeduction
+                       - taxableSocialSecurityProjection
+                       - w2Income
+                       - taxableIraDistributions
+                       - taxableInterestReceived
+                       - dividendThatCount
+                       - shortTermCapitalGains;
         
         // finally, don't let it go below 0
         return Math.Max(headRoom, 0);
@@ -100,16 +117,15 @@ public static class TaxCalculation
         decimal totalLiability = 0M;
         var form1040 = new Form1040(ledger, taxYear);
         totalLiability += form1040.CalculateTaxLiability();
-        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(form1040.AdjustedGrossIncome);
+        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(
+            ledger, taxYear, form1040.AdjustedGrossIncome);
         return totalLiability;
     }
-    public static decimal CalculateNorthCarolinaTaxLiabilityForYear(decimal adjustedGrossIncomeFrom1040)
+    public static decimal CalculateNorthCarolinaTaxLiabilityForYear(
+        TaxLedger ledger, int taxYear, decimal adjustedGrossIncomeFrom1040)
     {
-        // todo: actually work through NC tax rules
-        decimal totalLiability = 0M;
-        // NC state income tax
-        totalLiability += adjustedGrossIncomeFrom1040 * TaxConstants.NorthCarolinaFlatTaxRate;
-        return totalLiability;
+        var formD400 = new FormD400(ledger, taxYear, adjustedGrossIncomeFrom1040);
+        return formD400.CalculateTaxLiability();
     }
     public static decimal CalculateTaxableIraDistributionsForYear(TaxLedger ledger, int taxYear)
     {
