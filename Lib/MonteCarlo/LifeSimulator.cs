@@ -283,9 +283,9 @@ namespace Lib.MonteCarlo
                 Reconciliation.AddFullReconLine(_sim, 0M, "Accrued interest");
             }
         }
-        private void PayTax()
+        private bool PayTax()
         {
-            if (_sim.Person.IsBankrupt) return;
+            if (_sim.Person.IsBankrupt) return false;
             
             var taxYear = _sim.CurrentDateInSim.Year - 1;
             
@@ -299,8 +299,7 @@ namespace Lib.MonteCarlo
             newTaxLedger.TotalTaxPaid += taxLiability;
             
             
-            // todo: don't spend cash in the PayTax function. Use some other non-fun means of recording this spend
-            SpendCash(taxLiability);
+            if(!SpendCash(taxLiability, false)) return false;
             
             _sim.TaxLedger = newTaxLedger;
             
@@ -308,6 +307,8 @@ namespace Lib.MonteCarlo
             {
                 Reconciliation.AddFullReconLine(_sim, taxLiability, "Paid taxes");
             }
+
+            return true;
         }
         private void GetSocialSecurityCheck()
         {
@@ -331,31 +332,34 @@ namespace Lib.MonteCarlo
             }
         }
         
-        private void SpendCash(decimal amount)
+        private bool SpendCash(decimal amount, bool isFun)
         {
-            // prior to retirement, don't debit the cash account as it's
-            // assumed we're just paying our bills pre-retirement with our
-            // surplus income
-            if (!_sim.Person.IsRetired) return; // todo: re-jigger spending pre-retirement to calc "fun" points
-            
-            var withdrawalResults = AccountCashManagement.WithdrawCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim, _sim.TaxLedger);
+            var withdrawalResults = AccountCashManagement.WithdrawCash(
+                _sim.BookOfAccounts, amount, _sim.CurrentDateInSim, _sim.TaxLedger);
             _sim.BookOfAccounts = withdrawalResults.newAccounts;
             _sim.TaxLedger = withdrawalResults.newLedger;
             if (!withdrawalResults.isSuccessful)
             {
                 DeclareBankruptcy();
+                return false;
             }
-            _sim.LifetimeSpend = Spend.RecordSpend(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);;
+            _sim.LifetimeSpend = Spend.RecordSpend(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
+            if (isFun)
+            {
+                var funPoints = Spend.CalculateFunPointsForSpend(amount, _sim.Person, _sim.CurrentDateInSim);
+                _sim.LifetimeSpend = Spend.RecordFunPoints(_sim.LifetimeSpend, funPoints, _sim.CurrentDateInSim);
+            }
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim, amount, "Spent cash");
             }
+            return true;
         }
         
         
-        private void PayForStuff()
+        private bool PayForStuff()
         {
-            if (_sim.Person.IsBankrupt) return;
+            if (_sim.Person.IsBankrupt) return false;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Time to spend the money");
@@ -368,18 +372,15 @@ namespace Lib.MonteCarlo
             funSpend = Spend.CalculateRecessionSpendOverride(_sim.SimParameters, funSpend, _sim.RecessionStats);
             
             var withdrawalAmount = funSpend + notFunSpend;
-            SpendCash(withdrawalAmount);
-            
-            // calculate and record fun points
-            var funPoints = Spend.CalculateFunPointsForSpend(funSpend, _sim.Person, _sim.CurrentDateInSim);
-            _sim.LifetimeSpend = Spend.RecordFunPoints(_sim.LifetimeSpend, funPoints, _sim.CurrentDateInSim);
-            
+            if(!SpendCash(notFunSpend, false)) return false;;
+            if(!SpendCash(funSpend, true)) return false;
           
             
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddFullReconLine(_sim, withdrawalAmount, "Monthly spend spent");
             }
+            return true;
         }
         
         private void DeclareBankruptcy()
