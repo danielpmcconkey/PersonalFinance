@@ -154,7 +154,7 @@ public static class Spend
         
         if (recessionStats.AreWeInExtremeAusterityMeasures) 
             return standardSpendAmount * simParameters.ExtremeAusterityRatio;
-        if (recessionStats.AreWeInAusterityMeasures) return standardSpendAmount * simParameters.AusterityRatio;
+        if (recessionStats.AreWeInARecession) return standardSpendAmount * simParameters.AusterityRatio;
 
         return standardSpendAmount;
     }

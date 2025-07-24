@@ -2,6 +2,7 @@ namespace Lib.StaticConfig;
 
 public static class TaxConstants
 {
+    // todo: update tax constants and forms to 2025 versions
     
     public static readonly (decimal rate, decimal min, decimal max)[] Federal1040TaxTableBrackets = [
         /*

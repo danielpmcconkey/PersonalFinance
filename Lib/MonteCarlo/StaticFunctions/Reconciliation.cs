@@ -114,7 +114,7 @@ public static class Reconciliation
                 sim.LifetimeSpend.TotalDebtPaidLifetime,
                 sim.CurrentDateInSim >= sim.SimParameters.RetirementDate,
                 sim.Person.IsBankrupt,
-                sim.RecessionStats.AreWeInADownYear,
+                sim.RecessionStats.AreWeInARecession,
                 sim.RecessionStats.AreWeInExtremeAusterityMeasures
             );
             return line;

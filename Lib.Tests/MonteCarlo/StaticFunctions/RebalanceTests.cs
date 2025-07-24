@@ -183,7 +183,7 @@ public class RebalanceTests
         // Arrange
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         var simParams = CreateTestModel();
-        var recessionStats = new RecessionStats { AreWeInADownYear = true };
+        var recessionStats = new RecessionStats { AreWeInARecession = true };
         var ledger = new TaxLedger();
 
         // Act

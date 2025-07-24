@@ -95,6 +95,8 @@ namespace Lib.MonteCarlo
                         PayDownLoans();
                         
                         AddRetirementSavings();
+                        
+                        UpdateRecessionStats();
 
                         RebalancePortfolio();
                         
@@ -116,7 +118,7 @@ namespace Lib.MonteCarlo
                     }
 
                     var measurement = Account.CreateNetWorthMeasurement(_sim);
-                    _sim.RecessionStats = DetermineRecessionStats(measurement, _sim.RecessionStats);
+                    // _sim.RecessionStats = DetermineRecessionStats(measurement, _sim.RecessionStats);
                     if (measurement.NetWorth <= 0 || _sim.Person.IsBankrupt)
                     {
                         // zero it out to make reporting cleaner
@@ -145,33 +147,6 @@ namespace Lib.MonteCarlo
             
             
             return _measurements;
-        }
-
-        private RecessionStats DetermineRecessionStats(NetWorthMeasurement measurement, RecessionStats stats)
-        {
-            // todo: move the DetermineRecessionStats into the static functions and add unit tests
-            // todo: move all recession determination functionality into DetermineRecessionStats
-            
-            var recessionStats = stats;
-            // see if we're in extreme austerity measures based on total net worth
-            if (measurement.NetWorth <= _sim.SimParameters.ExtremeAusterityNetWorthTrigger)
-            {
-
-                recessionStats.AreWeInExtremeAusterityMeasures = true;
-                // set the end date to now. if we stay below the line, the date
-                // will keep going up with it
-                recessionStats.LastExtremeAusterityMeasureEnd = _sim.CurrentDateInSim;
-            }
-            else
-            {
-                // has it been within 12 months that we were in an extreme measure?
-                if (_sim.RecessionStats.LastExtremeAusterityMeasureEnd < _sim.CurrentDateInSim.PlusYears(-1))
-                {
-
-                    recessionStats.AreWeInExtremeAusterityMeasures = false;
-                }
-            }
-            return recessionStats;
         }
 
         private void SetGrowthAndPrices()
@@ -252,6 +227,17 @@ namespace Lib.MonteCarlo
                 Reconciliation.AddFullReconLine(_sim, result.amountSold, "RMD requirements met");
             }
         }
+
+        private void UpdateRecessionStats()
+        {
+            // do our recession checking every month, regardless of whether
+            // it's time to move money around. this gives us a finer grain for
+            // determining down years
+            _sim.RecessionStats = Recession.CalculateRecessionStats(
+                _sim.RecessionStats, _sim.CurrentPrices, _sim.SimParameters, _sim.BookOfAccounts, 
+                _sim.CurrentDateInSim);
+
+        }
         private void RebalancePortfolio()
         {
             if (_sim.Person.IsBankrupt) return;
@@ -259,11 +245,7 @@ namespace Lib.MonteCarlo
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Rebalancing portfolio");
             }
-            // do our recession checking every month, regardless of whether
-            // it's time to move money around. this gives us a finer grain for
-            // determining down years
-            _sim.RecessionStats = Recession.CalculateRecessionStats(_sim.RecessionStats, _sim.CurrentPrices, _sim.SimParameters);
-            // now rebalance
+            
             Rebalance.RebalancePortfolio(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.RecessionStats, 
                 _sim.CurrentPrices, _sim.SimParameters, _sim.TaxLedger, _sim.Person);
             if (StaticConfig.MonteCarloConfig.DebugMode)

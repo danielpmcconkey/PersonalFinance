@@ -7,14 +7,11 @@ namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
 public class RecessionTests
 {
-    // private McModel CreateTestModel()
-    // {
-    //     return new McModel
-    //     {
-    //         RecessionRecoveryPointModifier = 1.05m,
-    //         RecessionCheckLookBackMonths = 12
-    //     };
-    // }
+    private LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 0, 0);
+    private BookOfAccounts _bookOfAccounts = new BookOfAccounts()
+    {
+        InvestmentAccounts = new List<McInvestmentAccount>() , DebtAccounts = new List<McDebtAccount>()
+    };
     private McModel CreateTestModel()
     {
         return new McModel
@@ -62,9 +59,8 @@ public class RecessionTests
         // Arrange
         var original = new RecessionStats
         {
-            AreWeInADownYear = true,
-            DownYearCounter = 1.5m,
-            AreWeInAusterityMeasures = true,
+            AreWeInARecession = true,
+            RecessionDurationCounter = 1.5m,
             AreWeInExtremeAusterityMeasures = false,
             LastExtremeAusterityMeasureEnd = new LocalDateTime(2025, 1, 1, 0, 0),
             RecessionRecoveryPoint = 100m
@@ -74,9 +70,8 @@ public class RecessionTests
         var copy = Recession.CopyRecessionStats(original);
 
         // Assert
-        Assert.Equal(original.AreWeInADownYear, copy.AreWeInADownYear);
-        Assert.Equal(original.DownYearCounter, copy.DownYearCounter);
-        Assert.Equal(original.AreWeInAusterityMeasures, copy.AreWeInAusterityMeasures);
+        Assert.Equal(original.AreWeInARecession, copy.AreWeInARecession);
+        Assert.Equal(original.RecessionDurationCounter, copy.RecessionDurationCounter);
         Assert.Equal(original.AreWeInExtremeAusterityMeasures, copy.AreWeInExtremeAusterityMeasures);
         Assert.Equal(original.LastExtremeAusterityMeasureEnd, copy.LastExtremeAusterityMeasureEnd);
         Assert.Equal(original.RecessionRecoveryPoint, copy.RecessionRecoveryPoint);
@@ -89,13 +84,16 @@ public class RecessionTests
         var currentStats = new RecessionStats { RecessionRecoveryPoint = 100m };
         var currentPrices = CreateTestPrices(110m);
         var simParams = CreateTestModel();
+        
+        
 
         // Act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.Equal(currentStats.RecessionRecoveryPoint, result.RecessionRecoveryPoint);
-        Assert.Equal(currentStats.AreWeInADownYear, result.AreWeInADownYear);
+        Assert.Equal(currentStats.AreWeInARecession, result.AreWeInARecession);
     }
 
     [Fact]
@@ -110,7 +108,7 @@ public class RecessionTests
         
         var currentStats = new RecessionStats
         {
-            AreWeInADownYear = true,
+            AreWeInARecession = true,
             RecessionRecoveryPoint = oldHighWaterMark, 
         };
         var currentPrices = new CurrentPrices();
@@ -123,10 +121,11 @@ public class RecessionTests
         // };
         
         // act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams,_bookOfAccounts, _testDate);
         
         // assert
-        Assert.False(result.AreWeInADownYear);
+        Assert.False(result.AreWeInARecession);
         Assert.Equal(newHighWaterMark, result.RecessionRecoveryPoint);
         
     }
@@ -144,20 +143,21 @@ public class RecessionTests
         
         var currentStats = new RecessionStats
         {
-            AreWeInADownYear = true,
+            AreWeInARecession = true,
             RecessionRecoveryPoint = oldHighWaterMark,
-            DownYearCounter = oldDownYearCounter,
+            RecessionDurationCounter = oldDownYearCounter,
         };
         var currentPrices = new CurrentPrices();
         currentPrices.CurrentLongTermGrowthRate = .05m;
         currentPrices.CurrentLongTermInvestmentPrice = oldHighWaterMark; // haven't moved
         
         // act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
         
         // assert
-        Assert.True(result.AreWeInADownYear);
-        Assert.Equal(expectedDownYearCounter, result.DownYearCounter);
+        Assert.True(result.AreWeInARecession);
+        Assert.Equal(expectedDownYearCounter, result.RecessionDurationCounter);
 
     }
     
@@ -174,7 +174,7 @@ public class RecessionTests
         
         var currentStats = new RecessionStats
         {
-            AreWeInADownYear = false,
+            AreWeInARecession = false,
             RecessionRecoveryPoint = lastYearsPrice, 
         };
         var currentPrices = new CurrentPrices();
@@ -187,10 +187,11 @@ public class RecessionTests
         };
         
         // act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
         
         // assert
-        Assert.True(result.AreWeInADownYear);
+        Assert.True(result.AreWeInARecession);
         Assert.Equal(lastYearsPrice, result.RecessionRecoveryPoint);
     }
 
@@ -206,7 +207,7 @@ public class RecessionTests
         
         var currentStats = new RecessionStats
         {
-            AreWeInADownYear = false,
+            AreWeInARecession = false,
             RecessionRecoveryPoint = lastYearsPrice, 
         };
         var currentPrices = new CurrentPrices();
@@ -219,10 +220,11 @@ public class RecessionTests
         };
         
         // act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
         
         // assert
-        Assert.False(result.AreWeInADownYear);
+        Assert.False(result.AreWeInARecession);
         Assert.Equal(currentPrice, result.RecessionRecoveryPoint);
     }
 
@@ -234,20 +236,21 @@ public class RecessionTests
         // Arrange
         var currentStats = new RecessionStats 
         { 
-            AreWeInADownYear = true,
+            AreWeInARecession = true,
             RecessionRecoveryPoint = 100m,
-            DownYearCounter = 0.5m
+            RecessionDurationCounter = 0.5m
         };
         var currentPrices = CreateTestPrices(120m);
         var simParams = CreateTestModel();
 
         // Act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
 
         // Assert
-        Assert.False(result.AreWeInADownYear);
+        Assert.False(result.AreWeInARecession);
         Assert.Equal(120m, result.RecessionRecoveryPoint);
-        Assert.Equal(0m, result.DownYearCounter);
+        Assert.Equal(0m, result.RecessionDurationCounter);
     }
 
     
@@ -258,7 +261,7 @@ public class RecessionTests
         // Arrange
         var currentStats = new RecessionStats 
         { 
-            AreWeInADownYear = false,
+            AreWeInARecession = false,
             RecessionRecoveryPoint = 90m
         };
         var history = new List<decimal>();
@@ -270,10 +273,11 @@ public class RecessionTests
         var simParams = CreateTestModel();
 
         // Act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
 
         // Assert
-        Assert.True(result.AreWeInADownYear);
+        Assert.True(result.AreWeInARecession);
         Assert.Equal(100m, result.RecessionRecoveryPoint);
     }
 
@@ -283,7 +287,7 @@ public class RecessionTests
         // Arrange
         var currentStats = new RecessionStats 
         { 
-            AreWeInADownYear = false,
+            AreWeInARecession = false,
             RecessionRecoveryPoint = 100m
         };
         var history = new List<decimal>();
@@ -295,10 +299,11 @@ public class RecessionTests
         var simParams = CreateTestModel();
 
         // Act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
 
         // Assert
-        Assert.False(result.AreWeInADownYear);
+        Assert.False(result.AreWeInARecession);
         Assert.Equal(110m, result.RecessionRecoveryPoint);
     }
 
@@ -308,17 +313,18 @@ public class RecessionTests
         // Arrange
         var currentStats = new RecessionStats 
         { 
-            AreWeInADownYear = true,
+            AreWeInARecession = true,
             RecessionRecoveryPoint = 100m
         };
         var currentPrices = CreateTestPrices(104m); // Below 105m (100 * 1.05)
         var simParams = CreateTestModel();
 
         // Act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
 
         // Assert
-        Assert.True(result.AreWeInADownYear);
+        Assert.True(result.AreWeInARecession);
         Assert.Equal(100m, result.RecessionRecoveryPoint);
     }
 
@@ -328,7 +334,7 @@ public class RecessionTests
         // Arrange
         var currentStats = new RecessionStats 
         { 
-            AreWeInADownYear = false,
+            AreWeInARecession = false,
             RecessionRecoveryPoint = 120m
         };
         var history = new List<decimal>();
@@ -340,7 +346,8 @@ public class RecessionTests
         var simParams = CreateTestModel();
 
         // Act
-        var result = Recession.CalculateRecessionStats(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateRecessionStats(
+            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.Equal(120m, result.RecessionRecoveryPoint); // Keeps higher point

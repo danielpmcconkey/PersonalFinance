@@ -165,13 +165,13 @@ public class SpendTests
     [InlineData(true, false, 0.8)]   // Regular recession
     [InlineData(false, false, 1.0)]  // No recession
     public void CalculateRecessionSpendOverride_AppliesCorrectRatio(
-        bool inAusterity, bool inExtremeAusterity, decimal expectedRatio)
+        bool inRecession, bool inExtremeAusterity, decimal expectedRatio)
     {
         // Arrange
         var simParams = CreateTestModel();
         var recessionStats = new RecessionStats
         {
-            AreWeInAusterityMeasures = inAusterity,
+            AreWeInARecession = inRecession,
             AreWeInExtremeAusterityMeasures = inExtremeAusterity
         };
         var standardAmount = 1000m;

@@ -1,15 +1,57 @@
 using System.Net.Sockets;
 using Lib.DataTypes.MonteCarlo;
+using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Recession
 {
-    public static RecessionStats CalculateRecessionStats(RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams)
+    public static (bool areWeInExtremeAusterityMeasures, LocalDateTime? lastExtremeAusterityMeasureEnd)
+        CalculateExtremeAusterityMeasures(
+            McModel simParameters, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+            LocalDateTime currentDate)
     {
-        var result = CopyRecessionStats(currentStats);
+        // todo: unit test CalculateExtremeAusterityMeasures
+        
+        // set up the return tuple
+        (bool areWeInExtremeAusterityMeasures, LocalDateTime? lastExtremeAusterityMeasureEnd) 
+            results = (
+                recessionStats.AreWeInExtremeAusterityMeasures, 
+                recessionStats.LastExtremeAusterityMeasureEnd);
+        
+        // see if we're in extreme austerity measures based on total net worth
+        var netWorth = AccountCalculation.CalculateNetWorth(bookOfAccounts);
+        if (netWorth <= simParameters.ExtremeAusterityNetWorthTrigger)
+        {
+
+            results.areWeInExtremeAusterityMeasures = true;
+            // set the end date to now. if we stay below the line, the date
+            // will keep going up with it
+            results.lastExtremeAusterityMeasureEnd = currentDate;
+        }
+        else
+        {
+            // has it been within 12 months that we were in an extreme measure?
+            if (results.lastExtremeAusterityMeasureEnd < currentDate.PlusYears(-1))
+            {
+
+                results.areWeInExtremeAusterityMeasures = false;
+            }
+        }
+        return results;
+    }
+
+    public static (bool areWeInARecession, decimal recessionRecoveryPoint, decimal recessionDurationCounter)
+        CalculateAreWeInARecession(
+        RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams)
+    {
+        // todo: unit test CalculateAreWeInARecession
+        (bool areWeInARecession, decimal recessionRecoveryPoint, decimal recessionDurationCounter) result = (
+            currentStats.AreWeInARecession, 
+                currentStats.RecessionRecoveryPoint, 
+                currentStats.RecessionDurationCounter);
         // see if we're already in a recession based on prior checks
-        if (currentStats.AreWeInADownYear)
+        if (currentStats.AreWeInARecession)
         {
             // we were previously in a down year. Let's see if we've made
             // it out yet
@@ -19,14 +61,14 @@ public static class Recession
                 // we've eclipsed the prior recovery point, we've made it
                 // out. go ahead and set the recovery point to today's cost
                 // just to keep it near a modern number
-                result.AreWeInADownYear = false;
-                result.RecessionRecoveryPoint = currentPrices.CurrentLongTermInvestmentPrice;
-                result.DownYearCounter = 0M;
+                result.areWeInARecession = false;
+                result.recessionRecoveryPoint = currentPrices.CurrentLongTermInvestmentPrice;
+                result.recessionDurationCounter = 0M;
             }
             else
             {
                 // we're still in a dip. keep us here, but increment the down year counter
-                result.DownYearCounter += 1m / 12m;
+                result.recessionDurationCounter += 1m / 12m;
             }
         }
         else
@@ -43,20 +85,42 @@ public static class Recession
             if (lookbackPrice > currentPrices.CurrentLongTermInvestmentPrice)
             {
                 // prices are down year over year. Set the recovery point
-                result.AreWeInADownYear = true;
-                result.RecessionRecoveryPoint =
-                    (lookbackPrice > result.RecessionRecoveryPoint) ? lookbackPrice : result.RecessionRecoveryPoint;
+                result.areWeInARecession = true;
+                result.recessionRecoveryPoint =
+                    (lookbackPrice > result.recessionRecoveryPoint) ? lookbackPrice : result.recessionRecoveryPoint;
             }
             else
             {
                 // we're not in a down year update the recovery point if
                 // it's a new high water mark
-                result.RecessionRecoveryPoint =
-                    (currentPrices.CurrentLongTermInvestmentPrice > result.RecessionRecoveryPoint)
+                result.recessionRecoveryPoint =
+                    (currentPrices.CurrentLongTermInvestmentPrice > result.recessionRecoveryPoint)
                         ? currentPrices.CurrentLongTermInvestmentPrice
-                        : result.RecessionRecoveryPoint;
+                        : result.recessionRecoveryPoint;
             }
         }
+        return result;
+    }
+    public static RecessionStats CalculateRecessionStats(
+        RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams, BookOfAccounts bookOfAccounts,
+        LocalDateTime currentDate)
+    {
+        var result = CopyRecessionStats(currentStats);
+        
+        // check to see if we're in a recession
+        var recessionResults = CalculateAreWeInARecession(
+            currentStats, currentPrices, simParams);
+        result.AreWeInARecession = recessionResults.areWeInARecession;
+        result.RecessionRecoveryPoint = recessionResults.recessionRecoveryPoint;
+        result.RecessionDurationCounter = recessionResults.recessionDurationCounter;
+        
+        // check to see if we're in extreme austerity measures
+        var extremeAusterityResults =
+            CalculateExtremeAusterityMeasures(simParams, bookOfAccounts, currentStats, currentDate);
+        result.AreWeInExtremeAusterityMeasures = extremeAusterityResults.areWeInExtremeAusterityMeasures;
+        result.LastExtremeAusterityMeasureEnd = extremeAusterityResults.lastExtremeAusterityMeasureEnd;
+        
+        
         return result;
     }
 
@@ -64,9 +128,9 @@ public static class Recession
     {
         return new RecessionStats()
         {
-            AreWeInADownYear = stats.AreWeInADownYear,
-            DownYearCounter = stats.DownYearCounter,
-            AreWeInAusterityMeasures = stats.AreWeInAusterityMeasures,
+            AreWeInARecession = stats.AreWeInARecession,
+            RecessionDurationCounter = stats.RecessionDurationCounter,
+            //AreWeInAusterityMeasures = stats.AreWeInAusterityMeasures,
             AreWeInExtremeAusterityMeasures = stats.AreWeInExtremeAusterityMeasures,
             LastExtremeAusterityMeasureEnd = stats.LastExtremeAusterityMeasureEnd,
             RecessionRecoveryPoint = stats.RecessionRecoveryPoint,

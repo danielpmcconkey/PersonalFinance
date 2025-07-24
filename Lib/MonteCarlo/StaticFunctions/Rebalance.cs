@@ -6,8 +6,6 @@ namespace Lib.MonteCarlo.StaticFunctions;
 public static class Rebalance
 {
     #region Calculation functions
-
-    
     
     public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, McModel simParams)
     {
@@ -126,7 +124,7 @@ public static class Rebalance
 
         
         // if we're in a recession, don't move from long to mid until we absolutely have to
-        if (recessionStats.AreWeInADownYear) return (bookOfAccounts, taxLedger);
+        if (recessionStats.AreWeInARecession) return (bookOfAccounts, taxLedger);
         
         var numMonths = simParams.NumMonthsMidBucketOnHand; 
         if (numMonths <= 0) return (bookOfAccounts, taxLedger);
@@ -192,7 +190,7 @@ public static class Rebalance
             AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
         
         // need to pull from one of the buckets. 
-        if (recessionStats.AreWeInADownYear)
+        if (recessionStats.AreWeInARecession)
         {
             // pull what we can from the mid-term bucket, then from long bucket
             McInvestmentPositionType[] pullOrder = [ McInvestmentPositionType.MID_TERM, McInvestmentPositionType.LONG_TERM ];
