@@ -194,6 +194,7 @@ namespace Lib.MonteCarlo
         }
         private void GetWorkingPaycheck()
         {
+            // todo: make sure we're modelling pre-retirement income and spend correctly
             if (_sim.Person.IsRetired) return;
             if (MonteCarloConfig.DebugMode)
             {

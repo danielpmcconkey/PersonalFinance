@@ -3,6 +3,7 @@ namespace Lib.StaticConfig;
 public static class TaxConstants
 {
     // todo: update tax constants and forms to 2025 versions
+    // todo: organize TaxConstants better
     
     public static readonly (decimal rate, decimal min, decimal max)[] Federal1040TaxTableBrackets = [
         /*
@@ -44,6 +45,9 @@ public static class TaxConstants
     public const decimal ScheduleDMaximumCapitalLoss = -3000m;
     public const decimal FxaixAnnualDividendYield = 0.012m; // based on July 20, 2025 // todo: take dividends out of stock price and record them for tax purposes
     public const decimal DividendPercentQualified = 0.95m; // 5% ordinary, 95% qualified
+    public const decimal MaximumCapitalGains15Percent = 583750m;
+    public const decimal MaximumCapitalGains0Percent = 94050m;
+    public const decimal FederalWorksheetVsTableThreshold = 100000m; // below this amount, use the table; above or equal, use the worksheet
 
     static TaxConstants()
     {

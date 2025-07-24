@@ -47,9 +47,9 @@ public static class SocialSecurityBenefitsWorksheet
         var line12 = Math.Min(line9, line10);
         var line13 = line12 * 0.5m;
         var line14 = Math.Min(line2, line13);
-        var line15 = line11 * 0.85m;
+        var line15 = line11 * TaxConstants.MaxSocialSecurityTaxPercent;
         var line16 = line14 + line15;
-        var line17 = line1 * 0.85m;
+        var line17 = line1 * TaxConstants.MaxSocialSecurityTaxPercent;
         return Math.Min(line16, line17);
     }
 }

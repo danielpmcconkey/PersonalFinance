@@ -68,7 +68,7 @@ public static class Investment
                     McInvestmentAccountType.TAXABLE_BROKERAGE => results.Brokerage,
                     McInvestmentAccountType.TRADITIONAL_IRA => results.TraditionalIra,
                     McInvestmentAccountType.TRADITIONAL_401_K => results.Traditional401K,
-                    _ => throw new NotImplementedException(),
+                    _ => throw new InvalidDataException(),
                 };
             
 
@@ -80,7 +80,7 @@ public static class Investment
                 McInvestmentPositionType.SHORT_TERM => prices.CurrentShortTermInvestmentPrice,
                 McInvestmentPositionType.MID_TERM => prices.CurrentMidTermInvestmentPrice,
                 McInvestmentPositionType.LONG_TERM => prices.CurrentLongTermInvestmentPrice,
-                _ => throw new NotImplementedException(),
+                _ => throw new InvalidDataException(),
             };
             decimal price = getPrice();
             decimal quantity = Math.Round(roundedDollarAmount / price, 4);

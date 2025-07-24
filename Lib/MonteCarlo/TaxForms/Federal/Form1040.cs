@@ -73,7 +73,7 @@ public class Form1040
         var line17 = 0m; // we won't model additional taxes and the AMT only kicks in above 1.2MM in income
         var line18 = _line16TaxLiability + line17;
         var line19 = 0m; // kids be growned up
-        var line20 = 0m; // we may be able to model some of these credits later todo: review prior returns
+        var line20 = 0m; // we may be able to model some of these credits later 
         var line21 = line19 + line20;
         var line22 = Math.Max(0, line18 - line21);
         var line23 = 0m; // no other taxes
@@ -100,7 +100,7 @@ public class Form1040
                 _line3AQualifiedDividends, _line15TaxableIncome);
         }
 
-        if (_line15TaxableIncome >= 100000)
+        if (_line15TaxableIncome >= TaxConstants.FederalWorksheetVsTableThreshold)
         {
             // basic tax worksheet
             return TaxComputationWorksheet.CalculateTaxOwed(_line15TaxableIncome);

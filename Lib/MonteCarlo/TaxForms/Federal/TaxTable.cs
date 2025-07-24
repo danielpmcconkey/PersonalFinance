@@ -10,9 +10,19 @@ public static class TaxTable
      */
     public static decimal CalculateTaxOwed(decimal amount)
     {
-        if (amount > 100000) throw new InvalidDataException("can't use the tax table with income over 100k");
-        if (amount <= 0) return 0;
-        const decimal tableGrain = 50m; // the table increases in lumps of 50
+        if (amount > TaxConstants.FederalWorksheetVsTableThreshold) throw new InvalidDataException("can't use the tax table with income over 100k");
+        
+        /*
+         * very small amounts won't be calculated. just use hard-wired constants. These numbers aren't likely to change
+         */ 
+        if (amount <= 5) return 0;
+        if (amount < 15) return 1;
+        if (amount < 25) return 2;
+        /*
+         * above $25, the table assigns one specific value to blocks of numbers. Those blocks go up in $25 increments
+         * from $25 to $3000. From $3k to $100k, they then go up in increments of $50
+         */
+        var tableGrain = (amount < 3000) ? 25m : 50m;
         /*
          * the actual table uses an average between a low round number and a high round number. for example:
          *
