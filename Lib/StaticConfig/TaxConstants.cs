@@ -30,8 +30,17 @@ public static class TaxConstants
             (.35m, 487450m, 731200m, 59250.5m),
             (.37m, 731200m, decimal.MaxValue, 73874.5m),
         ];
+    
+    public static readonly (decimal rate, decimal min, decimal max)[] FederalCapitalGainsBrackets = [
+        /*
+         * https://taxfoundation.org/data/all/federal/2024-tax-brackets/
+         */
+        (0.0m, 0m, 94050m),
+        (0.15m, 94050m, 583750m),
+        (0.20m, 583750m, decimal.MaxValue),
+    ];
 
-    public static readonly Dictionary<int, decimal> RmdTable;
+    //public static readonly Dictionary<int, decimal> RmdTable;
     /*
      * Married filing jointly or Qualifying surviving spouse, $29,200
      */
@@ -45,34 +54,33 @@ public static class TaxConstants
     public const decimal ScheduleDMaximumCapitalLoss = -3000m;
     public const decimal FxaixAnnualDividendYield = 0.012m; // based on July 20, 2025 // todo: take dividends out of stock price and record them for tax purposes
     public const decimal DividendPercentQualified = 0.95m; // 5% ordinary, 95% qualified
-    public const decimal MaximumCapitalGains15Percent = 583750m;
-    public const decimal MaximumCapitalGains0Percent = 94050m;
+    // public const decimal MaximumCapitalGains15Percent = ;
+    //public const decimal MaximumCapitalGains0Percent = ;
     public const decimal FederalWorksheetVsTableThreshold = 100000m; // below this amount, use the table; above or equal, use the worksheet
 
-    static TaxConstants()
-    {
-        
-        // lifetime expectancy factor table: https://www.irs.gov/publications/p590b#en_US_2024_publink100089977
-        // see Appendix B. Uniform Lifetime Table for my situation
-        RmdTable = [];
-        RmdTable[2048] = 26.5M; // age 73
-        RmdTable[2049] = 25.5M; // age 74
-        RmdTable[2050] = 24.6M; // age 75
-        RmdTable[2051] = 23.7M; // age 76
-        RmdTable[2052] = 22.9M; // age 77
-        RmdTable[2053] = 22.0M; // age 78
-        RmdTable[2054] = 21.1M; // age 79
-        RmdTable[2055] = 20.2M; // age 80
-        RmdTable[2056] = 19.4M; // age 81
-        RmdTable[2057] = 18.5M; // age 82
-        RmdTable[2058] = 17.7M; // age 83
-        RmdTable[2059] = 16.8M; // age 84
-        RmdTable[2060] = 16.0M; // age 85
-        RmdTable[2061] = 15.2M; // age 86
-        RmdTable[2062] = 14.4M; // age 87
-        RmdTable[2063] = 13.7M; // age 88
-        RmdTable[2064] = 12.9M; // age 89
-        RmdTable[2065] = 12.2M; // age 90
-
-    }
+    public static readonly (decimal rate, int age)[] RmdTable =
+    [
+        /*
+         * lifetime expectancy factor table: https://www.irs.gov/publications/p590b#en_US_2024_publink100089977
+           see Appendix B. Uniform Lifetime Table for my situation
+         */
+        (26.5M, 73),
+        (25.5M, 74),
+        (24.6M, 75),
+        (23.7M, 76),
+        (22.9M, 77),
+        (22.0M, 78),
+        (21.1M, 79),
+        (20.2M, 80),
+        (19.4M, 81),
+        (18.5M, 82),
+        (17.7M, 83),
+        (16.8M, 84),
+        (16.0M, 85),
+        (15.2M, 86),
+        (14.4M, 87),
+        (13.7M, 88),
+        (12.9M, 89),
+        (12.2M, 90),
+    ];
 }

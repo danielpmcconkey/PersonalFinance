@@ -69,19 +69,48 @@ public static class TaxCalculation
         return Math.Max(headRoom, 0);
     }
     
+    
+    public static decimal CalculateRmdRequirement(TaxLedger ledger, BookOfAccounts accounts, int age)
+    {
+        
+        // Logic taken from https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs
+        
+        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        
+        var rmdRate = TaxCalculation.CalculateRmdRateByAge(age);
+        
+        if (rmdRate <= 0) return 0;
+        
+        // calculate the total RMD requirement this year
+        decimal totalRmdRequirement = 
+            (accounts.InvestmentAccounts
+                 .Where(x => x.AccountType is McInvestmentAccountType.TRADITIONAL_401_K
+                             || x.AccountType is McInvestmentAccountType.TRADITIONAL_IRA) // all relevant accounts
+                 .Sum(AccountCalculation.CalculateInvestmentAccountTotalValue) // the sum of their balances
+             / (decimal)rmdRate); // the final amount we gotta withdraw
+
+        return totalRmdRequirement;
+    }
+
     public static decimal CalculateW2IncomeForYear(TaxLedger ledger, int year)
     {
         return ledger.W2Income
             .Where(x => x.earnedDate.Year == year)
             .Sum(x => x.amount);
     }
-    
-    public static decimal? CalculateRmdRateByYear(int year)
-    {
-        if(!TaxConstants.RmdTable.TryGetValue(year, out var rmd))
-            return null;
-        return rmd;
 
+    private static int _minRmdAgeProvided = -1; // set it to -1 to notate that we haven't yet looked it up
+    private static int _maxRmdAgeProvided = -1; // set it to -1 to notate that we haven't yet looked it up
+    public static decimal CalculateRmdRateByAge(int age)
+    {
+        if (_minRmdAgeProvided < 0) _minRmdAgeProvided = TaxConstants.RmdTable.Min(x => x.age); 
+        if (_maxRmdAgeProvided < 0) _maxRmdAgeProvided = TaxConstants.RmdTable.Max(x => x.age);
+        
+        if (age < _minRmdAgeProvided) return 0;
+        if (age >= _maxRmdAgeProvided) 
+            return TaxConstants.RmdTable.FirstOrDefault(x => x.age == _maxRmdAgeProvided).rate;
+
+        return TaxConstants.RmdTable.FirstOrDefault(x => x.age == age).rate;
     }
     /// <summary>
     /// Assumes that all of my social security and income benifit will add

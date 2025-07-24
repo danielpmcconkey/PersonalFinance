@@ -101,18 +101,58 @@ public class TaxCalculationTests
         // Assert
         Assert.Equal(expectedHeadroom, result);
     }
-
+    
     [Theory]
-    [InlineData(2055, true)]  // Assuming this year has an RMD rate
-    [InlineData(1900, false)] // Assuming this year doesn't have an RMD rate
-    public void CalculateRmdRateByYear_ReturnsExpectedResult(int year, bool shouldHaveRate)
+    [InlineData(2047, 0)]
+    [InlineData(2048, 18867.92)]
+    [InlineData(2049, 19607.84)]
+    [InlineData(2050, 20325.2)]
+    [InlineData(2051, 21097.05)]
+    [InlineData(2052, 21834.06)]
+    [InlineData(2053, 22727.27)]
+    [InlineData(2054, 23696.68)]
+    [InlineData(2055, 24752.48)]
+    [InlineData(2056, 25773.2)]
+    [InlineData(2057, 27027.03)]
+    [InlineData(2058, 28248.59)]
+    [InlineData(2059, 29761.9)]
+    [InlineData(2060, 31250)]
+    [InlineData(2061, 32894.74)]
+    [InlineData(2062, 34722.22)]
+    [InlineData(2063, 36496.35)]
+    [InlineData(2064, 38759.69)]
+    [InlineData(2065, 40983.61)]
+    public void CalculateRmdRequirement_CalculatesCorrectly(int year, decimal expectatedRmdAmount)
     {
-        // Act
-        var result = TaxCalculation.CalculateRmdRateByYear(year);
+        // Arrange
+        var ledger = new TaxLedger();
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        // we want $500k in tax deferred accounts
+        accounts.Traditional401K.Positions = [
+            TestDataManager.CreateTestInvestmentPosition(
+                1000, 100, McInvestmentPositionType.LONG_TERM, true),
+            TestDataManager.CreateTestInvestmentPosition(
+                1000, 100, McInvestmentPositionType.LONG_TERM, true),
+            TestDataManager.CreateTestInvestmentPosition(
+                1000, 100, McInvestmentPositionType.LONG_TERM, true)
+        ];
+        accounts.TraditionalIra.Positions = [
+            TestDataManager.CreateTestInvestmentPosition(
+                1000, 100, McInvestmentPositionType.LONG_TERM, true),
+            TestDataManager.CreateTestInvestmentPosition(
+                1000, 100, McInvestmentPositionType.LONG_TERM, true)
+        ];
+        var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
+        
+        int age = year - 1975;
 
+        // Act
+        var result = TaxCalculation.CalculateRmdRequirement(ledger, accounts, age);
+        result = Math.Round(result, 2); // rounding to avoid floating point errors
         // Assert
-        Assert.Equal(shouldHaveRate, result.HasValue);
+        Assert.Equal(expectatedRmdAmount, result);
     }
+    
    
     [Theory]
     /*

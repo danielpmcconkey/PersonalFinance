@@ -217,8 +217,9 @@ namespace Lib.MonteCarlo
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Meeting RMD requirements");
             }
+            var age = _sim.CurrentDateInSim.Year - _sim.Person.BirthDate.Year;
             var result = Tax.MeetRmdRequirements(
-                _sim.TaxLedger, _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices);
+                _sim.TaxLedger, _sim.CurrentDateInSim, _sim.BookOfAccounts, age);
             
             _sim.BookOfAccounts = result.newBookOfAccounts;
             _sim.TaxLedger = result.newLedger;

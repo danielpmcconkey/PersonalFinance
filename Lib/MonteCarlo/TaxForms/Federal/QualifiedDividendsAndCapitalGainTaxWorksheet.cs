@@ -22,22 +22,22 @@ public static class QualifiedDividendsAndCapitalGainTaxWorksheet
                 : Math.Min(scheduleDLine15NetLongTermCapitalGain, scheduleDLine16CombinedCapitalGains);
         var line4 = line2 + line3;
         var line5 = (Math.Max(0, line1 - line4));
-        var line6 = TaxConstants.MaximumCapitalGains0Percent;
+        var line6 = TaxConstants.FederalCapitalGainsBrackets[0].max;
         var line7 = Math.Min(line1, line6);
         var line8 = Math.Min(line5, line7);
         var line9 = line7 - line8; // taxed at 0%
         var line10 = Math.Min(line1, line4);
         var line11 = line9;
         var line12 = line10 - line11;
-        var line13 = TaxConstants.MaximumCapitalGains15Percent; // todo: move this to tax constants
+        var line13 = TaxConstants.FederalCapitalGainsBrackets[1].max;
         var line14 = Math.Min(line1, line13);
         var line15 = line5 + line9;
         var line16 = Math.Max(0m, line14 - line15);
         var line17 = Math.Min(line12, line16);
-        var line18 = line17 * 0.15m; // todo: read from the tax constants brackets
+        var line18 = line17 * TaxConstants.FederalCapitalGainsBrackets[1].rate;
         var line19 = line9 + line17;
         var line20 = line10 - line19;
-        var line21 = line20 * 0.20m;
+        var line21 = line20 * TaxConstants.FederalCapitalGainsBrackets[2].rate;
         var line22 = (line5 < TaxConstants.FederalWorksheetVsTableThreshold) 
             ? TaxTable.CalculateTaxOwed(line5)
             : TaxComputationWorksheet.CalculateTaxOwed(line5);

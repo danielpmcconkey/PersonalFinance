@@ -142,50 +142,18 @@ public static class Tax
         }
         return totalRmdRequirement - totalRmdSoFar;
     }
-// todo: move this to the TaxCalculation class after we build UTs for that class
-    public static decimal CalculateRmdRequirement(TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts)
-    {
-        
-        // Logic taken from https://www.irs.gov/retirement-plans/retirement-plan-and-ira-required-minimum-distributions-faqs
-        
-        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
-        
-        var year = currentDate.Year;
-        var rmdRate = TaxCalculation.CalculateRmdRateByYear(year);
-        if (rmdRate is null)
-        {
-            if (MonteCarloConfig.DebugMode == true)
-            {
-                Reconciliation.AddMessageLine(currentDate, 0, 
-                    $"RMD: no RMD requirement this year");
-            }
-            return 0M;
-        } 
-        
-        
-        
-        // calculate the total RMD requirement this year
-        decimal totalRmdRequirement = 
-            (accounts.InvestmentAccounts
-                 .Where(x => x.AccountType is McInvestmentAccountType.TRADITIONAL_401_K
-                             || x.AccountType is McInvestmentAccountType.TRADITIONAL_IRA) // all relevant accounts
-                 .Sum(AccountCalculation.CalculateInvestmentAccountTotalValue) // the sum of their balances
-             / (decimal)rmdRate); // the final amount we gotta withdraw
-
-        return totalRmdRequirement;
-    }
     
    
     
     public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) MeetRmdRequirements(
-        TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices)
+        TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, int age)
     {
         if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
         
         var year = currentDate.Year;
 
         // figure out the RMD requirement
-        var totalRmdRequirement = CalculateRmdRequirement(ledger, currentDate, accounts);
+        var totalRmdRequirement = TaxCalculation.CalculateRmdRequirement(ledger, accounts, age);
         if (totalRmdRequirement <= 0) return (0M, accounts, ledger);
         
         // we have a withdrawal requirement. have we already met it?
