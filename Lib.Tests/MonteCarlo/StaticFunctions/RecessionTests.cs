@@ -53,6 +53,245 @@ public class RecessionTests
         };
     }
 
+    private BookOfAccounts CreateTestBookOfAccounts(decimal totalNetWorth)
+    {
+        var position = new McInvestmentPosition()
+        {
+            Id = Guid.NewGuid(), 
+            Name = "test position", 
+            InvestmentPositionType = McInvestmentPositionType.LONG_TERM, 
+            Entry = _testDate.PlusYears(-2), 
+            IsOpen = true, 
+            InitialCost = totalNetWorth / 2m,
+            Price = 1m, Quantity = totalNetWorth
+        };
+        var account = new McInvestmentAccount()
+        {
+            Id = Guid.NewGuid(), 
+            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+            Name = "Test account",
+            Positions = [position]
+        };
+        var investmentAccounts = new List<McInvestmentAccount>() { account };
+        var debtAccounts = new List<McDebtAccount>();
+        var bookOfAccounts = Account.CreateBookOfAccounts(investmentAccounts, debtAccounts);
+        return bookOfAccounts;
+    }
+    #region CalculateExtremeAusterityMeasures Tests
+
+    [Fact]
+    public void CalculateExtremeAusterityMeasures_BelowTrigger_EntersAusterity()
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+        simParams.RecessionRecoveryPointModifier = 1.1m;
+        simParams.RecessionCheckLookBackMonths = 13;
+        
+        var bookOfAccounts = CreateTestBookOfAccounts(50000m); // below trigger
+
+        
+        var recessionStats = new RecessionStats();
+        var currentDate = new LocalDateTime(2024, 1, 1, 0, 0);
+
+        // Act
+        var result = 
+            Recession.CalculateExtremeAusterityMeasures(simParams, bookOfAccounts, recessionStats, currentDate);
+
+        // Assert
+        Assert.True(result.areWeInExtremeAusterityMeasures);
+        Assert.Equal(currentDate, result.lastExtremeAusterityMeasureEnd);
+    }
+
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(2, true)]
+    [InlineData(3, true)]
+    [InlineData(4, true)]
+    [InlineData(5, true)]
+    [InlineData(6, true)]
+    [InlineData(7, true)]
+    [InlineData(8, true)]
+    [InlineData(9, true)]
+    [InlineData(10, true)]
+    [InlineData(11, true)]
+    [InlineData(12, true)]
+    [InlineData(13, false)]
+    [InlineData(14, false)]
+    public void CalculateExtremeAusterityMeasures_AboveTrigger_ExitsAusterityAtRightTime(
+        int monthsLater, bool expectation)
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+        simParams.RecessionRecoveryPointModifier = 1.1m;
+        simParams.RecessionCheckLookBackMonths = 13;
+        var bookOfAccounts = CreateTestBookOfAccounts(150000m); // Above trigger
+
+        var lastEndDate = new LocalDateTime(2024, 1, 1, 0, 0);
+        var currentDate = lastEndDate.PlusMonths(monthsLater);
+        var recessionStats = new RecessionStats
+        {
+            AreWeInExtremeAusterityMeasures = true,
+            LastExtremeAusterityMeasureEnd = lastEndDate
+        };
+
+        // Act
+        var result =
+            Recession.CalculateExtremeAusterityMeasures(simParams, bookOfAccounts, recessionStats, currentDate);
+
+        // Assert
+        Assert.Equal(expectation, result.areWeInExtremeAusterityMeasures);
+    }
+
+
+    #endregion
+
+    #region CalculateAreWeInARecession Tests
+
+    [Fact]
+    public void CalculateAreWeInARecession_NotEnoughHistory_ReturnsCurrentState()
+        {
+            // Arrange
+            var currentStats = new RecessionStats();
+            var currentPrices = new CurrentPrices
+            {
+                LongRangeInvestmentCostHistory = new List<decimal> { 100m, 95m } // Less than required history
+            };
+            var simParams = CreateTestModel();
+            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+            simParams.RecessionRecoveryPointModifier = 1.1m;
+            simParams.RecessionCheckLookBackMonths = 13;
+
+            // Act
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+
+            // Assert
+            Assert.False(result.areWeInARecession);
+            Assert.Equal(0m, result.recessionDurationCounter);
+        }
+
+    [Fact]
+    public void CalculateAreWeInARecession_PriceDropYearOverYear_EntersRecession()
+        {
+            // Arrange
+            var currentStats = new RecessionStats();
+            var currentPrices = new CurrentPrices
+            {
+                CurrentLongTermInvestmentPrice = 90m,
+                LongRangeInvestmentCostHistory = new List<decimal>()
+            };
+            // Add 13 months of history
+            for (int i = 0; i < 13; i++)
+            {
+                currentPrices.LongRangeInvestmentCostHistory.Add(100m);
+            }
+            var simParams = CreateTestModel();
+            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+            simParams.RecessionRecoveryPointModifier = 1.1m;
+            simParams.RecessionCheckLookBackMonths = 13;
+
+            // Act
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+
+            // Assert
+            Assert.True(result.areWeInARecession);
+            Assert.Equal(100m, result.recessionRecoveryPoint);
+        }
+
+    [Fact]
+    public void CalculateAreWeInARecession_InRecession_RecoveryReached_ExitsRecession()
+        {
+            // Arrange
+            var currentStats = new RecessionStats
+            {
+                AreWeInARecession = true,
+                RecessionRecoveryPoint = 100m
+            };
+            var currentPrices = new CurrentPrices
+            {
+                CurrentLongTermInvestmentPrice = 120m // Above recovery point * modifier
+            };
+            // Add 13 months of history
+            for (int i = 0; i < 13; i++)
+            {
+                currentPrices.LongRangeInvestmentCostHistory.Add(90m);
+            }
+            var simParams = CreateTestModel();
+            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+            simParams.RecessionRecoveryPointModifier = 1.1m;
+            simParams.RecessionCheckLookBackMonths = 13;
+
+            // Act
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+
+            // Assert
+            Assert.False(result.areWeInARecession);
+            Assert.Equal(0m, result.recessionDurationCounter);
+            Assert.Equal(120m, result.recessionRecoveryPoint);
+        }
+
+    [Fact]
+    public void CalculateAreWeInARecession_InRecession_BelowRecovery_IncrementsDuration()
+        {
+            // Arrange
+            var currentStats = new RecessionStats
+            {
+                AreWeInARecession = true,
+                RecessionRecoveryPoint = 100m,
+                RecessionDurationCounter = 1.0m
+            };
+            var currentPrices = new CurrentPrices
+            {
+                CurrentLongTermInvestmentPrice = 90m // Below recovery point
+            };
+            var simParams = CreateTestModel();
+            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+            simParams.RecessionRecoveryPointModifier = 1.1m;
+            simParams.RecessionCheckLookBackMonths = 13;
+
+            // Act
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+
+            // Assert
+            Assert.True(result.areWeInARecession);
+            Assert.Equal(1.0833m, result.recessionDurationCounter, 4); // 1 + 1/12
+        }
+
+    [Fact]
+    public void CalculateAreWeInARecession_NotInRecession_NewHighWaterMark_UpdatesRecoveryPoint()
+    {
+        // Arrange
+        var currentStats = new RecessionStats
+        {
+            RecessionRecoveryPoint = 100m
+        };
+        var currentPrices = new CurrentPrices
+        {
+            CurrentLongTermInvestmentPrice = 110m,
+            LongRangeInvestmentCostHistory = new List<decimal>()
+        };
+        // Add 13 months of history with increasing prices
+        for (int i = 0; i < 13; i++)
+        {
+            currentPrices.LongRangeInvestmentCostHistory.Add(90m + i);
+        }
+        var simParams = CreateTestModel();
+        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+        simParams.RecessionRecoveryPointModifier = 1.1m;
+        simParams.RecessionCheckLookBackMonths = 13;
+
+        // Act
+        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+
+        // Assert
+        Assert.False(result.areWeInARecession);
+        Assert.Equal(110m, result.recessionRecoveryPoint);
+    }
+
+    #endregion
+
+
     [Fact]
     public void CopyRecessionStats_CreatesCopyWithSameValues()
     {

@@ -11,31 +11,35 @@ public static class Recession
             McModel simParameters, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
             LocalDateTime currentDate)
     {
-        // todo: unit test CalculateExtremeAusterityMeasures
         
         // set up the return tuple
         (bool areWeInExtremeAusterityMeasures, LocalDateTime? lastExtremeAusterityMeasureEnd) 
             results = (
-                recessionStats.AreWeInExtremeAusterityMeasures, 
+                false, // assume false and let the logic below correct that assumption
                 recessionStats.LastExtremeAusterityMeasureEnd);
         
         // see if we're in extreme austerity measures based on total net worth
         var netWorth = AccountCalculation.CalculateNetWorth(bookOfAccounts);
         if (netWorth <= simParameters.ExtremeAusterityNetWorthTrigger)
         {
-
             results.areWeInExtremeAusterityMeasures = true;
-            // set the end date to now. if we stay below the line, the date
-            // will keep going up with it
+            
+            /*
+             * set the end date to now. if we stay below the line, the date will keep going up with it. so once we're
+             * out of it, the date will stay in place as the end date of teh last event
+             */
             results.lastExtremeAusterityMeasureEnd = currentDate;
         }
         else
         {
-            // has it been within 12 months that we were in an extreme measure?
-            if (results.lastExtremeAusterityMeasureEnd < currentDate.PlusYears(-1))
+            /*
+             * our net worth is greater than the trigger, but, if we were recently in extreme measures, we want to give
+             * ourselves a little time to build up a cushion, so stay in it for a bit longer 
+             */
+            if (results.lastExtremeAusterityMeasureEnd >= currentDate.PlusYears(-1))
             {
-
-                results.areWeInExtremeAusterityMeasures = false;
+                // set it to true, but don't move the date
+                results.areWeInExtremeAusterityMeasures = true;
             }
         }
         return results;

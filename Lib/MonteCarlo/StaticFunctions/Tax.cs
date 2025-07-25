@@ -119,29 +119,7 @@ public static class Tax
 
 
 
-    // todo: move this to the TaxCalculation class after we build UTs for that class
-    public static decimal CalculateAdditionalRmdSales(int year, decimal totalRmdRequirement, TaxLedger ledger, LocalDateTime currentDate)
-    {
-        // figure out how much we've already withdrawn
-        var totalRmdSoFar = ledger.TaxableIraDistribution.Where(x => x.earnedDate.Year == year).Sum(x => x.amount);
-        
-        if (totalRmdSoFar >= totalRmdRequirement) 
-        {
-            if (MonteCarloConfig.DebugMode == true)
-            {
-                Reconciliation.AddMessageLine(currentDate, 0, 
-                    $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)");
-            }
-            return 0; // no sales needed
-        }
-        
-        if (MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, 0, 
-                $"RMD: additional RMD sales needed ({totalRmdRequirement - totalRmdSoFar})");
-        }
-        return totalRmdRequirement - totalRmdSoFar;
-    }
+    
     
    
     
@@ -157,7 +135,7 @@ public static class Tax
         if (totalRmdRequirement <= 0) return (0M, accounts, ledger);
         
         // we have a withdrawal requirement. have we already met it?
-        var amountLeft = CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var amountLeft = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
         if (amountLeft <= 0) return (0M, accounts, ledger);
         
         

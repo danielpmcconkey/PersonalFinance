@@ -257,7 +257,7 @@ public class TaxTests
         var totalRmdRequirement = 100000m;
         
         // Act
-        var result = Tax.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var result = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
 
         // Assert
         Assert.Equal(totalRmdRequirement, result);
@@ -276,7 +276,7 @@ public class TaxTests
         var totalRmdRequirement = 100000m;
         
         // Act
-        var result = Tax.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var result = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
 
         // Assert
         Assert.Equal(totalRmdRequirement - priorDistribution, result);
@@ -295,7 +295,7 @@ public class TaxTests
         var totalRmdRequirement = 100000m;
         
         // Act
-        var result = Tax.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var result = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
 
         // Assert
         Assert.Equal(0, result);

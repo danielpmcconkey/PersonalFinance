@@ -9,13 +9,39 @@ namespace Lib.MonteCarlo.StaticFunctions;
 public static class TaxCalculation
 {
     /// <summary>
+    /// calculates the amount left that we still have to take out. Once we know our total RMD requirement this year,
+    /// this function looks at how much we've already taken out and tells us how much we STILL have to sell / withdraw
+    /// </summary>
+    public static decimal CalculateAdditionalRmdSales(int year, decimal totalRmdRequirement, TaxLedger ledger, LocalDateTime currentDate)
+    {
+        // figure out how much we've already withdrawn
+        var totalRmdSoFar = ledger.TaxableIraDistribution.Where(x => x.earnedDate.Year == year).Sum(x => x.amount);
+        
+        if (totalRmdSoFar >= totalRmdRequirement) 
+        {
+            if (MonteCarloConfig.DebugMode == true)
+            {
+                Reconciliation.AddMessageLine(currentDate, 0, 
+                    $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)");
+            }
+            return 0; // no sales needed
+        }
+        
+        if (MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(currentDate, 0, 
+                $"RMD: additional RMD sales needed ({totalRmdRequirement - totalRmdSoFar})");
+        }
+        return totalRmdRequirement - totalRmdSoFar;
+    }
+    
+    /// <summary>
     /// sets the income target for next year based on this year's social security income. the idea is that, below
     /// $96,950 in adjusted gross income, the tax on ordinary income is only 12%. Anything above that amount is taxed at
     /// 22%. Since long-term capital gains is only 15% (below 0.5MM), it's cheaper to receive income (tax deferred
     /// sales) than it is to receive capital gains (brokerage account sales). So we want to take out just enough to hit
     /// that 12% ceiling from our traditional accounts and then move over to capital gains accounts beyond that point.
     /// </summary>
-    /// todo: vet out this logic (and all other tax calcs) 
     public static decimal CalculateIncomeRoom(TaxLedger ledger, LocalDateTime currentDate)
     {
         // start with the _incomeTaxBrackets 12% max
