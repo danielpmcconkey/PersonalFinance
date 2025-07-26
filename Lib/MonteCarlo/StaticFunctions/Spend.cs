@@ -175,6 +175,7 @@ public static class Spend
             TotalSocialSecurityWageLifetime = lifetimeSpend.TotalSocialSecurityWageLifetime,
             TotalDebtPaidLifetime = lifetimeSpend.TotalDebtPaidLifetime,
             TotalFunPointsLifetime = lifetimeSpend.TotalFunPointsLifetime,
+            TotalLifetimeHealthCareSpend = lifetimeSpend.TotalLifetimeHealthCareSpend,
         };
         return spend;
     }
@@ -245,6 +246,18 @@ public static class Spend
         if (MonteCarloConfig.DebugMode)
         {
             Reconciliation.AddMessageLine(currentDate,amount * -1, $"Spend recorded: {amount}");
+        }
+        return result;
+    }
+    
+    public static LifetimeSpend RecordHealthcareSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    {
+        // todo: unit test RecordHealthcareSpend
+        var result = CopyLifetimeSpend(lifetimeSpend);
+        result.TotalLifetimeHealthCareSpend += amount;
+        if (MonteCarloConfig.DebugMode)
+        {
+            Reconciliation.AddMessageLine(currentDate,amount * -1, $"Healthcare spend recorded: {amount}");
         }
         return result;
     }

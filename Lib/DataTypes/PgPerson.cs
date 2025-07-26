@@ -31,5 +31,21 @@ namespace Lib.DataTypes
         
         [Column("monthlyfullsocialsecuritybenefit",TypeName = "numeric(12,2)")]
         public required decimal MonthlyFullSocialSecurityBenefit { get; set; }
+        
+        [Column("annual401kcontribution", TypeName = "numeric(12,2)")]
+        public required decimal Annual401KContribution { get; set; }
+        
+        [Column("annualhsacontribution", TypeName = "numeric(12,2)")] 
+        public required decimal AnnualHsaContribution { get; set; }
+        [Column("annualhsaemployercontribution", TypeName = "numeric(12,2)")] 
+        public required decimal AnnualHsaEmployerContribution { get; set; }
+        [Column("federalannualwithholding", TypeName = "numeric(12,2)")] 
+        public required decimal FederalAnnualWithholding { get; set; }
+        [Column("stateannualwithholding", TypeName = "numeric(12,2)")] 
+        public required decimal StateAnnualWithholding { get; set; }
+        [Column("pretaxhealthdeductions", TypeName = "numeric(12,2)")] 
+        public required decimal PreTaxHealthDeductions { get; set; }
+        [Column("posttaxinsurancedeductions", TypeName = "numeric(12,2)")] 
+        public required decimal PostTaxInsuranceDeductions { get; set; }
     }
 }

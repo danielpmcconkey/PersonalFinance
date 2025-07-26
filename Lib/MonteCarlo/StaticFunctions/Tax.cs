@@ -100,7 +100,35 @@ public static class Tax
         throw new InvalidDataException("Unknown account type");
     }
     
+    public static TaxLedger RecordTaxPaid(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    {
+        // todo: unit test RecordTaxPaid
+        
+        var result = CopyTaxLedger(ledger);
+        result.TotalTaxPaid += amount;
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(earnedDate, amount, "Tax payment logged");
+        }
+        return result;
+    }
     
+    public static TaxLedger RecordWithholdings(
+        TaxLedger ledger, LocalDateTime earnedDate, decimal amountFed, decimal amountState)
+    {
+        // todo: Unit test RecordWithholdings
+        
+        var result = CopyTaxLedger(ledger);
+        
+        result.FederalWithholdings.Add((earnedDate, amountFed));
+        result.StateWithholdings.Add((earnedDate, amountState));
+        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        {
+            Reconciliation.AddMessageLine(earnedDate, amountFed, "Federal withholding logged");
+            Reconciliation.AddMessageLine(earnedDate, amountState, "State withholding logged");
+        }
+        return result;
+    }
     
     public static TaxLedger RecordSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {

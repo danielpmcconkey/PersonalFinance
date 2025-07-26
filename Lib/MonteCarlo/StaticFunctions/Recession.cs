@@ -49,7 +49,6 @@ public static class Recession
         CalculateAreWeInARecession(
         RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams)
     {
-        // todo: unit test CalculateAreWeInARecession
         (bool areWeInARecession, decimal recessionRecoveryPoint, decimal recessionDurationCounter) result = (
             currentStats.AreWeInARecession, 
                 currentStats.RecessionRecoveryPoint, 

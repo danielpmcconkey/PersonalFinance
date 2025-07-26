@@ -3,6 +3,7 @@ using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using System.Collections.Concurrent;
 using Lib.MonteCarlo.StaticFunctions;
+using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo
@@ -43,7 +44,7 @@ namespace Lib.MonteCarlo
             var monthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(person,
                 simParams.SocialSecurityStart);
             var copiedPerson = Person.CopyPerson(person);
-            copiedPerson.MonthlySocialSecurityWage = monthlySocialSecurityWage;
+            copiedPerson.AnnualSocialSecurityWage = monthlySocialSecurityWage * 12;
             var ledger = new TaxLedger();
             ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
             ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
@@ -63,7 +64,6 @@ namespace Lib.MonteCarlo
             };
             _hypotheticalPrices = hypotheticalPrices;
             _measurements = [];
-            _sim.Person.Monthly401kMatch = Person.CalculateMonthly401KMatch(_sim.Person);
         }
         public List<NetWorthMeasurement> Run()
         {
@@ -194,16 +194,65 @@ namespace Lib.MonteCarlo
         }
         private void GetWorkingPaycheck()
         {
-            // todo: make sure we're modelling pre-retirement income and spend correctly
+            // todo: move paycheck logic to a static function
+            // todo: create a UT suite for GetWorkingPaycheck
+            // todo: combine monthly "savings" investing into this function
+            // todo: create a UT that ensures that excess cash gets invested pre-retirement
+            // todo: calculate pre and post tax 401k contributions and assign to the person
+            // todo: note that McPerson.MonthlySocialSecurityWage is now AnnualSocialSecurityWage
+            
             if (_sim.Person.IsRetired) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting paycheck");
             }
 
-            var grossMonthlyPay = _sim.Person.AnnualSalary / 12m;
-            Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
-            AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
+            // income
+            var grossMonthlyPay = (_sim.Person.AnnualSalary + _sim.Person.AnnualBonus) / 12m;
+            var netMonthlyPay = grossMonthlyPay;
+            var taxableMonthlyPay = grossMonthlyPay;
+            
+            // taxes withheld
+            var federalWithholding = _sim.Person.FederalAnnualWithholding / 12m;
+            var stateWithholding = _sim.Person.StateAnnualWithholding / 12m;
+            var monthlyOasdi = (Math.Min(
+                TaxConstants.OasdiBasePercent * (grossMonthlyPay * 12m),
+                TaxConstants.OasdiMax))
+                / 12m;
+            var annualStandardMedicare = TaxConstants.StandardMedicareTaxRate * grossMonthlyPay;
+            var amountOfSalaryOverMedicareThreshold = 
+                (grossMonthlyPay * 12) - TaxConstants.AdditionalMedicareThreshold;
+            var annualAdditionalMedicare = 
+                TaxConstants.AdditionalMedicareTaxRate * amountOfSalaryOverMedicareThreshold;
+            var annualTotalMedicare = annualStandardMedicare + annualAdditionalMedicare;
+            var monthlyMedicare = annualTotalMedicare / 12m;
+            netMonthlyPay -= (federalWithholding + stateWithholding + monthlyOasdi + monthlyMedicare);
+            _sim.TaxLedger = Tax.RecordWithholdings(
+                _sim.TaxLedger, _sim.CurrentDateInSim, federalWithholding, stateWithholding);
+            _sim.TaxLedger = Tax.RecordTaxPaid(
+                _sim.TaxLedger, _sim.CurrentDateInSim, monthlyOasdi + monthlyMedicare);
+            
+            
+            // pre-tax deductions
+            var annualPreTaxHealthDeductions = _sim.Person.PreTaxHealthDeductions;
+            var annualHsaContribution = _sim.Person.AnnualHsaContribution;
+            var annual401KPreTax = _sim.Person.Annual401KPreTax;
+            var preTaxDeductions = 
+                (annualPreTaxHealthDeductions + annualHsaContribution + annual401KPreTax) / 12m;
+            netMonthlyPay -= preTaxDeductions;
+            taxableMonthlyPay -= preTaxDeductions;
+            _sim.LifetimeSpend = Spend.RecordHealthcareSpend(_sim.LifetimeSpend, annualPreTaxHealthDeductions, _sim.CurrentDateInSim);
+                
+            // post-tax deductions
+            var annual401KPostTax = _sim.Person.Annual401KPostTax;
+            var annualInsuranceDeductions = _sim.Person.PostTaxInsuranceDeductions;
+            netMonthlyPay -= ((annual401KPostTax + annualInsuranceDeductions) / 12m);
+            
+            // record final w2 income (gross, less pre-tax)
+            _sim.TaxLedger = Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, taxableMonthlyPay);
+            
+            // finally, deposit what's left
+            AccountCashManagement.DepositCash(_sim.BookOfAccounts, netMonthlyPay, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collected paycheck");
@@ -322,8 +371,8 @@ namespace Lib.MonteCarlo
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Social Security payday");
             }
-            var amount = _sim.Person.MonthlySocialSecurityWage;
-            var localResult = AccountCashManagement.DepositCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim);
+            var amount = _sim.Person.AnnualSocialSecurityWage / 12m;
+            _sim.BookOfAccounts = AccountCashManagement.DepositCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim);
             
             _sim.LifetimeSpend = Spend.RecordSocialSecurityWage(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
             
@@ -425,6 +474,8 @@ namespace Lib.MonteCarlo
         }
         private void AddRetirementSavings()
         {
+            // todo: move pre-retirement investments into the Paycheck method
+            // todo: UT AddRetirementSavings
             if (_sim.Person.IsBankrupt || _sim.Person.IsRetired) return;
             
             if (MonteCarloConfig.DebugMode)
@@ -435,16 +486,20 @@ namespace Lib.MonteCarlo
             Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kRoth,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.ROTH_401_K, _sim.CurrentPrices);
 
-            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kTraditional,
+            Investment.InvestFunds(
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kTraditional,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, _sim.CurrentPrices);
 
-            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestBrokerage,
+            Investment.InvestFunds(
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestBrokerage,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, _sim.CurrentPrices);
 
-            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestHSA,
+            Investment.InvestFunds(
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestHSA,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.HSA, _sim.CurrentPrices);
 
-            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.Person.Monthly401kMatch,
+            var monthly401KMatch = (_sim.Person.AnnualSalary * _sim.Person.Annual401KMatchPercent) / 12m;
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, monthly401KMatch,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, _sim.CurrentPrices);
             
             if (StaticConfig.MonteCarloConfig.DebugMode)

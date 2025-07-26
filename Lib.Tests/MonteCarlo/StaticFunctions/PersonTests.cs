@@ -93,23 +93,7 @@ public class PersonTests
             Person.CalculateMonthlySocialSecurityWage(person, benefitElectionStart));
     }
     
-    [Fact]
-    public void CalculateMonthly401kMatch_CalculatesCorrectMatch()
-    {
-        // Arrange
-        var person = new McPerson
-        {
-            AnnualSalary = 60000M,
-            Annual401kMatchPercent = 0.05M
-        };
-        var expectedMatch = (60000M * 0.05M) / 12;
-
-        // Act
-        var result = Person.CalculateMonthly401KMatch(person);
-
-        // Assert
-        Assert.Equal(expectedMatch, result);
-    }
+   
 
     [Fact]
     public void CopyPerson_CreatesCopyWithNewGuidAndResetStats()
@@ -127,11 +111,10 @@ public class PersonTests
             AnnualSalary = 50000M,
             AnnualBonus = 5000M,
             MonthlyFullSocialSecurityBenefit = 2000M,
-            Annual401kMatchPercent = 0.05M,
+            Annual401KMatchPercent = 0.05M,
             IsRetired = true,
             IsBankrupt = true,
-            MonthlySocialSecurityWage = 1500M,
-            Monthly401kMatch = 200M,
+            AnnualSocialSecurityWage = 1500M * 12m,
             InvestmentAccounts = new List<McInvestmentAccount>(),
             DebtAccounts = new List<McDebtAccount>()
         };
@@ -146,11 +129,12 @@ public class PersonTests
         Assert.Equal(originalPerson.AnnualSalary, copiedPerson.AnnualSalary);
         Assert.Equal(originalPerson.AnnualBonus, copiedPerson.AnnualBonus);
         Assert.Equal(originalPerson.MonthlyFullSocialSecurityBenefit, copiedPerson.MonthlyFullSocialSecurityBenefit);
-        Assert.Equal(originalPerson.Annual401kMatchPercent, copiedPerson.Annual401kMatchPercent);
+        Assert.Equal(originalPerson.Annual401KMatchPercent, copiedPerson.Annual401KMatchPercent);
         Assert.False(copiedPerson.IsRetired);
         Assert.False(copiedPerson.IsBankrupt);
-        Assert.Equal(0M, copiedPerson.MonthlySocialSecurityWage);
-        Assert.Equal(0M, copiedPerson.Monthly401kMatch);
+        Assert.Equal(0M, copiedPerson.AnnualSocialSecurityWage);
+        Assert.Equal(0M, copiedPerson.Annual401KPreTax);
+        Assert.Equal(0M, copiedPerson.Annual401KPostTax);
         Assert.NotNull(copiedPerson.InvestmentAccounts);
         Assert.NotNull(copiedPerson.DebtAccounts);
     }

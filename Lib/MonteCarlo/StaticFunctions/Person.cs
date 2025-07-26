@@ -19,7 +19,14 @@ public static class Person
             AnnualSalary = (pgperson.AnnualSalary),
             AnnualBonus = (pgperson.AnnualBonus),
             MonthlyFullSocialSecurityBenefit = (pgperson.MonthlyFullSocialSecurityBenefit),
-            Annual401kMatchPercent = (pgperson.Annual401kMatchPercent),
+            Annual401KMatchPercent = (pgperson.Annual401kMatchPercent),
+            Annual401KContribution = pgperson.Annual401KContribution,
+            AnnualHsaContribution = pgperson.AnnualHsaContribution,
+            AnnualHsaEmployerContribution = pgperson.AnnualHsaEmployerContribution,
+            FederalAnnualWithholding = pgperson.FederalAnnualWithholding,
+            StateAnnualWithholding = pgperson.StateAnnualWithholding,
+            PreTaxHealthDeductions = pgperson.PreTaxHealthDeductions,
+            PostTaxInsuranceDeductions = pgperson.PostTaxInsuranceDeductions,
             InvestmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(pgperson.Id),
             DebtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(pgperson.Id),
         };
@@ -83,16 +90,14 @@ public static class Person
         return minWage + (minWage * credit);
     }
 
-    public static decimal CalculateMonthly401KMatch(McPerson person)
-    {
-        return person.AnnualSalary * person.Annual401kMatchPercent / 12;
-    }
+    
     /// <summary>
     /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
     /// sim run updating another's stats. Also reset calculated fields like MonthlySocialSecurityWage, IsRetired, etc.
     /// </summary>
     public static McPerson CopyPerson(McPerson originalPerson)
     {
+        // todo: make a parameter for CopyPerson that tells it whether to copy the calculated fields rather than assuming you don't want to
         var newInvestmentAccounts = AccountCopy.CopyInvestmentAccounts(originalPerson.InvestmentAccounts);
         var newDebtAccounts = AccountCopy.CopyDebtAccounts(originalPerson.DebtAccounts);
         var newPerson = new McPerson()
@@ -103,13 +108,12 @@ public static class Person
             AnnualSalary = originalPerson.AnnualSalary,
             AnnualBonus = originalPerson.AnnualBonus,
             MonthlyFullSocialSecurityBenefit = originalPerson.MonthlyFullSocialSecurityBenefit,
-            Annual401kMatchPercent = originalPerson.Annual401kMatchPercent,
+            Annual401KMatchPercent = originalPerson.Annual401KMatchPercent,
             InvestmentAccounts = newInvestmentAccounts,
             DebtAccounts = newDebtAccounts,
             IsRetired = false,
             IsBankrupt = false,
-            MonthlySocialSecurityWage = 0M,
-            Monthly401kMatch = 0M,
+            AnnualSocialSecurityWage = 0M,
         };
         return newPerson;
     }
