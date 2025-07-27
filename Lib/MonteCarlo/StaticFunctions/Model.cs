@@ -6,6 +6,47 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public class Model
 {
+    #region utility functions
+
+    
+    /// <summary>
+    /// A generic mating function for properties of all types. This is here for DRY compliance
+    /// </summary>
+    private static T MateProperty<T>(
+        McModel parentA,
+        McModel parentB,
+        Func<McModel, T> propertySelector,
+        Func<T> randomValueGenerator)
+    {
+        var hereditarySource = GetHereditarySource();
+        return hereditarySource switch
+        {
+            HereditarySource.ParentA => propertySelector(parentA),
+            HereditarySource.ParentB => propertySelector(parentB),
+            HereditarySource.Random => randomValueGenerator(),
+            _ => throw new InvalidDataException("Invalid HereditarySource")
+        };
+    }
+    /// <summary>
+    /// This is used to generially provide a random value between min and max by detecting whether the property is an
+    /// int or a decimal. Uses the MateProperty function above to increase DRY compliance
+    /// </summary>
+    private static T MateNumericProperty<T>(
+        McModel parentA,
+        McModel parentB,
+        Func<McModel, T> propertySelector,
+        T minValue,
+        T maxValue) where T : struct
+    {
+        return MateProperty(
+            parentA,
+            parentB,
+            propertySelector,
+            () => typeof(T) == typeof(decimal) 
+                ? (T)(object)GetUnSeededRandomDecimal((decimal)(object)minValue, (decimal)(object)maxValue)
+                : (T)(object)GetUnSeededRandomInt((int)(object)minValue, (int)(object)maxValue)
+        );
+    }
     
     public static HereditarySource GetHereditarySource()
     {
@@ -48,6 +89,17 @@ public class Model
         var newDate = min.PlusMonths(addlMonthsOverMin);
         return newDate;
     }
+    
+    
+
+    #endregion
+    
+    #region Model interface functions
+    
+    /*
+     * these are the functions that other systems / classes should use. The other functions are public to facilitate
+     * unit testing 
+     */
     
     public static McModel CreateRandomModel(LocalDateTime birthdate)
     {
@@ -109,7 +161,6 @@ public class Model
     
     public static McModel MateModels(McModel a, McModel b, LocalDateTime birthDate)
     {
-        
         return new McModel()
         {
             Id = Guid.NewGuid(),
@@ -136,17 +187,109 @@ public class Model
         };
     }
     
+    #endregion
     
-    public static LocalDateTime MateRetirementDate(McModel a, McModel b, LocalDateTime birthDate)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.RetirementDate;
-            case HereditarySource.ParentB:
-                return b.RetirementDate;
-            case HereditarySource.Random:
+
+    #region Individual Property Mating Functions
+
+    public static decimal MateAusterityRatio(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.AusterityRatio,
+            ModelConstants.AusterityRatioMin,
+            ModelConstants.AusterityRatioMax);
+    
+    public static decimal MateDesiredMonthlySpendPostRetirement(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.DesiredMonthlySpendPostRetirement,
+            ModelConstants.DesiredMonthlySpendPostRetirementMin,
+            ModelConstants.DesiredMonthlySpendPostRetirementMax);
+    
+    public static decimal MateDesiredMonthlySpendPreRetirement(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.DesiredMonthlySpendPreRetirement,
+            ModelConstants.DesiredMonthlySpendPreRetirementMin,
+            ModelConstants.DesiredMonthlySpendPreRetirementMax);
+    
+    public static decimal MateExtremeAusterityNetWorthTrigger(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.ExtremeAusterityNetWorthTrigger,
+            ModelConstants.ExtremeAusterityNetWorthTriggerMin,
+            ModelConstants.ExtremeAusterityNetWorthTriggerMax);
+    
+    public static decimal MateExtremeAusterityRatio(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.ExtremeAusterityRatio,
+            ModelConstants.ExtremeAusterityRatioMin,
+            ModelConstants.ExtremeAusterityRatioMax);
+    
+    public static int MateNumMonthsCashOnHand(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.NumMonthsCashOnHand,
+            ModelConstants.NumMonthsCashOnHandMin,
+            ModelConstants.NumMonthsCashOnHandMax);
+    
+    public static int MateNumMonthsMidBucketOnHand(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.NumMonthsMidBucketOnHand,
+            ModelConstants.NumMonthsMidBucketOnHandMin,
+            ModelConstants.NumMonthsMidBucketOnHandMax);
+    
+    public static int MateNumMonthsPriorToRetirementToBeginRebalance(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.NumMonthsPriorToRetirementToBeginRebalance,
+            ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin,
+            ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax);
+    
+    public static decimal MatePercent401KTraditional(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.Percent401KTraditional,
+            ModelConstants.Percent401KTraditionalMin,
+            ModelConstants.Percent401KTraditionalMax);
+    
+    public static RebalanceFrequency MateRebalanceFrequency(McModel a, McModel b) =>
+        MateProperty(
+            a, b,
+            model => model.RebalanceFrequency,
+            () =>
+            {
+                var randomInt = GetUnSeededRandomInt(0, 3000);
+                return randomInt switch
+                {
+                    < 1000 => RebalanceFrequency.MONTHLY,
+                    < 2000 => RebalanceFrequency.QUARTERLY,
+                    _ => RebalanceFrequency.YEARLY
+                };
+            });
+    
+    public static int MateRecessionCheckLookBackMonths(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.RecessionCheckLookBackMonths,
+            ModelConstants.RecessionCheckLookBackMonthsMin,
+            ModelConstants.RecessionCheckLookBackMonthsMax);
+
+    public static decimal MateRecessionRecoveryPointModifier(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.RecessionRecoveryPointModifier,
+            ModelConstants.RecessionRecoveryPointModifierMin,
+            ModelConstants.RecessionRecoveryPointModifierMax);
+    
+    public static LocalDateTime MateRetirementDate(McModel a, McModel b, LocalDateTime birthDate) =>
+        MateProperty(
+            a, b,
+            model => model.RetirementDate,
+            () =>
+            {
                 var min = birthDate
                     .PlusYears(ModelConstants.RetirementAgeMin.years)
                     .PlusMonths(ModelConstants.RetirementAgeMin.months);
@@ -154,21 +297,14 @@ public class Model
                     .PlusYears(ModelConstants.RetirementAgeMax.years)
                     .PlusMonths(ModelConstants.RetirementAgeMax.months);
                 return GetUnSeededRandomDate(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
+            });
     
-    public static LocalDateTime MateSocialSecurityStartDate(McModel a, McModel b , LocalDateTime birthDate)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.SocialSecurityStart;
-            case HereditarySource.ParentB:
-                return b.SocialSecurityStart;
-            case HereditarySource.Random:
+    public static LocalDateTime MateSocialSecurityStartDate(McModel a, McModel b, LocalDateTime birthDate) =>
+        MateProperty(
+            a, b,
+            model => model.RetirementDate,
+            () =>
+            {
                 var min = birthDate
                     .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
                     .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months);
@@ -176,234 +312,18 @@ public class Model
                     .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
                     .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months);
                 return GetUnSeededRandomDate(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
+            });
+
+    #endregion
     
-    public static decimal MateAusterityRatio(McModel a, McModel b)
-    {
-        
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.AusterityRatio;
-            case HereditarySource.ParentB:
-                return b.AusterityRatio;
-            case HereditarySource.Random:
-                var min = ModelConstants.AusterityRatioMin;
-                var max = ModelConstants.AusterityRatioMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
     
-    public static decimal MateExtremeAusterityRatio(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.ExtremeAusterityRatio;
-            case HereditarySource.ParentB:
-                return b.ExtremeAusterityRatio;
-            case HereditarySource.Random:
-                var min = ModelConstants.ExtremeAusterityRatioMin;
-                var max = ModelConstants.ExtremeAusterityRatioMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
     
-    public static decimal MateExtremeAusterityNetWorthTrigger(McModel a, McModel b)
-    {
-        
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.ExtremeAusterityNetWorthTrigger;
-            case HereditarySource.ParentB:
-                return b.ExtremeAusterityNetWorthTrigger;
-            case HereditarySource.Random:
-                var min = ModelConstants.ExtremeAusterityNetWorthTriggerMin;
-                var max = ModelConstants.ExtremeAusterityNetWorthTriggerMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
     
-    public static RebalanceFrequency MateRebalanceFrequency(McModel a, McModel b)
-    {
-            
-        Func<RebalanceFrequency> getRandom = () =>
-        {
-            var randomInt = GetUnSeededRandomInt(0, 3000);
-            return randomInt switch
-            {
-                < 1000 => RebalanceFrequency.MONTHLY,
-                < 2000 => RebalanceFrequency.QUARTERLY,
-                _ => RebalanceFrequency.YEARLY
-            };
-        };
-        var hereditarySource = GetHereditarySource();
-        return hereditarySource switch
-        {
-            HereditarySource.ParentA => a.RebalanceFrequency,
-            HereditarySource.ParentB => b.RebalanceFrequency,
-            HereditarySource.Random => getRandom(),
-            _ => throw new InvalidDataException("Invalid HereditarySource")
-        };
-    }
+
     
-    public static decimal MateDesiredMonthlySpendPreRetirement(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.DesiredMonthlySpendPreRetirement;
-            case HereditarySource.ParentB:
-                return b.DesiredMonthlySpendPreRetirement;
-            case HereditarySource.Random:
-                var min = ModelConstants.DesiredMonthlySpendPreRetirementMin;
-                var max = ModelConstants.DesiredMonthlySpendPreRetirementMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
+
     
-    public static decimal MateDesiredMonthlySpendPostRetirement(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.DesiredMonthlySpendPostRetirement;
-            case HereditarySource.ParentB:
-                return b.DesiredMonthlySpendPostRetirement;
-            case HereditarySource.Random:
-                var min = ModelConstants.DesiredMonthlySpendPostRetirementMin;
-                var max = ModelConstants.DesiredMonthlySpendPostRetirementMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
-    public static decimal MatePercent401KTraditional(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.Percent401KTraditional;
-            case HereditarySource.ParentB:
-                return b.Percent401KTraditional;
-            case HereditarySource.Random:
-                var min = ModelConstants.Percent401KTraditionalMin;
-                var max = ModelConstants.Percent401KTraditionalMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
-    public static int MateNumMonthsCashOnHand(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.NumMonthsCashOnHand;
-            case HereditarySource.ParentB:
-                return b.NumMonthsCashOnHand;
-            case HereditarySource.Random:
-                var min = ModelConstants.NumMonthsCashOnHandMin;
-                var max = ModelConstants.NumMonthsCashOnHandMax;
-                return GetUnSeededRandomInt(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
-    public static int MateNumMonthsMidBucketOnHand(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.NumMonthsMidBucketOnHand;
-            case HereditarySource.ParentB:
-                return b.NumMonthsMidBucketOnHand;
-            case HereditarySource.Random:
-                var min = ModelConstants.NumMonthsMidBucketOnHandMin;
-                var max = ModelConstants.NumMonthsMidBucketOnHandMax;
-                return GetUnSeededRandomInt(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
-    public static int MateNumMonthsPriorToRetirementToBeginRebalance(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.NumMonthsPriorToRetirementToBeginRebalance;
-            case HereditarySource.ParentB:
-                return b.NumMonthsPriorToRetirementToBeginRebalance;
-            case HereditarySource.Random:
-                var min = ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin;
-                var max = ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax;
-                return GetUnSeededRandomInt(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
-    public static int MateRecessionCheckLookBackMonths(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.RecessionCheckLookBackMonths;
-            case HereditarySource.ParentB:
-                return b.RecessionCheckLookBackMonths;
-            case HereditarySource.Random:
-                var min = ModelConstants.RecessionCheckLookBackMonthsMin;
-                var max = ModelConstants.RecessionCheckLookBackMonthsMax;
-                return GetUnSeededRandomInt(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
-    public static decimal MateRecessionRecoveryPointModifier(McModel a, McModel b)
-    {
-        var hereditarySource = GetHereditarySource();
-        switch (hereditarySource)
-        {
-            case HereditarySource.ParentA:
-                return a.RecessionRecoveryPointModifier;
-            case HereditarySource.ParentB:
-                return b.RecessionRecoveryPointModifier;
-            case HereditarySource.Random:
-                var min = ModelConstants.RecessionRecoveryPointModifierMin;
-                var max = ModelConstants.RecessionRecoveryPointModifierMax;
-                return GetUnSeededRandomDecimal(min, max);
-            default:
-                throw new InvalidDataException("Invalid HereditarySource");
-        }
-    }
-    
+
     
     
 
