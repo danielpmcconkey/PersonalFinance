@@ -108,8 +108,6 @@ namespace Lib.MonteCarlo
                         if (_sim.CurrentDateInSim.Month == 1)
                         {
                             CleanUpAccounts();
-
-                            GetBonusPayment();
                             
                             PayTax();
                         }
@@ -174,93 +172,39 @@ namespace Lib.MonteCarlo
 
         private void Payday()
         {
-            GetSocialSecurityCheck();
-            GetWorkingPaycheck();
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, 0, "processing payday");
+            }
+            if (!_sim.PgPerson.IsRetired) GetPaycheck();
+            if (_sim.CurrentDateInSim >= _sim.SimParameters.SocialSecurityStart) GetSocialSecurityCheck();
+            if (MonteCarloConfig.DebugMode)
+            {
+                Reconciliation.AddFullReconLine(_sim, 0, "processed payday");
+            }
         }
 
+        private void GetPaycheck()
+        {
+            var paydayResult = 
+                Lib.MonteCarlo.StaticFunctions.Payday.ProcessPreRetirementPaycheck(
+                    _sim.PgPerson, _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.TaxLedger, _sim.LifetimeSpend,
+                    _sim.SimParameters, _sim.CurrentPrices);
+            _sim.BookOfAccounts = paydayResult.bookOfAccounts;
+            _sim.TaxLedger = paydayResult.ledger;
+            _sim.LifetimeSpend = paydayResult.spend;
+        }
+        private void GetSocialSecurityCheck()
+        {
+            var paydayResult = 
+                Lib.MonteCarlo.StaticFunctions.Payday.ProcessSocialSecurityCheck(
+                    _sim.PgPerson, _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.TaxLedger, _sim.LifetimeSpend,
+                    _sim.SimParameters);
+            _sim.BookOfAccounts = paydayResult.bookOfAccounts;
+            _sim.TaxLedger = paydayResult.ledger;
+            _sim.LifetimeSpend = paydayResult.spend;
+        }
         
-        private void GetBonusPayment()
-        {
-            if (_sim.PgPerson.IsRetired) return;
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting bonus");
-            }
-
-            var grossMonthlyPay = _sim.PgPerson.AnnualBonus;
-            Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
-            AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collected bonus");
-            }
-        }
-        private void GetWorkingPaycheck()
-        {
-            // todo: move paycheck logic to a static function
-            // todo: create a UT suite for GetWorkingPaycheck
-            // todo: combine monthly "savings" investing into this function
-            // todo: create a UT that ensures that excess cash gets invested pre-retirement
-            // todo: calculate pre and post tax 401k contributions and assign to the person
-            // todo: note that McPerson.MonthlySocialSecurityWage is now AnnualSocialSecurityWage
-            
-            if (_sim.PgPerson.IsRetired) return;
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting paycheck");
-            }
-
-            // income
-            var grossMonthlyPay = (_sim.PgPerson.AnnualSalary + _sim.PgPerson.AnnualBonus) / 12m;
-            var netMonthlyPay = grossMonthlyPay;
-            var taxableMonthlyPay = grossMonthlyPay;
-            
-            // taxes withheld
-            var federalWithholding = _sim.PgPerson.FederalAnnualWithholding / 12m;
-            var stateWithholding = _sim.PgPerson.StateAnnualWithholding / 12m;
-            var monthlyOasdi = (Math.Min(
-                TaxConstants.OasdiBasePercent * (grossMonthlyPay * 12m),
-                TaxConstants.OasdiMax))
-                / 12m;
-            var annualStandardMedicare = TaxConstants.StandardMedicareTaxRate * grossMonthlyPay;
-            var amountOfSalaryOverMedicareThreshold = 
-                (grossMonthlyPay * 12) - TaxConstants.AdditionalMedicareThreshold;
-            var annualAdditionalMedicare = 
-                TaxConstants.AdditionalMedicareTaxRate * amountOfSalaryOverMedicareThreshold;
-            var annualTotalMedicare = annualStandardMedicare + annualAdditionalMedicare;
-            var monthlyMedicare = annualTotalMedicare / 12m;
-            netMonthlyPay -= (federalWithholding + stateWithholding + monthlyOasdi + monthlyMedicare);
-            _sim.TaxLedger = Tax.RecordWithholdings(
-                _sim.TaxLedger, _sim.CurrentDateInSim, federalWithholding, stateWithholding);
-            _sim.TaxLedger = Tax.RecordTaxPaid(
-                _sim.TaxLedger, _sim.CurrentDateInSim, monthlyOasdi + monthlyMedicare);
-            
-            
-            // pre-tax deductions
-            var annualPreTaxHealthDeductions = _sim.PgPerson.PreTaxHealthDeductions;
-            var annualHsaContribution = _sim.PgPerson.AnnualHsaContribution;
-            var annual401KPreTax = _sim.PgPerson.Annual401KPreTax;
-            var preTaxDeductions = 
-                (annualPreTaxHealthDeductions + annualHsaContribution + annual401KPreTax) / 12m;
-            netMonthlyPay -= preTaxDeductions;
-            taxableMonthlyPay -= preTaxDeductions;
-            _sim.LifetimeSpend = Spend.RecordHealthcareSpend(_sim.LifetimeSpend, annualPreTaxHealthDeductions, _sim.CurrentDateInSim);
-                
-            // post-tax deductions
-            var annual401KPostTax = _sim.PgPerson.Annual401KPostTax;
-            var annualInsuranceDeductions = _sim.PgPerson.PostTaxInsuranceDeductions;
-            netMonthlyPay -= ((annual401KPostTax + annualInsuranceDeductions) / 12m);
-            
-            // record final w2 income (gross, less pre-tax)
-            _sim.TaxLedger = Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, taxableMonthlyPay);
-            
-            // finally, deposit what's left
-            AccountCashManagement.DepositCash(_sim.BookOfAccounts, netMonthlyPay, _sim.CurrentDateInSim);;
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collected paycheck");
-            }
-        }
 
         private void MeetRmdRequirements()
         {
@@ -294,6 +238,8 @@ namespace Lib.MonteCarlo
         }
         private void RebalancePortfolio()
         {
+            // todo: create a UT that ensures that excess cash gets invested pre-retirement
+            
             if (_sim.PgPerson.IsBankrupt) return;
             if (MonteCarloConfig.DebugMode)
             {
@@ -364,27 +310,7 @@ namespace Lib.MonteCarlo
 
             return true;
         }
-        private void GetSocialSecurityCheck()
-        {
-            if (_sim.CurrentDateInSim < _sim.SimParameters.SocialSecurityStart)
-            {
-                return;
-            }
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Social Security payday");
-            }
-            var amount = _sim.PgPerson.AnnualSocialSecurityWage / 12m;
-            _sim.BookOfAccounts = AccountCashManagement.DepositCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim);
-            
-            _sim.LifetimeSpend = Spend.RecordSocialSecurityWage(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
-            
-            Tax.RecordSocialSecurityIncome(_sim.TaxLedger, _sim.CurrentDateInSim, amount);
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddFullReconLine(_sim, amount, "Social Security check processed");
-            }
-        }
+        
         
         private bool SpendCash(decimal amount, bool isFun)
         {
@@ -519,6 +445,7 @@ namespace Lib.MonteCarlo
         /// </summary>
         private LocalDateTime NormalizeDate(LocalDateTime providedDate)
         {
+            // todo: figure out why we're not using NormalizeDate any more
             var firstOfThisMonth = new LocalDateTime(providedDate.Year, providedDate.Month, 1, 0, 0);
             var firstOfNextMonth = firstOfThisMonth.PlusMonths(1);
             var timeSpanToThisFirst = providedDate - firstOfThisMonth;
@@ -528,11 +455,6 @@ namespace Lib.MonteCarlo
                 firstOfNextMonth; // t1 is longer than t2, return next first
             
            
-        }
-        private static int GetRandomInt(int minInclusive, int maxInclusive)
-        {
-            CryptoRandom cr = new CryptoRandom();
-            return cr.Next(minInclusive, maxInclusive + 1);
         }
     }
 }

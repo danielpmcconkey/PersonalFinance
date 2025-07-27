@@ -302,7 +302,7 @@ public class Model
     public static LocalDateTime MateSocialSecurityStartDate(McModel a, McModel b, LocalDateTime birthDate) =>
         MateProperty(
             a, b,
-            model => model.RetirementDate,
+            model => model.SocialSecurityStart,
             () =>
             {
                 var min = birthDate
