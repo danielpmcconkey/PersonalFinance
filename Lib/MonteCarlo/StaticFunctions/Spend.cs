@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.StaticConfig;
 using NodaTime;
@@ -11,7 +12,7 @@ public static class Spend
     /// <summary>
     /// used for rebalancing functions to determine how much cash should be on hand. This is always based on current age
     /// </summary>
-    public static decimal CalculateCashNeedForNMonths(McModel simParams, McPerson person, LocalDateTime currentDate, int nMonths)
+    public static decimal CalculateCashNeedForNMonths(McModel simParams, PgPerson person, LocalDateTime currentDate, int nMonths)
     {
         var cashNeeded = 0m;
         for (var i = 0; i < nMonths; i++)
@@ -23,7 +24,7 @@ public static class Spend
         return cashNeeded;
     }
 
-    public static decimal CalculateFunPointsForSpend(decimal funSpend, McPerson person,
+    public static decimal CalculateFunPointsForSpend(decimal funSpend, PgPerson person,
         LocalDateTime currentDate)
     {
         /*
@@ -50,7 +51,7 @@ public static class Spend
         funPoints = Math.Min(funPoints, maxFunPoints); // no extra bucks for being younger than 50
         return funPoints;
     }
-    public static decimal CalculateMonthlyFunSpend(McModel simParams, McPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyFunSpend(McModel simParams, PgPerson person, LocalDateTime currentDate)
     {
         /*
          * pre-retirement, just use the DesiredMonthlySpendPreRetirement value.
@@ -69,7 +70,7 @@ public static class Spend
         var declineAmount = declineAmountPerYear * howManyYearsAbove65;
         return simParams.DesiredMonthlySpendPostRetirement - declineAmount;
     }
-    public static decimal CalculateMonthlyHealthSpend(McModel simParams, McPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyHealthSpend(McModel simParams, PgPerson person, LocalDateTime currentDate)
     {
         /*
          * if we're not yet retired, Dan's primary employer will provide healthcare, so we can return immediately
@@ -105,10 +106,10 @@ public static class Spend
         
         // before age 65 (if retired), we have no medicare and need to pay for everything out of pocket
         var age = currentDate.Year - person.BirthDate.Year;
-        if (age < 65) return simParams.RequiredMonthlySpendHealthCare;
+        if (age < 65) return person .RequiredMonthlySpendHealthCare;
         
         // between ages of 88 and 90 we simulate assisted living
-        if (age >= 88) return simParams.RequiredMonthlySpendHealthCare * 2m;
+        if (age >= 88) return person.RequiredMonthlySpendHealthCare * 2m;
         
         // medicare time, set up the constants
         
@@ -138,9 +139,9 @@ public static class Spend
         
         return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
     }
-    public static decimal CalculateMonthlyRequiredSpend(McModel simParams, McPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyRequiredSpend(McModel simParams, PgPerson person, LocalDateTime currentDate)
     {
-        var standardSpend = simParams.RequiredMonthlySpend;
+        var standardSpend = person.RequiredMonthlySpend;
         var healthCareSpend = CalculateMonthlyHealthSpend(simParams, person, currentDate);
         return standardSpend + healthCareSpend;
     }

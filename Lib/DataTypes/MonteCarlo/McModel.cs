@@ -47,58 +47,23 @@ namespace Lib.DataTypes.MonteCarlo
         public required LocalDateTime SocialSecurityStart { get; set; }
         
         /// <summary>
-        /// the amount you have to pay on basic things like groceries, bills, property tax. does not include any debt payments
-        /// </summary>
-        [Column("requiredmonthlyspend")]
-        public required decimal RequiredMonthlySpend { get; set; }
-        
-        /// <summary>
-        /// the amount you have to pay for health care once you retire. Changes based on age
-        /// </summary>
-        [Column("requiredmonthlyspendhealthcare")]
-        public required decimal RequiredMonthlySpendHealthCare { get; set; }
-        
-        /// <summary>
-        /// the amount of fun bucks you get to blow pre retirement
-        /// </summary>
-        [Column("desiredmonthlyspendpreretirement")]
-        public required decimal DesiredMonthlySpendPreRetirement { get; set; }
-        
-        // <summary>
-        /// the amount of fun bucks you get to blow post retirement
-        /// </summary>
-        [Column("desiredmonthlyspendpostretirement")]
-        public required decimal DesiredMonthlySpendPostRetirement { get; set; }
-
-        /// <summary>
-        /// the percentage of monthly spend that you actually spend when times 
-        /// are tough
+        /// the percentage of desired monthly spend that you actually spend when in a recession 
         /// </summary>
         [Column("austerityratio")]
         public required decimal AusterityRatio { get; set; }
+        
         /// <summary>
         /// the percentage of monthly spend that you actually spend when times 
         /// are really tough
         /// </summary>
         [Column("extremeausterityratio")]
         public required decimal ExtremeAusterityRatio { get; set; }
+        
         /// <summary>
         /// If net worth is below this level, you go into extreme austerity
         /// </summary>
         [Column("extremeausteritynetworthtrigger")]
         public required decimal ExtremeAusterityNetWorthTrigger { get; set; }
-
-        [Column("monthlyinvest401kroth")]
-        public required decimal MonthlyInvest401kRoth { get; set; }
-
-        [Column("monthlyinvest401ktraditional")]
-        public required decimal MonthlyInvest401kTraditional { get; set; }
-
-        [Column("monthlyinvestbrokerage")]
-        public required decimal MonthlyInvestBrokerage { get; set; }
-
-        [Column("monthlyinvesthsa")]
-        public required decimal MonthlyInvestHSA { get; set; }
         
         [Column("rebalancefrequency")]
         public required RebalanceFrequency RebalanceFrequency { get; set; }
@@ -115,8 +80,32 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("recessionchecklookbackmonths")]
         public required int RecessionCheckLookBackMonths { get; set; }
 
+        /// <summary>
+        /// what percentage of the previous high water mark (recession recover point) you need the current prices to be
+        /// before declaring yourself done with the recession eg:
+        ///     isRecessionOver = (currentPrice > recessionRecoveryPoint * recessionRecoveryPointModifier) ? 
+        ///          true : false
+        /// </summary>
         [Column("recessionrecoverypointmodifier")]
         public required decimal RecessionRecoveryPointModifier { get; set; }
+        
+        /// <summary>
+        /// the amount of fun bucks you get to blow pre retirement (above + beyond required spend)
+        /// </summary>
+        [Column("desiredmonthlyspendpreretirement")]
+        public required decimal DesiredMonthlySpendPreRetirement { get; set; }
+        
+        // <summary>
+        /// the amount of fun bucks you get to blow post retirement (above + beyond required spend)
+        /// </summary>
+        [Column("desiredmonthlyspendpostretirement")]
+        public required decimal DesiredMonthlySpendPostRetirement { get; set; }
+
+        /// <summary>
+        /// the percentage of teh overall employee contribution goes to teh traditional 401K account
+        /// </summary>
+        [Column("percent401ktraditional", TypeName = "numeric(5,4)")]
+        public required decimal Percent401KTraditional { get; set; }
 
     }
 }

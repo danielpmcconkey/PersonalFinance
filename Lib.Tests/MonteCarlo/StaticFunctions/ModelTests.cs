@@ -1,0 +1,223 @@
+
+using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo.StaticFunctions;
+using Lib.StaticConfig;
+using NodaTime;
+using Xunit;
+
+namespace Lib.Tests.MonteCarlo.StaticFunctions;
+
+public class ModelTests
+{
+    private static LocalDateTime _birthdate = new (1978, 3, 1, 0, 0);
+    
+    [Theory]
+    [InlineData(HereditarySource.ParentA,38800,41200)]
+    [InlineData(HereditarySource.ParentB,38800,41200)]
+    [InlineData(HereditarySource.Random,19400,20600)]
+    public void GetHeredetarySource_IsRandom(HereditarySource source, int expectedLow, int expectedHigh)
+    {
+        // Arrange
+        var totalChecks = 100000;
+        var count = 0;
+        
+        // Act
+        for (int i = 0; i < totalChecks; i++)
+        {
+            if(Model.GetHereditarySource() == source) count++;
+        }
+        
+        // Assert
+        Assert.InRange(count, expectedLow, expectedHigh);
+    }
+
+    [Theory]
+    [InlineData(0,4850,5150)] // 0 and 10 will only get half as many due to rounding
+    [InlineData(1,9700,10300)]
+    [InlineData(2,9700,10300)]
+    [InlineData(3,9700,10300)]
+    [InlineData(4,9700,10300)]
+    [InlineData(5,9700,10300)]
+    [InlineData(6,9700,10300)]
+    [InlineData(7,9700,10300)]
+    [InlineData(8,9700,10300)]
+    [InlineData(9,9700,10300)]
+    [InlineData(10,4850,5150)] // 0 and 10 will only get half as many due to rounding
+    public void GetUnSeededRandomDecimal_IsRandom(int batch, int expectedLow, int expectedHigh)
+    {
+        var totalChecks = 100000;
+        var min = 0.0m;
+        var max = 10.0m;
+        var divisor = 1.0m;
+        var count = 0;
+        
+        // Act
+        for (int i = 0; i < totalChecks; i++)
+        {
+            var result = Model.GetUnSeededRandomDecimal(min, max);
+            var rounded = (int)(Math.Round(result / divisor, 0));
+            if(rounded == batch) count++;
+        }
+        
+        // Assert
+        Assert.InRange(count, expectedLow, expectedHigh);
+    }
+
+    [Fact]
+    public void GetUnSeededRandomDate_WillProduceMinAndMaxDate()
+    {
+        // Arrange
+        var min = _birthdate;
+        var max = _birthdate.PlusYears(10);
+        var numTries = 100000;
+        int countMin = 0;
+        int countMax = 0;
+        // Act
+        for (int i = 0; i < numTries; i++)
+        {
+            var result = Model.GetUnSeededRandomDate(min, max);
+            if(result == min) countMin++;
+            if(result == max) countMax++;
+        }
+        //Assert
+        Assert.True(countMin > 500);
+        Assert.True(countMax > 500);
+        // but not too many
+        Assert.True(countMin < 1500);
+        Assert.True(countMax < 1500);
+    }
+    
+    [Fact]
+    public void MateRetirementDate_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+        var minDate = _birthdate
+            .PlusYears(ModelConstants.RetirementAgeMin.years)
+            .PlusMonths(ModelConstants.RetirementAgeMin.months);
+        var maxDate = _birthdate
+            .PlusYears(ModelConstants.RetirementAgeMax.years)
+            .PlusMonths(ModelConstants.RetirementAgeMax.months);
+
+        // Act
+        var result = Model.MateRetirementDate(modelA, modelB, _birthdate);
+
+        // Assert
+        Assert.InRange(result, minDate, maxDate);
+    }
+    
+    [Fact]
+    public void MateSocialSecurityStartDate_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+        var minDate = _birthdate
+            .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
+            .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months);
+        var maxDate = _birthdate
+            .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
+            .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months);
+
+        // Act
+        var result = Model.MateSocialSecurityStartDate(modelA, modelB, _birthdate);
+
+        // Assert
+        Assert.InRange(result, minDate, maxDate);
+    }
+    
+    [Fact]
+    public void MateAusterityRatio_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = Model.MateAusterityRatio(modelA, modelB);
+
+        // Assert
+        Assert.InRange(result, ModelConstants.AusterityRatioMin, ModelConstants.AusterityRatioMax);
+    }
+    
+    [Fact]
+    public void MateExtremeAusterityRatio_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = Model.MateExtremeAusterityRatio(modelA, modelB);
+
+        // Assert
+        Assert.InRange(
+            result, ModelConstants.ExtremeAusterityRatioMin, ModelConstants.ExtremeAusterityRatioMax);
+    }
+    
+    [Fact]
+    public void MateExtremeAusterityNetWorthTrigger_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = Model.MateExtremeAusterityNetWorthTrigger(modelA, modelB);
+
+        // Assert
+        Assert.InRange(
+            result, ModelConstants.ExtremeAusterityNetWorthTriggerMin, 
+            ModelConstants.ExtremeAusterityNetWorthTriggerMax);
+    }
+
+    [Fact]
+    public void MateNumMonthsCashOnHand_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = Model.MateNumMonthsCashOnHand(modelA, modelB);
+
+        // Assert
+        Assert.InRange(
+            result, ModelConstants.NumMonthsCashOnHandMin, 
+            ModelConstants.NumMonthsCashOnHandMax);
+    }
+    
+    [Fact]
+    public void MateNumMonthsMidBucketOnHand_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = Model.MateNumMonthsMidBucketOnHand(modelA, modelB);
+
+        // Assert
+        Assert.InRange(
+            result, ModelConstants.NumMonthsMidBucketOnHandMin, 
+            ModelConstants.NumMonthsMidBucketOnHandMax);
+    }
+    
+    [Fact]
+    public void MateNumMonthsPriorToRetirementToBeginRebalance_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = Model.CreateRandomModel(_birthdate);
+        var modelB = Model.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = Model.MateNumMonthsPriorToRetirementToBeginRebalance(modelA, modelB);
+
+        // Assert
+        Assert.InRange(
+            result, ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin, 
+            ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax);
+    }
+    
+}

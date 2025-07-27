@@ -2,6 +2,7 @@
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using System.Collections.Concurrent;
+using Lib.DataTypes;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.StaticConfig;
@@ -31,11 +32,13 @@ namespace Lib.MonteCarlo
 
 
 
-        public LifeSimulator(Logger logger, McModel simParams, McPerson person,
-            Dictionary<LocalDateTime, Decimal> hypotheticalPrices) 
+        public LifeSimulator(
+            Logger logger, McModel simParams, PgPerson person, List<McInvestmentAccount> investmentAccounts,
+            List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices) 
         {
             // need to create a book of accounts before you can normalize positions
-            var accounts = Account.CreateBookOfAccounts(person.InvestmentAccounts, person.DebtAccounts);
+            var accounts = Account.CreateBookOfAccounts(
+                AccountCopy.CopyInvestmentAccounts(investmentAccounts), AccountCopy.CopyDebtAccounts(debtAccounts));
             // set up a CurrentPrices sheet at the default starting rates
             var prices = new CurrentPrices();
             // set investment positions in terms of the default long, middle, and short-term prices
@@ -43,8 +46,8 @@ namespace Lib.MonteCarlo
             // set up the monthly social security wage, add it to both person and ledger
             var monthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(person,
                 simParams.SocialSecurityStart);
-            var copiedPerson = Person.CopyPerson(person);
-            copiedPerson.AnnualSocialSecurityWage = monthlySocialSecurityWage * 12;
+            var copiedPerson = Person.CopyPerson(person, false);
+            copiedPerson.AnnualSocialSecurityWage = monthlySocialSecurityWage * 12; // todo: set other caLculated fields for a person here
             var ledger = new TaxLedger();
             ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
             ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
@@ -55,7 +58,7 @@ namespace Lib.MonteCarlo
                 Log = logger,
                 SimParameters = simParams,
                 BookOfAccounts = accounts,
-                Person = copiedPerson,
+                PgPerson = copiedPerson,
                 CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
                 CurrentPrices = prices,
                 RecessionStats = new RecessionStats(),
@@ -79,7 +82,7 @@ namespace Lib.MonteCarlo
                     
                     
 
-                    if (!_sim.Person.IsBankrupt)
+                    if (!_sim.PgPerson.IsBankrupt)
                     {
                         // net worth is still positive.
                         // keep calculating stuff
@@ -119,13 +122,13 @@ namespace Lib.MonteCarlo
 
                     var measurement = Account.CreateNetWorthMeasurement(_sim);
                     // _sim.RecessionStats = DetermineRecessionStats(measurement, _sim.RecessionStats);
-                    if (measurement.NetWorth <= 0 || _sim.Person.IsBankrupt)
+                    if (measurement.NetWorth <= 0 || _sim.PgPerson.IsBankrupt)
                     {
                         // zero it out to make reporting cleaner
                         // and don't bother calculating anything further
                         measurement.TotalAssets = 0;
                         measurement.TotalLiabilities = 0;
-                        _sim.Person.IsBankrupt = true;
+                        _sim.PgPerson.IsBankrupt = true;
                     }
 
                     _measurements.Add(measurement);
@@ -162,7 +165,7 @@ namespace Lib.MonteCarlo
         private void CheckForRetirement()
         {
             if (_sim.CurrentDateInSim != _sim.SimParameters.RetirementDate) return;
-            _sim.Person.IsRetired = true;
+            _sim.PgPerson.IsRetired = true;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddFullReconLine(_sim, 0, "Retired!");
@@ -178,13 +181,13 @@ namespace Lib.MonteCarlo
         
         private void GetBonusPayment()
         {
-            if (_sim.Person.IsRetired) return;
+            if (_sim.PgPerson.IsRetired) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting bonus");
             }
 
-            var grossMonthlyPay = _sim.Person.AnnualBonus;
+            var grossMonthlyPay = _sim.PgPerson.AnnualBonus;
             Tax.RecordW2Income(_sim.TaxLedger, _sim.CurrentDateInSim, grossMonthlyPay);
             AccountCashManagement.DepositCash(_sim.BookOfAccounts, grossMonthlyPay, _sim.CurrentDateInSim);;
             if (MonteCarloConfig.DebugMode)
@@ -201,20 +204,20 @@ namespace Lib.MonteCarlo
             // todo: calculate pre and post tax 401k contributions and assign to the person
             // todo: note that McPerson.MonthlySocialSecurityWage is now AnnualSocialSecurityWage
             
-            if (_sim.Person.IsRetired) return;
+            if (_sim.PgPerson.IsRetired) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Collecting paycheck");
             }
 
             // income
-            var grossMonthlyPay = (_sim.Person.AnnualSalary + _sim.Person.AnnualBonus) / 12m;
+            var grossMonthlyPay = (_sim.PgPerson.AnnualSalary + _sim.PgPerson.AnnualBonus) / 12m;
             var netMonthlyPay = grossMonthlyPay;
             var taxableMonthlyPay = grossMonthlyPay;
             
             // taxes withheld
-            var federalWithholding = _sim.Person.FederalAnnualWithholding / 12m;
-            var stateWithholding = _sim.Person.StateAnnualWithholding / 12m;
+            var federalWithholding = _sim.PgPerson.FederalAnnualWithholding / 12m;
+            var stateWithholding = _sim.PgPerson.StateAnnualWithholding / 12m;
             var monthlyOasdi = (Math.Min(
                 TaxConstants.OasdiBasePercent * (grossMonthlyPay * 12m),
                 TaxConstants.OasdiMax))
@@ -234,9 +237,9 @@ namespace Lib.MonteCarlo
             
             
             // pre-tax deductions
-            var annualPreTaxHealthDeductions = _sim.Person.PreTaxHealthDeductions;
-            var annualHsaContribution = _sim.Person.AnnualHsaContribution;
-            var annual401KPreTax = _sim.Person.Annual401KPreTax;
+            var annualPreTaxHealthDeductions = _sim.PgPerson.PreTaxHealthDeductions;
+            var annualHsaContribution = _sim.PgPerson.AnnualHsaContribution;
+            var annual401KPreTax = _sim.PgPerson.Annual401KPreTax;
             var preTaxDeductions = 
                 (annualPreTaxHealthDeductions + annualHsaContribution + annual401KPreTax) / 12m;
             netMonthlyPay -= preTaxDeductions;
@@ -244,8 +247,8 @@ namespace Lib.MonteCarlo
             _sim.LifetimeSpend = Spend.RecordHealthcareSpend(_sim.LifetimeSpend, annualPreTaxHealthDeductions, _sim.CurrentDateInSim);
                 
             // post-tax deductions
-            var annual401KPostTax = _sim.Person.Annual401KPostTax;
-            var annualInsuranceDeductions = _sim.Person.PostTaxInsuranceDeductions;
+            var annual401KPostTax = _sim.PgPerson.Annual401KPostTax;
+            var annualInsuranceDeductions = _sim.PgPerson.PostTaxInsuranceDeductions;
             netMonthlyPay -= ((annual401KPostTax + annualInsuranceDeductions) / 12m);
             
             // record final w2 income (gross, less pre-tax)
@@ -261,12 +264,12 @@ namespace Lib.MonteCarlo
 
         private void MeetRmdRequirements()
         {
-            if (_sim.Person.IsBankrupt) return;
+            if (_sim.PgPerson.IsBankrupt) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Meeting RMD requirements");
             }
-            var age = _sim.CurrentDateInSim.Year - _sim.Person.BirthDate.Year;
+            var age = _sim.CurrentDateInSim.Year - _sim.PgPerson.BirthDate.Year;
             var result = Tax.MeetRmdRequirements(
                 _sim.TaxLedger, _sim.CurrentDateInSim, _sim.BookOfAccounts, age);
             
@@ -291,14 +294,14 @@ namespace Lib.MonteCarlo
         }
         private void RebalancePortfolio()
         {
-            if (_sim.Person.IsBankrupt) return;
+            if (_sim.PgPerson.IsBankrupt) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Rebalancing portfolio");
             }
             
             Rebalance.RebalancePortfolio(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.RecessionStats, 
-                _sim.CurrentPrices, _sim.SimParameters, _sim.TaxLedger, _sim.Person);
+                _sim.CurrentPrices, _sim.SimParameters, _sim.TaxLedger, _sim.PgPerson);
             if (StaticConfig.MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddFullReconLine(_sim, 0M, "Rebalanced portfolio");
@@ -306,7 +309,7 @@ namespace Lib.MonteCarlo
         }
         private void CleanUpAccounts()
         {
-            if (_sim.Person.IsBankrupt) return;
+            if (_sim.PgPerson.IsBankrupt) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Cleaning up accounts");
@@ -319,7 +322,7 @@ namespace Lib.MonteCarlo
         }
         private void AccrueInterest()
         {
-            if (_sim.Person.IsBankrupt) return;
+            if (_sim.PgPerson.IsBankrupt) return;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Accruing interest");
@@ -336,7 +339,7 @@ namespace Lib.MonteCarlo
         }
         private bool PayTax()
         {
-            if (_sim.Person.IsBankrupt) return false;
+            if (_sim.PgPerson.IsBankrupt) return false;
             
             var taxYear = _sim.CurrentDateInSim.Year - 1;
             
@@ -371,7 +374,7 @@ namespace Lib.MonteCarlo
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Social Security payday");
             }
-            var amount = _sim.Person.AnnualSocialSecurityWage / 12m;
+            var amount = _sim.PgPerson.AnnualSocialSecurityWage / 12m;
             _sim.BookOfAccounts = AccountCashManagement.DepositCash(_sim.BookOfAccounts, amount, _sim.CurrentDateInSim);
             
             _sim.LifetimeSpend = Spend.RecordSocialSecurityWage(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
@@ -397,7 +400,7 @@ namespace Lib.MonteCarlo
             _sim.LifetimeSpend = Spend.RecordSpend(_sim.LifetimeSpend, amount, _sim.CurrentDateInSim);
             if (isFun)
             {
-                var funPoints = Spend.CalculateFunPointsForSpend(amount, _sim.Person, _sim.CurrentDateInSim);
+                var funPoints = Spend.CalculateFunPointsForSpend(amount, _sim.PgPerson, _sim.CurrentDateInSim);
                 _sim.LifetimeSpend = Spend.RecordFunPoints(_sim.LifetimeSpend, funPoints, _sim.CurrentDateInSim);
             }
             if (MonteCarloConfig.DebugMode)
@@ -410,14 +413,14 @@ namespace Lib.MonteCarlo
         
         private bool PayForStuff()
         {
-            if (_sim.Person.IsBankrupt) return false;
+            if (_sim.PgPerson.IsBankrupt) return false;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Time to spend the money");
             }
 
-            var funSpend = Spend.CalculateMonthlyFunSpend(_sim.SimParameters, _sim.Person, _sim.CurrentDateInSim);
-            var notFunSpend = Spend.CalculateMonthlyRequiredSpend(_sim.SimParameters, _sim.Person, _sim.CurrentDateInSim);
+            var funSpend = Spend.CalculateMonthlyFunSpend(_sim.SimParameters, _sim.PgPerson, _sim.CurrentDateInSim);
+            var notFunSpend = Spend.CalculateMonthlyRequiredSpend(_sim.SimParameters, _sim.PgPerson, _sim.CurrentDateInSim);
             
             // required spend can't move. But your fun spend can go down if we're in a recession
             funSpend = Spend.CalculateRecessionSpendOverride(_sim.SimParameters, funSpend, _sim.RecessionStats);
@@ -436,7 +439,7 @@ namespace Lib.MonteCarlo
         
         private void DeclareBankruptcy()
         {
-            _sim.Person.IsBankrupt = true;
+            _sim.PgPerson.IsBankrupt = true;
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Bankruptcy declared");
@@ -446,7 +449,7 @@ namespace Lib.MonteCarlo
 
         private void PayDownLoans()
         {
-            if (_sim.Person.IsBankrupt)
+            if (_sim.PgPerson.IsBankrupt)
             {
                 return;
             }
@@ -476,29 +479,33 @@ namespace Lib.MonteCarlo
         {
             // todo: move pre-retirement investments into the Paycheck method
             // todo: UT AddRetirementSavings
-            if (_sim.Person.IsBankrupt || _sim.Person.IsRetired) return;
+            if (_sim.PgPerson.IsBankrupt || _sim.PgPerson.IsRetired) return;
             
             if (MonteCarloConfig.DebugMode)
             {
                 Reconciliation.AddMessageLine(_sim.CurrentDateInSim,0, "Adding retirement savings");
             }
 
-            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kRoth,
+            var roth401KAmount = 
+                _sim.PgPerson.Annual401KContribution * (1 - _sim.SimParameters.Percent401KTraditional) / 12m; 
+            var traditional401KAmount = 
+                _sim.PgPerson.Annual401KContribution * (_sim.SimParameters.Percent401KTraditional) / 12m; 
+            var monthly401KMatch = (_sim.PgPerson.AnnualSalary * _sim.PgPerson.Annual401KMatchPercent) / 12m;
+            var taxDefferedAmount = traditional401KAmount + monthly401KMatch;
+            var hsaAmount = 
+                (_sim.PgPerson.AnnualHsaContribution + _sim.PgPerson.AnnualHsaEmployerContribution) / 12m;
+            
+            Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, roth401KAmount,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.ROTH_401_K, _sim.CurrentPrices);
 
             Investment.InvestFunds(
-                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvest401kTraditional,
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, taxDefferedAmount,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, _sim.CurrentPrices);
 
             Investment.InvestFunds(
-                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestBrokerage,
-                McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, _sim.CurrentPrices);
-
-            Investment.InvestFunds(
-                _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.SimParameters.MonthlyInvestHSA,
+                _sim.BookOfAccounts, _sim.CurrentDateInSim, hsaAmount,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.HSA, _sim.CurrentPrices);
 
-            var monthly401KMatch = (_sim.Person.AnnualSalary * _sim.Person.Annual401KMatchPercent) / 12m;
             Investment.InvestFunds(_sim.BookOfAccounts, _sim.CurrentDateInSim, monthly401KMatch,
                 McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, _sim.CurrentPrices);
             

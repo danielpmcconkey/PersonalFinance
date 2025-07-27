@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Xunit;
 using NodaTime;
 using Lib.DataTypes.MonteCarlo;
@@ -29,17 +30,37 @@ public class RebalanceTests
             ExtremeAusterityNetWorthTrigger = 0,
             ExtremeAusterityRatio = 0,
             ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            MonthlyInvest401kRoth = 0,
-            MonthlyInvest401kTraditional = 0,
-            MonthlyInvestBrokerage = 0,
-            MonthlyInvestHSA = 0,
+            Percent401KTraditional = 0,
             RecessionCheckLookBackMonths = 0,
             RecessionRecoveryPointModifier = 0,
-            RequiredMonthlySpend = 0,
-            RequiredMonthlySpendHealthCare = 0,
             SimEndDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+        };
+    }
+    private PgPerson CreateTestPerson()
+    {
+        return new PgPerson
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Person",
+            BirthDate = LocalDateTime.FromDateTime(DateTime.Now.AddYears(-30)),
+            AnnualSalary = 50000M,
+            AnnualBonus = 5000M,
+            MonthlyFullSocialSecurityBenefit = 2000M,
+            Annual401KMatchPercent = 0.05M,
+            IsRetired = true,
+            IsBankrupt = true,
+            AnnualSocialSecurityWage = 1500M * 12m,
+            Annual401KContribution = 1,
+            AnnualHsaContribution = 2,
+            AnnualHsaEmployerContribution = 3,
+            FederalAnnualWithholding = 4,
+            StateAnnualWithholding = 5,
+            PreTaxHealthDeductions = 12,
+            PostTaxInsuranceDeductions = 13,
+            RequiredMonthlySpend = 14,
+            RequiredMonthlySpendHealthCare = 15,
         };
     }
 
@@ -188,7 +209,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.RebalanceLongToMid(
-            _baseDate, accounts, recessionStats, new CurrentPrices(), simParams, ledger, new McPerson());
+            _baseDate, accounts, recessionStats, new CurrentPrices(), simParams, ledger, CreateTestPerson());
 
         // Assert
         Assert.Equal(accounts, result.newBookOfAccounts); // Should not modify accounts during recession
@@ -214,10 +235,11 @@ public class RebalanceTests
          */
         // Arrange
         var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var person = CreateTestPerson();
         simParams.NumMonthsCashOnHand = 18;
         simParams.NumMonthsMidBucketOnHand = 24;
         simParams.DesiredMonthlySpendPostRetirement = 1000;
-        simParams.RequiredMonthlySpend = 1000;
+        person.RequiredMonthlySpend = 1000;
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         // we'll need 36k in cash and 48k in mid
         var numPositionsWanted = 100;
@@ -232,7 +254,7 @@ public class RebalanceTests
             accounts.Brokerage.Positions.Add(position);
         }
         var currentDate = _retirementDate.PlusMonths(12); // Within rebalance window, post retirement
-        var person = new McPerson();
+        
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
         
         

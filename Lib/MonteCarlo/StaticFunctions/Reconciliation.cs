@@ -83,12 +83,12 @@ public static class Reconciliation
             Decimal amount, string description)
         {
             if (StaticConfig.MonteCarloConfig.DebugMode == false) return null;
-            if (sim.Person is null)
+            if (sim.PgPerson is null)
             {
                 throw new InvalidDataException("Person is null in AddReconLine");
             }
 
-            var ageTimeSpan = (sim.CurrentDateInSim - sim.Person.BirthDate);
+            var ageTimeSpan = (sim.CurrentDateInSim - sim.PgPerson.BirthDate);
             var yearsOld = ageTimeSpan.Years;
             var monthsOld = ageTimeSpan.Months;
             var daysOld = ageTimeSpan.Days;
@@ -113,7 +113,7 @@ public static class Reconciliation
                 sim.LifetimeSpend.TotalSocialSecurityWageLifetime,
                 sim.LifetimeSpend.TotalDebtPaidLifetime,
                 sim.CurrentDateInSim >= sim.SimParameters.RetirementDate,
-                sim.Person.IsBankrupt,
+                sim.PgPerson.IsBankrupt,
                 sim.RecessionStats.AreWeInARecession,
                 sim.RecessionStats.AreWeInExtremeAusterityMeasures
             );

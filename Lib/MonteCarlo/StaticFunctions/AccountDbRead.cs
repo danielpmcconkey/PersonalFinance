@@ -70,7 +70,7 @@ public static class AccountDbRead
     
     public static List<McInvestmentAccount> FetchDbInvestmentAccountsByPersonId(Guid personId)
     {
-        // todo: change this method to use the person Id in the DB pull
+        // todo: change inventment account pull to use the person Id in the DB pull
         
         List<McInvestmentAccount> accounts = [];
         using var context = new PgContext();

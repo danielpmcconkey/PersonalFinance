@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Xunit;
 using NodaTime;
 using Lib.DataTypes.MonteCarlo;
@@ -9,7 +10,6 @@ namespace Lib.Tests.MonteCarlo.StaticFunctions;
 public class SpendTests
 {
     private readonly LocalDateTime _baseDate = new(2025, 1, 1, 0, 0);
-    private readonly McPerson _testPerson = new() { BirthDate = new LocalDateTime(1975, 1, 1, 0, 0) };
 
     private McModel CreateTestModel()
     {
@@ -18,8 +18,6 @@ public class SpendTests
             RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0),
             DesiredMonthlySpendPreRetirement = 5000m,
             DesiredMonthlySpendPostRetirement = 5000m,
-            RequiredMonthlySpend = 3000m,
-            RequiredMonthlySpendHealthCare = 1500m,
             AusterityRatio = 0.8m,
             ExtremeAusterityRatio = 0.6m,
             RecessionRecoveryPointModifier = 1.05m,
@@ -34,13 +32,36 @@ public class SpendTests
             ParentBId = Guid.Empty, 
             ExtremeAusterityNetWorthTrigger = 0,
             ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            MonthlyInvest401kRoth = 0,
-            MonthlyInvest401kTraditional = 0,
-            MonthlyInvestBrokerage = 0,
-            MonthlyInvestHSA = 0,
+            Percent401KTraditional = 0,
             SimEndDate = new LocalDateTime(2066, 3, 1, 0, 0),
             SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+        };
+    }
+
+    private PgPerson CreateTestPerson()
+    {
+        return new PgPerson
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Person",
+            BirthDate = new LocalDateTime(1975, 1, 1, 0, 0),
+            AnnualSalary = 50000M,
+            AnnualBonus = 5000M,
+            MonthlyFullSocialSecurityBenefit = 2000M,
+            Annual401KMatchPercent = 0.05M,
+            IsRetired = true,
+            IsBankrupt = true,
+            AnnualSocialSecurityWage = 1500M * 12m,
+            Annual401KContribution = 1,
+            AnnualHsaContribution = 2,
+            AnnualHsaEmployerContribution = 3,
+            FederalAnnualWithholding = 4,
+            StateAnnualWithholding = 5,
+            PreTaxHealthDeductions = 12,
+            PostTaxInsuranceDeductions = 13,
+            RequiredMonthlySpend = 3000m,
+            RequiredMonthlySpendHealthCare = 1500m,
         };
     }
 
@@ -53,13 +74,14 @@ public class SpendTests
          */
         // Arrange
         var simParams = CreateTestModel();
+        var person = CreateTestPerson();
         var months = 3;
 
         // Act
-        var result = Spend.CalculateCashNeedForNMonths(simParams, _testPerson, _baseDate, months);
+        var result = Spend.CalculateCashNeedForNMonths(simParams, person, _baseDate, months);
 
         // Assert
-        var expectedMonthlyTotal = simParams.DesiredMonthlySpendPreRetirement + simParams.RequiredMonthlySpend;
+        var expectedMonthlyTotal = simParams.DesiredMonthlySpendPreRetirement + person.RequiredMonthlySpend;
         Assert.Equal(expectedMonthlyTotal * months, result);
     }
 
@@ -78,7 +100,8 @@ public class SpendTests
     public void CalculateFunPointsForSpend_AgeAffectsPoints(int age, decimal spend, decimal expectedPoints)
     {
         // Arrange
-        var person = new McPerson { BirthDate = new LocalDateTime(2025 - age, 1, 1, 0, 0) };
+        var person = CreateTestPerson();
+        person.BirthDate = new LocalDateTime(2025 - age, 1, 1, 0, 0);
 
         // Act
         var result = Spend.CalculateFunPointsForSpend(spend, person, _baseDate);
@@ -108,7 +131,7 @@ public class SpendTests
         var currentDate = new LocalDateTime(currentYear, 1, 1, 0, 0);
 
         // Act
-        var result = Spend.CalculateMonthlyFunSpend(simParams, _testPerson, currentDate);
+        var result = Spend.CalculateMonthlyFunSpend(simParams, CreateTestPerson(), currentDate);
 
         // Assert
         Assert.Equal(expectedSpend, result, 0);
@@ -133,11 +156,12 @@ public class SpendTests
     {
         // Arrange
         var simParams = CreateTestModel();
-        simParams.RequiredMonthlySpendHealthCare = 3000m;
+        var person = CreateTestPerson();
+        person.RequiredMonthlySpendHealthCare = 3000m;
         var currentDate = new LocalDateTime(currentYear, 1, 1, 0, 0);
 
         // Act
-        var result = Spend.CalculateMonthlyHealthSpend(simParams, _testPerson, currentDate);
+        var result = Spend.CalculateMonthlyHealthSpend(simParams, person, currentDate);
 
         // Assert
         Assert.Equal(expectedSpend, result, 0);
@@ -151,12 +175,13 @@ public class SpendTests
         // Arrange
         var simParams = CreateTestModel();
         var currentDate = _baseDate.PlusYears(13); // Age 63, full health costs
+        var person = CreateTestPerson();
 
         // Act
-        var result = Spend.CalculateMonthlyRequiredSpend(simParams, _testPerson, currentDate);
+        var result = Spend.CalculateMonthlyRequiredSpend(simParams, CreateTestPerson(), currentDate);
 
         // Assert
-        var expectedTotal = simParams.RequiredMonthlySpend + simParams.RequiredMonthlySpendHealthCare;
+        var expectedTotal = person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare;
         Assert.Equal(expectedTotal, result);
     }
 

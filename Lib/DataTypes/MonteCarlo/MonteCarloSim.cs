@@ -10,14 +10,14 @@ namespace Lib.DataTypes.MonteCarlo;
 public struct MonteCarloSim
 {
     public MonteCarloSim(
-        Logger logger, McModel simParams, BookOfAccounts bookOfAccounts, McPerson person,
+        Logger logger, McModel simParams, BookOfAccounts bookOfAccounts, PgPerson pgPerson,
         LocalDateTime currentDateInSim, CurrentPrices currentPrices, RecessionStats recessionStats,
         TaxLedger taxLedger, LifetimeSpend lifetimeSpend)
     {
         Log = logger;
         SimParameters = simParams;
         BookOfAccounts = bookOfAccounts;
-        Person = person;
+        PgPerson = pgPerson;
         CurrentDateInSim = currentDateInSim;
         CurrentPrices = currentPrices;
         RecessionStats = recessionStats;
@@ -32,7 +32,7 @@ public struct MonteCarloSim
 
     public required McModel SimParameters { get; set; }
     public required BookOfAccounts BookOfAccounts { get; set; }
-    public required McPerson Person { get; set; }
+    public required PgPerson PgPerson { get; set; }
     public required  LocalDateTime CurrentDateInSim { get; set; }
     public CurrentPrices CurrentPrices { get; set; }
     public RecessionStats RecessionStats { get; set; }

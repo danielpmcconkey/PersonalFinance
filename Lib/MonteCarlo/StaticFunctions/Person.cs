@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 
@@ -5,35 +6,17 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Person
 {
-    public static McPerson GetPersonById(Guid personId)
+    public static PgPerson GetPersonById(Guid personId)
     {
         using var context = new PgContext();
         var pgperson = context.PgPeople.FirstOrDefault(x => x.Id == personId);
         if (pgperson is null) throw new InvalidDataException();
                 
-        var person = new McPerson()
-        {
-            Id = pgperson.Id,
-            Name = pgperson.Name,
-            BirthDate = pgperson.BirthDate,
-            AnnualSalary = (pgperson.AnnualSalary),
-            AnnualBonus = (pgperson.AnnualBonus),
-            MonthlyFullSocialSecurityBenefit = (pgperson.MonthlyFullSocialSecurityBenefit),
-            Annual401KMatchPercent = (pgperson.Annual401kMatchPercent),
-            Annual401KContribution = pgperson.Annual401KContribution,
-            AnnualHsaContribution = pgperson.AnnualHsaContribution,
-            AnnualHsaEmployerContribution = pgperson.AnnualHsaEmployerContribution,
-            FederalAnnualWithholding = pgperson.FederalAnnualWithholding,
-            StateAnnualWithholding = pgperson.StateAnnualWithholding,
-            PreTaxHealthDeductions = pgperson.PreTaxHealthDeductions,
-            PostTaxInsuranceDeductions = pgperson.PostTaxInsuranceDeductions,
-            InvestmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(pgperson.Id),
-            DebtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(pgperson.Id),
-        };
-        return person;
+        
+        return pgperson;
     }
 
-    public static decimal CalculateMonthlySocialSecurityWage(McPerson person, LocalDateTime benefitElectionStart)
+    public static decimal CalculateMonthlySocialSecurityWage(PgPerson person, LocalDateTime benefitElectionStart)
     {
         const int fullRetirementAge = 67;
         const int maxMonthsEarly = 59;
@@ -95,25 +78,32 @@ public static class Person
     /// Used to create a new object with the same characteristics as the original so we don't have to worry about one
     /// sim run updating another's stats. Also reset calculated fields like MonthlySocialSecurityWage, IsRetired, etc.
     /// </summary>
-    public static McPerson CopyPerson(McPerson originalPerson)
+    public static PgPerson CopyPerson(PgPerson originalPerson, bool shouldCopyCalculatedFields)
     {
-        // todo: make a parameter for CopyPerson that tells it whether to copy the calculated fields rather than assuming you don't want to
-        var newInvestmentAccounts = AccountCopy.CopyInvestmentAccounts(originalPerson.InvestmentAccounts);
-        var newDebtAccounts = AccountCopy.CopyDebtAccounts(originalPerson.DebtAccounts);
-        var newPerson = new McPerson()
+        var newPerson = new PgPerson()
         {
-            Id = new (),
+            Id = originalPerson.Id,
             Name = originalPerson.Name,
             BirthDate = originalPerson.BirthDate,
             AnnualSalary = originalPerson.AnnualSalary,
             AnnualBonus = originalPerson.AnnualBonus,
-            MonthlyFullSocialSecurityBenefit = originalPerson.MonthlyFullSocialSecurityBenefit,
             Annual401KMatchPercent = originalPerson.Annual401KMatchPercent,
-            InvestmentAccounts = newInvestmentAccounts,
-            DebtAccounts = newDebtAccounts,
-            IsRetired = false,
-            IsBankrupt = false,
-            AnnualSocialSecurityWage = 0M,
+            MonthlyFullSocialSecurityBenefit = originalPerson.MonthlyFullSocialSecurityBenefit,
+            Annual401KContribution = originalPerson.Annual401KContribution,
+            AnnualHsaContribution = originalPerson.AnnualHsaContribution,
+            AnnualHsaEmployerContribution = originalPerson.AnnualHsaEmployerContribution,
+            FederalAnnualWithholding = originalPerson.FederalAnnualWithholding,
+            StateAnnualWithholding = originalPerson.StateAnnualWithholding,
+            PreTaxHealthDeductions = originalPerson.PreTaxHealthDeductions,
+            PostTaxInsuranceDeductions = originalPerson.PostTaxInsuranceDeductions,
+            RequiredMonthlySpend = originalPerson.RequiredMonthlySpend,
+            RequiredMonthlySpendHealthCare = originalPerson.RequiredMonthlySpendHealthCare,
+            // calculated fields
+            IsRetired = shouldCopyCalculatedFields ? originalPerson.IsRetired : false,
+            IsBankrupt = shouldCopyCalculatedFields ? originalPerson.IsBankrupt : false,
+            AnnualSocialSecurityWage = shouldCopyCalculatedFields ? originalPerson.AnnualSocialSecurityWage : 0M,
+            Annual401KPreTax = shouldCopyCalculatedFields ? originalPerson.Annual401KPreTax : 0M,
+            Annual401KPostTax = shouldCopyCalculatedFields ? originalPerson.Annual401KPostTax : 0M,
         };
         return newPerson;
     }

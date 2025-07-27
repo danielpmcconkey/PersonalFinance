@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 
@@ -116,7 +117,7 @@ public static class Rebalance
     
     public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalanceLongToMid(
         LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
-        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, McPerson person)
+        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
     {
         // if it's been a good year, sell long-term growth assets and top-up mid-term.
         // if it's been a bad year, sit tight and hope the recession doesn't
@@ -213,7 +214,7 @@ public static class Rebalance
     /// move investments between long-term, mid-term, and cash, per retirement strategy defined in the sim parameters
     /// </summary>
     public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, McPerson person)
+        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
     {
         // determine how much cash you need on hand
         var cashNeededTotal = Spend.CalculateCashNeedForNMonths(simParams, person, currentDate, simParams.NumMonthsCashOnHand);
