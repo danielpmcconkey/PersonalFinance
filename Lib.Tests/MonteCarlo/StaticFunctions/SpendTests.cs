@@ -249,22 +249,22 @@ public class SpendTests
         var amount = 100m;
 
         // Act & Assert
-        var spendResult = Spend.RecordSpend(lifetimeSpend, amount, _baseDate);
+        var spendResult = Spend.RecordSpend(lifetimeSpend, amount, _baseDate).spend;
         Assert.Equal(amount, spendResult.TotalSpendLifetime);
 
-        var debtAccrualResult = Spend.RecordDebtAccrual(lifetimeSpend, amount, _baseDate);
+        var debtAccrualResult = Spend.RecordDebtAccrual(lifetimeSpend, amount, _baseDate).spend;
         Assert.Equal(amount, debtAccrualResult.TotalDebtAccrualLifetime);
 
-        var debtPaymentResult = Spend.RecordDebtPayment(lifetimeSpend, amount, _baseDate);
+        var debtPaymentResult = Spend.RecordDebtPayment(lifetimeSpend, amount, _baseDate).spend;
         Assert.Equal(amount, debtPaymentResult.TotalDebtPaidLifetime);
 
-        var investmentResult = Spend.RecordInvestmentAccrual(lifetimeSpend, amount, _baseDate);
+        var investmentResult = Spend.RecordInvestmentAccrual(lifetimeSpend, amount, _baseDate).spend;
         Assert.Equal(amount, investmentResult.TotalInvestmentAccrualLifetime);
 
-        var ssWageResult = Spend.RecordSocialSecurityWage(lifetimeSpend, amount, _baseDate);
+        var ssWageResult = Spend.RecordSocialSecurityWage(lifetimeSpend, amount, _baseDate).spend;
         Assert.Equal(amount, ssWageResult.TotalSocialSecurityWageLifetime);
 
-        var funPointsResult = Spend.RecordFunPoints(lifetimeSpend, amount, _baseDate);
+        var funPointsResult = Spend.RecordFunPoints(lifetimeSpend, amount, _baseDate).spend;
         Assert.Equal(amount, funPointsResult.TotalFunPointsLifetime);
     }
 }

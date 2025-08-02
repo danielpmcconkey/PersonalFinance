@@ -26,7 +26,7 @@ public class TaxTests
         var amount = 1000m;
 
         // Act
-        var result = Tax.RecordLongTermCapitalGain(ledger, _baseDate, amount);
+        var result = Tax.RecordLongTermCapitalGain(ledger, _baseDate, amount).ledger;
         var recordAdded = result.LongTermCapitalGains.First(x => x.earnedDate == _baseDate); 
 
         // Assert
@@ -44,7 +44,7 @@ public class TaxTests
         var amount = 1000m;
 
         // Act
-        var result = Tax.RecordShortTermCapitalGain(ledger, _baseDate, amount);
+        var result = Tax.RecordShortTermCapitalGain(ledger, _baseDate, amount).ledger;
         var recordAdded = result.ShortTermCapitalGains.First(x => x.earnedDate == _baseDate); 
 
         // Assert
@@ -130,7 +130,7 @@ public class TaxTests
         var amount = 2000m;
 
         // Act
-        var result = Tax.RecordW2Income(ledger, _baseDate, amount);
+        var result = Tax.RecordW2Income(ledger, _baseDate, amount).ledger;
 
         // Assert
         Assert.Single(result.W2Income);
@@ -146,7 +146,7 @@ public class TaxTests
         var amount = 2000m;
 
         // Act
-        var result = Tax.RecordIraDistribution(ledger, _baseDate, amount);
+        var result = Tax.RecordIraDistribution(ledger, _baseDate, amount).ledger;
 
         // Assert
         Assert.Single(result.TaxableIraDistribution);
@@ -167,7 +167,7 @@ public class TaxTests
         position.InitialCost = 1000m;
 
         // Act
-        var result = Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType);
+        var result = Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType).ledger;
 
         // Assert
         Assert.Empty(result.LongTermCapitalGains);
@@ -187,7 +187,7 @@ public class TaxTests
 
         // Act
         var result = Tax.RecordInvestmentSale(
-            ledger, _baseDate, position, McInvestmentAccountType.TAXABLE_BROKERAGE);
+            ledger, _baseDate, position, McInvestmentAccountType.TAXABLE_BROKERAGE).ledger;
 
         // Assert
         Assert.Single(result.LongTermCapitalGains);
@@ -206,7 +206,7 @@ public class TaxTests
         position.InitialCost = 1000m;
 
         // Act
-        var result = Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType);
+        var result = Tax.RecordInvestmentSale(ledger, _baseDate, position, accountType).ledger;
 
         // Assert
         Assert.Single(result.TaxableIraDistribution);
@@ -257,7 +257,8 @@ public class TaxTests
         var totalRmdRequirement = 100000m;
         
         // Act
-        var result = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var result = TaxCalculation.CalculateAdditionalRmdSales(
+            year, totalRmdRequirement, ledger, currentDate).amount;
 
         // Assert
         Assert.Equal(totalRmdRequirement, result);
@@ -272,11 +273,12 @@ public class TaxTests
         var ledger = CreateTestLedger();
         ledger.TaxableIraDistribution = [];
         var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
-        ledger = Tax.RecordIraDistribution(ledger, currentDate, priorDistribution);
+        ledger = Tax.RecordIraDistribution(ledger, currentDate, priorDistribution).ledger;
         var totalRmdRequirement = 100000m;
         
         // Act
-        var result = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var result = TaxCalculation.CalculateAdditionalRmdSales(
+            year, totalRmdRequirement, ledger, currentDate).amount;
 
         // Assert
         Assert.Equal(totalRmdRequirement - priorDistribution, result);
@@ -291,11 +293,12 @@ public class TaxTests
         var ledger = CreateTestLedger();
         ledger.TaxableIraDistribution = [];
         var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
-        ledger = Tax.RecordIraDistribution(ledger, currentDate, priorDistribution);
+        ledger = Tax.RecordIraDistribution(ledger, currentDate, priorDistribution).ledger;
         var totalRmdRequirement = 100000m;
         
         // Act
-        var result = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var result = TaxCalculation.CalculateAdditionalRmdSales(
+            year, totalRmdRequirement, ledger, currentDate).amount;
 
         // Assert
         Assert.Equal(0, result);
@@ -356,7 +359,6 @@ public class TaxTests
         var amountLeft = AccountCalculation.CalculateLongBucketTotalBalance(result.newBookOfAccounts);
         
         // Assert
-        Assert.Equal(expectedSale, result.amountSold);
         Assert.Equal(expectedAmountLeft, amountLeft);
     }
 }

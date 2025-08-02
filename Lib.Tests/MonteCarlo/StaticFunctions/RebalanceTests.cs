@@ -152,7 +152,7 @@ public class RebalanceTests
         
         // start out with $10k in cash
         var initialCashBalance = 10000m;
-        accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate);
+        accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate).accounts;
         
         // pretend we need to hold back $4500 and can invest the rest
         var reserveAmount = 4500m;
@@ -161,7 +161,8 @@ public class RebalanceTests
         
 
         // Act
-        var result = Rebalance.InvestExcessCash(_baseDate, accounts, currentPrices, reserveAmount);
+        var result = Rebalance.InvestExcessCash(
+            _baseDate, accounts, currentPrices, reserveAmount).accounts;
         var actualLongTermInvestmentBalance = AccountCalculation.CalculateLongBucketTotalBalance(result);
         var actualBrokerageBalance = AccountCalculation.CalculateInvestmentAccountTotalValue(result.Brokerage);
 
@@ -182,7 +183,7 @@ public class RebalanceTests
         
         // start out with $10k in cash
         var initialCashBalance = 10000m;
-        accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate);
+        accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate).accounts;
         
         // pretend we need to hold back $4500 and can invest the rest
         var reserveAmount = 4500m;
@@ -191,7 +192,9 @@ public class RebalanceTests
         
 
         // Act
-        var result = Rebalance.InvestExcessCash(_baseDate, accounts, currentPrices, reserveAmount);
+        var result = Rebalance.InvestExcessCash(
+                _baseDate, accounts, currentPrices, reserveAmount)
+            .accounts;
 
         // Assert
         var newCashBalance = AccountCalculation.CalculateCashBalance(result);

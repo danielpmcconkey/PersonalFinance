@@ -30,49 +30,42 @@ public static class Tax
     #region record functions
     
      
-    public static TaxLedger RecordLongTermCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordLongTermCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        var result = CopyTaxLedger(ledger);
-        result.LongTermCapitalGains.Add((earnedDate, amount));
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Long term capital gain logged");
-        }
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.LongTermCapitalGains.Add((earnedDate, amount));
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Long term capital gain logged"));
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Long term capital gain logged"));
         return result;
     }
-    public static TaxLedger RecordShortTermCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordShortTermCapitalGain(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        var result = CopyTaxLedger(ledger);
-        result.ShortTermCapitalGains.Add((earnedDate, amount));
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Short term capital gain logged");
-        }
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.ShortTermCapitalGains.Add((earnedDate, amount));
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Short term capital gain logged"));
         return result;
     }
     
-    public static TaxLedger RecordW2Income(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordW2Income(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        var result = CopyTaxLedger(ledger);
-        result.W2Income.Add((earnedDate, amount));
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Income logged");
-        }
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.W2Income.Add((earnedDate, amount));
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Income logged"));
         return result;
     }
-    public static TaxLedger RecordIraDistribution(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordIraDistribution(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        var result = CopyTaxLedger(ledger);
-        result.TaxableIraDistribution.Add((earnedDate, amount));
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Taxable distribution logged");
-        }
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.TaxableIraDistribution.Add((earnedDate, amount));
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Taxable distribution logged"));
         return result;
     }
     
-    public static TaxLedger RecordInvestmentSale(TaxLedger ledger, LocalDateTime saleDate, McInvestmentPosition position,
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordInvestmentSale(TaxLedger ledger, LocalDateTime saleDate, McInvestmentPosition position,
         McInvestmentAccountType accountType)
     {
         switch(accountType)
@@ -81,7 +74,7 @@ public static class Tax
             case McInvestmentAccountType.ROTH_IRA:
             case McInvestmentAccountType.HSA:
                 // these are completely tax free
-                return ledger;
+                return (ledger, []);
                 break; 
             case McInvestmentAccountType.TAXABLE_BROKERAGE:
                 // taxed on growth only
@@ -100,45 +93,38 @@ public static class Tax
         throw new InvalidDataException("Unknown account type");
     }
     
-    public static TaxLedger RecordTaxPaid(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordTaxPaid(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
         // todo: unit test RecordTaxPaid
         
-        var result = CopyTaxLedger(ledger);
-        result.TotalTaxPaid += amount;
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Tax payment logged");
-        }
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.TotalTaxPaid += amount;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Tax payment logged"));
         return result;
     }
     
-    public static TaxLedger RecordWithholdings(
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordWithholdings(
         TaxLedger ledger, LocalDateTime earnedDate, decimal amountFed, decimal amountState)
     {
         // todo: Unit test RecordWithholdings
         
-        var result = CopyTaxLedger(ledger);
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         
-        result.FederalWithholdings.Add((earnedDate, amountFed));
-        result.StateWithholdings.Add((earnedDate, amountState));
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amountFed, "Federal withholding logged");
-            Reconciliation.AddMessageLine(earnedDate, amountState, "State withholding logged");
-        }
+        result.ledger.FederalWithholdings.Add((earnedDate, amountFed));
+        result.ledger.StateWithholdings.Add((earnedDate, amountState));
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amountFed, "Federal withholding logged"));
+        result.messages.Add(new ReconciliationMessage(earnedDate, amountState, "State withholding logged"));
         return result;
     }
     
-    public static TaxLedger RecordSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordSocialSecurityIncome(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        var result = CopyTaxLedger(ledger);
-        result.SocialSecurityIncome.Add((earnedDate, amount));
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(earnedDate, amount, "Social security income logged");
-        }
-
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.SocialSecurityIncome.Add((earnedDate, amount));
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Social security income logged"));
         return result;
     }
 
@@ -151,40 +137,43 @@ public static class Tax
     
    
     
-    public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) MeetRmdRequirements(
-        TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, int age)
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+        MeetRmdRequirements(TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, int age)
     {
         if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
         
+        // set up return tuple
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) results = 
+            (accounts, ledger, []);
+            
         var year = currentDate.Year;
 
         // figure out the RMD requirement
         var totalRmdRequirement = TaxCalculation.CalculateRmdRequirement(ledger, accounts, age);
-        if (totalRmdRequirement <= 0) return (0M, accounts, ledger);
+        if (totalRmdRequirement <= 0) return (accounts, ledger, []);
         
         // we have a withdrawal requirement. have we already met it?
-        var amountLeft = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
-        if (amountLeft <= 0) return (0M, accounts, ledger);
+        var amountLeftCalcResult = TaxCalculation.CalculateAdditionalRmdSales(year, totalRmdRequirement, ledger, currentDate);
+        var amountLeft = amountLeftCalcResult.amount;
+        results.messages.AddRange(amountLeftCalcResult.messages);
+        if (amountLeft <= 0) return results;
         
         
         // we gotta go sellin' shit
-        // set up the return tuple
-        (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
-            0M, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger)
-        );
+        // copy the accounts and ledger before we modify them
+        results.newBookOfAccounts = AccountCopy.CopyBookOfAccounts(accounts);
+        results.newLedger = Tax.CopyTaxLedger(ledger);
 
         var localResult = InvestmentSales.SellInvestmentsToRmdAmount(
             amountLeft, results.newBookOfAccounts, results.newLedger, currentDate);
         
-        results.amountSold = localResult.amountSold;
         results.newBookOfAccounts = localResult.newBookOfAccounts;
         results.newLedger = localResult.newLedger;
         
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(currentDate, results.amountSold, 
-                $"RMD: Sold investment to meet RMD requirement");
-        }
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return results;
+        results.messages.AddRange(localResult.messages);
+        results.messages.Add(new ReconciliationMessage(currentDate, localResult.amountSold, 
+            "RMD: Total investment sold to meet RMD requirement"));
         
         return results;
     }

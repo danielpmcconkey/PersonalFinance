@@ -8,6 +8,7 @@ public class Form1040
 {
     public decimal AdjustedGrossIncome => _adjustedGrossIncome;
     public decimal Line16TaxLiability => _line16TaxLiability;
+    public List<ReconciliationMessage> ReconciliationMessages = [];
     
     
     private TaxLedger _ledger;
@@ -89,11 +90,21 @@ public class Form1040
         var line33TotalPayments = line25FederalWithholding + line26 + line32;
         
         var remainingLiability = line24TotalTax - line33TotalPayments;
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(new(_taxYear,12,31,0,0), 
-                remainingLiability, "Total federal liability");
-        }
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return remainingLiability;
+        ReconciliationMessages.Add(new ReconciliationMessage(null, 
+            line9TotalIncome, "Line 9 total income"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, 
+            _adjustedGrossIncome, "Adjusted gross income"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, 
+            _line15TaxableIncome, "Line 15 taxable income"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, 
+            _line16TaxLiability, "Line 16 tax"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, 
+            line25FederalWithholding, "Line 25 federal withholding"));
+        
+        ReconciliationMessages.Add(new ReconciliationMessage(null, 
+            remainingLiability, "Total federal liability"));
+        
         return remainingLiability;
     }
 

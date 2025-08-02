@@ -51,11 +51,6 @@ else
     var results = SimulationTrigger.RunSingleModelSession(
         logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
     logger.Info("Single model simulation of all lives completed");
-    if (MonteCarloConfig.DebugMode)
-    {
-        logger.Info("Writing reconciliation data to spreadsheet");
-        Reconciliation.ExportToSpreadsheet();
-    }
 }
 logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Exiting"));

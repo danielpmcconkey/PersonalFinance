@@ -1,5 +1,6 @@
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
+using Lib.StaticConfig;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -33,13 +34,14 @@ public static class Rebalance
     
     #region asset movement functions
     
-    public static (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger)
+    public static (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages)
         MoveFromInvestmentToCash(BookOfAccounts bookOfAccounts, decimal cashNeeded, 
             McInvestmentPositionType positionType, LocalDateTime currentDate, TaxLedger taxLedger)
     {
         // set up the return tuple
-        (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
-            0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        (decimal amountMoved, BookOfAccounts newBookOfAccounts, TaxLedger newLedger,
+            List<ReconciliationMessage> messages) results = (
+            0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
         
         var salesResults = InvestmentSales.SellInvestmentsToDollarAmountByPositionType(
             cashNeeded, positionType, results.newBookOfAccounts, results.newLedger, currentDate);
@@ -47,21 +49,20 @@ public static class Rebalance
         results.newBookOfAccounts = salesResults.newBookOfAccounts;
         results.newLedger = salesResults.newLedger;
         
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(null, results.amountMoved, $"Rebalance: Selling {positionType} investment");
-        }
-
+        if (!MonteCarloConfig.DebugMode) return results;
+        results.messages.AddRange(salesResults.messages);
+        results.messages.Add(new ReconciliationMessage(
+            currentDate, results.amountMoved, $"Rebalance: Selling {positionType} investment"));
         return results;
     }
     
-    public static (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger) SellInOrder(
-        decimal cashNeeded, McInvestmentPositionType[] pullOrder, BookOfAccounts bookOfAccounts,
-        TaxLedger taxLedger, LocalDateTime currentDate)
+    public static (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+        SellInOrder(decimal cashNeeded, McInvestmentPositionType[] pullOrder, BookOfAccounts bookOfAccounts,
+            TaxLedger taxLedger, LocalDateTime currentDate)
     {
         // set up return tuple
-        (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger) results = (
-            0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger)); 
+        (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+            results = (0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []); 
         
         // loop over the pull types until we have the bucks
         
@@ -74,6 +75,7 @@ public static class Rebalance
             results.amountSold += localResults.amountMoved;
             results.newAccounts = localResults.newBookOfAccounts;
             results.newLedger = localResults.newLedger;
+            results.messages.AddRange(localResults.messages);
         }
         return results;
     }
@@ -86,14 +88,24 @@ public static class Rebalance
     /// <summary>
     /// takes money out of cash account and puts it in a long-term position in the brokerage account
     /// </summary>
-    public static BookOfAccounts InvestExcessCash(
+    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) InvestExcessCash(
         LocalDateTime currentDate, BookOfAccounts bookOfAccounts, CurrentPrices currentPrices,
         decimal reserveCashNeeded)
     {
+        // set up the return tuple
+        (BookOfAccounts accounts, List<ReconciliationMessage> messages) results = (bookOfAccounts, []);
+        if(MonteCarloConfig.DebugMode) results.messages.Add(
+            new ReconciliationMessage(currentDate, null, "Rebalance: investing excess cash"));
+        
         var cashOnHand = AccountCalculation.CalculateCashBalance(bookOfAccounts);
         var totalInvestmentAmount = cashOnHand - reserveCashNeeded;
 
-        if (totalInvestmentAmount <= 0) return bookOfAccounts;
+        if (totalInvestmentAmount <= 0)
+        {
+            results.messages.Add(new ReconciliationMessage(
+                currentDate, null, "We don't enough spare cash to invest."));
+            return results;
+        }
         
         // we have excess cash, withdraw the cash so we can invest it
         var withDrawalResults = AccountCashManagement.TryWithdrawCash(
@@ -101,34 +113,45 @@ public static class Rebalance
         if (withDrawalResults.isSuccessful == false) throw new InvalidDataException("Failed to withdraw excess cash");
         
         // set up the return tuple
-        var results = withDrawalResults.newAccounts;
+        results.accounts = withDrawalResults.newAccounts;
         
         // now put it in long-term brokerage
-        results = Investment.InvestFunds(results, currentDate, totalInvestmentAmount,
+        var investResults = Investment.InvestFunds(results.accounts, currentDate, totalInvestmentAmount,
             McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
+        results.accounts = investResults.accounts;
         
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, totalInvestmentAmount, "Rebalance: adding excess cash to long-term investment");
-        }
-
+        if (!MonteCarloConfig.DebugMode) return results;
+        results.messages.AddRange(withDrawalResults.messages);
+        results.messages.AddRange(investResults.messages);
+        results.messages.Add(new ReconciliationMessage(
+            currentDate, totalInvestmentAmount,"Rebalance: added excess cash to long-term investment"));
         return results;
     }
     
-    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalanceLongToMid(
-        LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
-        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages)
+        RebalanceLongToMid(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+            CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
     {
         // if it's been a good year, sell long-term growth assets and top-up mid-term.
         // if it's been a bad year, sit tight and hope the recession doesn't
         // outlast your mid-term bucket.
 
+        List<ReconciliationMessage> messages = [];
+
+        if(MonteCarloConfig.DebugMode)
+            messages.Add(new ReconciliationMessage(
+                currentDate, null, "Rebalance: moving long to mid"));
         
         // if we're in a recession, don't move from long to mid until we absolutely have to
-        if (recessionStats.AreWeInARecession) return (bookOfAccounts, taxLedger);
+        if (recessionStats.AreWeInARecession)
+        {
+            if(MonteCarloConfig.DebugMode) messages.Add(
+                new ReconciliationMessage(currentDate, null, "In a recession; not moving long to mid."));
+            return (bookOfAccounts, taxLedger, messages);
+        }
         
         var numMonths = simParams.NumMonthsMidBucketOnHand; 
-        if (numMonths <= 0) return (bookOfAccounts, taxLedger);
+        if (numMonths <= 0) return (bookOfAccounts, taxLedger, messages);
         
        
         // figure out how much we want to have in the mid-bucket
@@ -138,13 +161,17 @@ public static class Rebalance
         
         
         // do we stiLl need to pull anything?
-        if (amountNeededToMove <= 0) return (bookOfAccounts, taxLedger);
+        if (amountNeededToMove <= 0)
+        {
+            if(MonteCarloConfig.DebugMode) messages.Add(new ReconciliationMessage(currentDate, null, "We don't need to move anymore money to mid"));
+            return (bookOfAccounts, taxLedger, messages);
+        }
         
         // not in a recession. sell from long and buy mid
         
         // Set up the return tuple
-        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
-            AccountCopy.CopyBookOfAccounts(bookOfAccounts),Tax.CopyTaxLedger(taxLedger));
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts),Tax.CopyTaxLedger(taxLedger), messages);
         
         // first sell the long-term investments
         var salesResults = SellInOrder(amountNeededToMove, [McInvestmentPositionType.LONG_TERM], results.newBookOfAccounts,
@@ -159,45 +186,59 @@ public static class Rebalance
         if (withdrawalResult.isSuccessful == false) throw new InvalidDataException("Failed to withdraw cash to buy mid-term investment"); // shouldn't be here
         results.newBookOfAccounts = withdrawalResult.newAccounts;
         // now we can buy
-        results.newBookOfAccounts = Investment.InvestFunds(results.newBookOfAccounts, currentDate, amountSold,
+        var buyResult = Investment.InvestFunds(results.newBookOfAccounts, currentDate, amountSold,
             McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
+        results.newBookOfAccounts = buyResult.accounts;
         
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
-        {
-            Reconciliation.AddMessageLine(currentDate, amountSold, "Rebalance: adding investment sales to mid-term investment");
-        }
-
+        
+        if(!MonteCarloConfig.DebugMode) return results;
+        results.messages.AddRange(salesResults.messages);
+        results.messages.AddRange(withdrawalResult.messages);
+        results.messages.AddRange(buyResult.messages);
+        results.messages.Add(new ReconciliationMessage(
+            currentDate, amountSold, "Rebalance: done moving long to mid"));
         return results;
     }
     
-    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalanceMidOrLongToCash(
-        LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
-        CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, decimal totalCashNeeded) 
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages)
+        RebalanceMidOrLongToCash(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
+            RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger,
+            decimal totalCashNeeded) 
     {
-        // if it's been a good year, sell long-term growth assets and
-        // top-up cash. if it's been a bad year, sell mid-term assets to
-        // top-up cash.
+        /*
+         * if it's been a good year, sell long-term growth assets and top-up cash. if it's been a bad year, sell
+         * mid-term assets to top-up cash.
+         */
         
+        // set up the return tuple
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
         
+        if(MonteCarloConfig.DebugMode)
+            results.messages.Add(new ReconciliationMessage(
+                currentDate, null, "Rebalance: moving mid and/or long to cash"));
         
         var totalCashOnHand = AccountCalculation.CalculateCashBalance(bookOfAccounts);
         
         var cashNeededToBeMoved = totalCashNeeded - totalCashOnHand;
         
-        if (cashNeededToBeMoved <= 0) return (bookOfAccounts, taxLedger); // you got enough, bruv
+        if (cashNeededToBeMoved <= 0) return (bookOfAccounts, taxLedger, []); // you got enough, bruv
         
-        // set up the return tuple
-        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
-            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
         
         // need to pull from one of the buckets. 
         if (recessionStats.AreWeInARecession)
         {
+            
             // pull what we can from the mid-term bucket, then from long bucket
             McInvestmentPositionType[] pullOrder = [ McInvestmentPositionType.MID_TERM, McInvestmentPositionType.LONG_TERM ];
             var localResults = SellInOrder(cashNeededToBeMoved, pullOrder, bookOfAccounts, taxLedger, currentDate);
             results.newBookOfAccounts = localResults.newAccounts;
             results.newLedger = localResults.newLedger;
+            if (MonteCarloConfig.DebugMode)
+            {
+                results.messages.Add(new ReconciliationMessage(currentDate, null, "In a recession."));
+                results.messages.AddRange(localResults.messages);
+            }
         }
         else
         {
@@ -206,32 +247,50 @@ public static class Rebalance
             var localResults = SellInOrder(cashNeededToBeMoved, pullOrder, bookOfAccounts, taxLedger, currentDate);
             results.newBookOfAccounts = localResults.newAccounts;
             results.newLedger = localResults.newLedger;
+            if (MonteCarloConfig.DebugMode)
+            {
+                results.messages.Add(
+                    new ReconciliationMessage(currentDate, null, "Not in a recession."));
+                results.messages.AddRange(localResults.messages);
+            }
         }
+        if(MonteCarloConfig.DebugMode)
+            results.messages.Add(new ReconciliationMessage(
+                currentDate, null, "Rebalance: done moving mid and/or long to cash"));
         return results;
     }
     
     /// <summary>
     /// move investments between long-term, mid-term, and cash, per retirement strategy defined in the sim parameters
     /// </summary>
-    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-        RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
+    public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+        RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+            CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
     {
         // determine how much cash you need on hand
-        var cashNeededTotal = Spend.CalculateCashNeedForNMonths(simParams, person, currentDate, simParams.NumMonthsCashOnHand);
+        var cashNeededTotal = Spend.CalculateCashNeedForNMonths(
+            simParams, person, currentDate, simParams.NumMonthsCashOnHand);
         
         // set up return tuple
-        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger) results = (
-            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger));
+        (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) results = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
         
         // move funds if it's time
         if (CalculateWhetherItsBucketRebalanceTime(currentDate, simParams))
         {
+            if (MonteCarloConfig.DebugMode)
+            {
+                results.messages.Add(new ReconciliationMessage(
+                    currentDate, null, "Rebalance: time to move funds"));
+            }
+
             // top up your cash bucket by moving from mid or long, depending on recession stats 
             var rebalanceCashResults = RebalanceMidOrLongToCash(
                 currentDate, results.newBookOfAccounts, recessionStats, currentPrices, simParams, results.newLedger,
                 cashNeededTotal);
             results.newBookOfAccounts = rebalanceCashResults.newBookOfAccounts;
             results.newLedger = rebalanceCashResults.newLedger;
+            results.messages.AddRange(rebalanceCashResults.messages);
             
             // now move from long to mid, depending on recession stats
             var rebalanceMidResults = RebalanceLongToMid(
@@ -239,12 +298,18 @@ public static class Rebalance
                 person);
             results.newBookOfAccounts = rebalanceMidResults.newBookOfAccounts;
             results.newLedger = rebalanceMidResults.newLedger;
+            results.messages.AddRange(rebalanceMidResults.messages);
         }
         // always check if you should invest excess cash
+        if (MonteCarloConfig.DebugMode)
+        {
+            results.messages.Add(new ReconciliationMessage(
+                currentDate, null, "Rebalance: invest excess cash"));
+        }
         var investCashResults = InvestExcessCash(
             currentDate, results.newBookOfAccounts, currentPrices, cashNeededTotal);
-
-        results.newBookOfAccounts = investCashResults;
+        results.newBookOfAccounts = investCashResults.accounts;
+        results.messages.AddRange(investCashResults.messages);
         
         return results;
     }

@@ -39,8 +39,8 @@ public class AccountDebtPaymentTests
         var payments = CreatePaymentDictionary(position, 200m);
 
         // Act
-        var (newPosition, totalCredited) = AccountDebtPayment.CreditDebtPosition(
-            position, _testDate, payments);
+        var (newPosition, totalCredited, messages) = 
+            AccountDebtPayment.CreditDebtPosition(position, _testDate, payments);
 
         // Assert
         Assert.Equal(800m, newPosition.CurrentBalance);
@@ -56,8 +56,8 @@ public class AccountDebtPaymentTests
         var payments = CreatePaymentDictionary(position, 1000m);
 
         // Act
-        var (newPosition, totalCredited) = AccountDebtPayment.CreditDebtPosition(
-            position, _testDate, payments);
+        var (newPosition, totalCredited, messages) = 
+            AccountDebtPayment.CreditDebtPosition(position, _testDate, payments);
 
         // Assert
         Assert.Equal(0m, newPosition.CurrentBalance);
@@ -73,8 +73,8 @@ public class AccountDebtPaymentTests
         var payments = CreatePaymentDictionary(position, 200m);
 
         // Act
-        var (newPosition, totalCredited) = AccountDebtPayment.CreditDebtPosition(
-            position, _testDate, payments);
+        var (newPosition, totalCredited, messages) = 
+            AccountDebtPayment.CreditDebtPosition(position, _testDate, payments);
 
         // Assert
         Assert.Equal(position.CurrentBalance, newPosition.CurrentBalance);
@@ -114,8 +114,8 @@ public class AccountDebtPaymentTests
         };
 
         // Act
-        var (newAccount, totalCredited) = AccountDebtPayment.CreditDebtAccount(
-            account, _testDate, payments);
+        var (newAccount, totalCredited, messages) =
+            AccountDebtPayment.CreditDebtAccount(account, _testDate, payments);
 
         // Assert
         Assert.Equal(1500m, totalCredited);
@@ -156,7 +156,7 @@ public class AccountDebtPaymentTests
 
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         accounts.DebtAccounts = [ debtAccount ];
-        accounts = AccountCashManagement.DepositCash(accounts, 2000m, _testDate);
+        accounts = AccountCashManagement.DepositCash(accounts, 2000m, _testDate).accounts;
          
 
         var taxLedger = new TaxLedger();
@@ -190,7 +190,7 @@ public class AccountDebtPaymentTests
 
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         accounts.DebtAccounts = [ debtAccount ];
-        accounts = AccountCashManagement.DepositCash(accounts, 100m, _testDate);
+        accounts = AccountCashManagement.DepositCash(accounts, 100m, _testDate).accounts;
          
 
         var taxLedger = new TaxLedger();

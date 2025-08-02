@@ -12,27 +12,31 @@ public static class TaxCalculation
     /// calculates the amount left that we still have to take out. Once we know our total RMD requirement this year,
     /// this function looks at how much we've already taken out and tells us how much we STILL have to sell / withdraw
     /// </summary>
-    public static decimal CalculateAdditionalRmdSales(int year, decimal totalRmdRequirement, TaxLedger ledger, LocalDateTime currentDate)
+    public static (decimal amount, List<ReconciliationMessage> messages) CalculateAdditionalRmdSales(
+        int year, decimal totalRmdRequirement, TaxLedger ledger, LocalDateTime currentDate)
     {
+        // set up the return tuple
+        (decimal amount, List<ReconciliationMessage> messages) results = (0m, []);
+        
         // figure out how much we've already withdrawn
-        var totalRmdSoFar = ledger.TaxableIraDistribution.Where(x => x.earnedDate.Year == year).Sum(x => x.amount);
+        var totalRmdSoFar = ledger.TaxableIraDistribution
+            .Where(x => x.earnedDate.Year == year)
+            .Sum(x => x.amount);
         
         if (totalRmdSoFar >= totalRmdRequirement) 
         {
-            if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-            {
-                Reconciliation.AddMessageLine(currentDate, 0, 
-                    $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)");
-            }
-            return 0; // no sales needed
+            if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return results;
+            results.messages.Add(new ReconciliationMessage(currentDate, null, 
+                    $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)"));
+            return results;
         }
         
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(currentDate, 0, 
-                $"RMD: additional RMD sales needed ({totalRmdRequirement - totalRmdSoFar})");
-        }
-        return totalRmdRequirement - totalRmdSoFar;
+        results.amount = totalRmdRequirement - totalRmdSoFar;
+
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return results;
+        results.messages.Add(new ReconciliationMessage(currentDate, 0, 
+                $"RMD: additional RMD sales needed ({totalRmdRequirement - totalRmdSoFar})"));
+        return results;
     }
     
     /// <summary>
@@ -167,19 +171,30 @@ public static class TaxCalculation
             .Where(x => x.earnedDate.Year == taxYear)
             .Sum(x => x.amount);
     }
-    public static decimal CalculateTaxLiabilityForYear(TaxLedger ledger, int taxYear)
+    public static (decimal amount, List<ReconciliationMessage> messages) CalculateTaxLiabilityForYear(
+        TaxLedger ledger, int taxYear)
     {
+        // set up return tuple
+        (decimal amount, List<ReconciliationMessage> messages) result = (0m, []);
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileTaxCalcs)
+        {
+            
+        }
+
         decimal totalLiability = 0M;
         var form1040 = new Form1040(ledger, taxYear);
-        totalLiability += form1040.CalculateTaxLiability();
-        totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(
+        totalLiability = form1040.CalculateTaxLiability();
+        var stateLiability = CalculateNorthCarolinaTaxLiabilityForYear(
             ledger, taxYear, form1040.AdjustedGrossIncome);
-        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
-        {
-            Reconciliation.AddMessageLine(new(taxYear,12,31,0,0), 
-                totalLiability, "Total tax liability");
-        }
-        return totalLiability;
+        totalLiability += stateLiability;
+        
+        if (!MonteCarloConfig.DebugMode || MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.messages.Add(new ReconciliationMessage(
+            null, null, "Calculating tax liability for year " + taxYear));
+        result.messages.AddRange(form1040.ReconciliationMessages);
+        result.messages.Add(new ReconciliationMessage(null, stateLiability, "State tax liability"));
+        result.messages.Add(new ReconciliationMessage(null, totalLiability, "Total tax liability"));
+        return result;
     }
     public static decimal CalculateNorthCarolinaTaxLiabilityForYear(
         TaxLedger ledger, int taxYear, decimal adjustedGrossIncomeFrom1040)

@@ -7,14 +7,16 @@ namespace Lib.MonteCarlo.StaticFunctions;
 public static class AccountDebtPayment
 {
 
-    public static (McDebtPosition newPosition, decimal totalCredited) CreditDebtPosition(
-        McDebtPosition position, LocalDateTime currentDate, Dictionary<Guid, decimal> debtPayDownAmounts)
+    public static (McDebtPosition newPosition, decimal totalCredited, List<ReconciliationMessage> messages)
+        CreditDebtPosition(McDebtPosition position, LocalDateTime currentDate, 
+            Dictionary<Guid, decimal> debtPayDownAmounts)
     {
-        if (position.IsOpen == false) return (position, 0m);
-        if (position.CurrentBalance <= 0) return (position, 0m);
+        if (position.IsOpen == false) return (position, 0m, []);
+        if (position.CurrentBalance <= 0) return (position, 0m, []);
 
         // set up the return tuple
-        (McDebtPosition newPosition, decimal totalCredited) result = (AccountCopy.CopyDebtPosition(position), 0m);
+        (McDebtPosition newPosition, decimal totalCredited, List<ReconciliationMessage> messages) result = (
+            AccountCopy.CopyDebtPosition(position), 0m, []);
 
 
         if (debtPayDownAmounts.TryGetValue(position.Id, out var payment) == false)
@@ -28,30 +30,32 @@ public static class AccountDebtPayment
 
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate, payment, $"Paying down loan position {position.Name}");
+            result.messages.Add(new ReconciliationMessage(
+                currentDate, payment, $"Paying down loan position {position.Name}"));
         }
 
-        if (result.newPosition.CurrentBalance <= 0)
-        {
-            result.newPosition.CurrentBalance = 0;
-            result.newPosition.IsOpen = false;
-            if (MonteCarloConfig.DebugMode)
-            {
-                Reconciliation.AddMessageLine(currentDate, 0, $"Paid off loan position {position.Name}");
-            }
-        }
+        if (result.newPosition.CurrentBalance > 0) return result;
         
+        result.newPosition.CurrentBalance = 0;
+        result.newPosition.IsOpen = false;
+        
+        if (!MonteCarloConfig.DebugMode) return result;
+        
+        result.messages.Add(new ReconciliationMessage(
+                currentDate, 0, $"Paid off loan position {position.Name}"));
         return result;
     }
 
-    public static (McDebtAccount newAccount, decimal totalCredited) CreditDebtAccount(
-        McDebtAccount account, LocalDateTime currentDate, Dictionary<Guid, decimal> debtPayDownAmounts)
+    public static (McDebtAccount newAccount, decimal totalCredited, List<ReconciliationMessage> messages) 
+        CreditDebtAccount(McDebtAccount account, LocalDateTime currentDate,
+            Dictionary<Guid, decimal> debtPayDownAmounts)
     {
         if (account.Positions is null) throw new InvalidDataException("Positions is null");
-        if (account.Positions.Count == 0) return (account, 0m);
+        if (account.Positions.Count == 0) return (account, 0m, []);
         
         // set up the return tuple
-        (McDebtAccount newAccount, decimal totalCredited) result = (AccountCopy.CopyDebtAccount(account), 0m);
+        (McDebtAccount newAccount, decimal totalCredited, List<ReconciliationMessage> messages) result = (
+            AccountCopy.CopyDebtAccount(account), 0m, []);
         
         // create an empty positions list
         result.newAccount.Positions = [];
@@ -61,12 +65,13 @@ public static class AccountDebtPayment
             var creditResult = CreditDebtPosition(position, currentDate, debtPayDownAmounts);
             result.newAccount.Positions.Add(creditResult.newPosition);
             result.totalCredited += creditResult.totalCredited;
+            result.messages.AddRange(creditResult.messages);
         }
 
         return result;
     }
 
-    public static (bool isSuccessful, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, LifetimeSpend newSpend) 
+    public static (bool isSuccessful, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, LifetimeSpend newSpend, List<ReconciliationMessage> messages) 
         PayDownLoans(
             BookOfAccounts accounts, LocalDateTime currentDate, TaxLedger taxLedger, LifetimeSpend lifetimeSpend)
     {
@@ -74,20 +79,23 @@ public static class AccountDebtPayment
         
         var debtPayDownAmounts = AccountCalculation.CalculateDebtPaydownAmounts(accounts.DebtAccounts);
         var totalDebtPayment = debtPayDownAmounts.Sum(x => x.Value);
-        if (totalDebtPayment <= 0) return (true, accounts, taxLedger, lifetimeSpend);
+        if (totalDebtPayment <= 0) return (true, accounts, taxLedger, lifetimeSpend, []);
         
         // set up the return tuple
-        (bool isSuccessful, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, LifetimeSpend newSpend) result = (
+        (bool isSuccessful, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, LifetimeSpend newSpend,
+            List<ReconciliationMessage> messages) result = (
             false,
             AccountCopy.CopyBookOfAccounts(accounts),
             Tax.CopyTaxLedger(taxLedger),
-            lifetimeSpend);
+            lifetimeSpend,
+            []);
         
         // withdraw the cash first; this keeps us from needing to pass the book of accounts around
         var cashWithdrawalResult = AccountCashManagement.WithdrawCash(
             result.newBookOfAccounts, totalDebtPayment, currentDate, result.newLedger);
         result.newBookOfAccounts = cashWithdrawalResult.newAccounts;
         result.newLedger = cashWithdrawalResult.newLedger;
+        result.messages.AddRange(cashWithdrawalResult.messages);
         if (cashWithdrawalResult.isSuccessful == false)
         {
             // let them declare bankruptcy upstream
@@ -101,6 +109,7 @@ public static class AccountDebtPayment
         {
             var creditResult = CreditDebtAccount(account, currentDate, debtPayDownAmounts);
             result.newBookOfAccounts.DebtAccounts.Add(creditResult.newAccount);
+            result.messages.AddRange(creditResult.messages);
             totalCredited += creditResult.totalCredited;
         }
 
@@ -109,7 +118,9 @@ public static class AccountDebtPayment
             throw new InvalidDataException($"Total debt payment {totalDebtPayment} does not match total credited {totalCredited}");       
         }
 
-        result.newSpend = Spend.RecordDebtPayment(result.newSpend, totalCredited, currentDate);
+        var recordResult = Spend.RecordDebtPayment(result.newSpend, totalCredited, currentDate);
+        result.newSpend = recordResult.spend;
+        result.messages.AddRange(recordResult.messages);
         
         result.isSuccessful = true;
         return result;

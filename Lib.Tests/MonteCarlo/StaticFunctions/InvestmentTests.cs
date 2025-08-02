@@ -121,7 +121,7 @@ public class InvestmentTests
             investmentAmount,
             McInvestmentPositionType.LONG_TERM,
             McInvestmentAccountType.TAXABLE_BROKERAGE,
-            _testPrices);
+            _testPrices).accounts;
 
         // Assert
         Assert.Single(result.Brokerage.Positions);
@@ -150,7 +150,7 @@ public class InvestmentTests
             0m,
             McInvestmentPositionType.LONG_TERM,
             McInvestmentAccountType.TAXABLE_BROKERAGE,
-            _testPrices);
+            _testPrices).accounts;
 
         // Assert
         Assert.Empty(result.Brokerage.Positions);

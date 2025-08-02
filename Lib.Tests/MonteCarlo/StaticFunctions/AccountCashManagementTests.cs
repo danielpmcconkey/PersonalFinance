@@ -16,7 +16,7 @@ public class AccountCashManagementTests
         var accounts = TestDataManager.CreateTestBookOfAccounts();
         if (initialCash > 0)
         {
-            accounts = AccountCashManagement.DepositCash(accounts, initialCash, _testDate);
+            accounts = AccountCashManagement.DepositCash(accounts, initialCash, _testDate).accounts;
         }
         return accounts;
     }
@@ -32,7 +32,7 @@ public class AccountCashManagementTests
         var result = AccountCashManagement.DepositCash(accounts, depositAmount, _testDate);
 
         // Assert
-        var newBalance = AccountCalculation.CalculateCashBalance(result);
+        var newBalance = AccountCalculation.CalculateCashBalance(result.accounts);
         Assert.Equal(depositAmount, newBalance);
     }
 
@@ -48,7 +48,7 @@ public class AccountCashManagementTests
         // Assert
         Assert.Equal(
             AccountCalculation.CalculateCashBalance(accounts),
-            AccountCalculation.CalculateCashBalance(result));
+            AccountCalculation.CalculateCashBalance(result.accounts));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class AccountCashManagementTests
         var accounts = CreateTestAccounts(initialBalance);
 
         // Act
-        var (isSuccessful, newAccounts) = AccountCashManagement.TryWithdrawCash(
+        var (isSuccessful, newAccounts, messages) = AccountCashManagement.TryWithdrawCash(
             accounts, withdrawAmount, _testDate);
 
         // Assert
@@ -104,7 +104,7 @@ public class AccountCashManagementTests
         var withdrawAmount = 500m;
 
         // Act
-        var (isSuccessful, newAccounts) = AccountCashManagement.TryWithdrawCash(
+        var (isSuccessful, newAccounts, messages) = AccountCashManagement.TryWithdrawCash(
             accounts, withdrawAmount, _testDate);
 
         // Assert
@@ -123,8 +123,8 @@ public class AccountCashManagementTests
         var taxLedger = new TaxLedger();
 
         // Act
-        var (isSuccessful, newAccounts, newLedger) = AccountCashManagement.WithdrawCash(
-            accounts, withdrawAmount, _testDate, taxLedger);
+        var (isSuccessful, newAccounts, newLedger, messages) = 
+            AccountCashManagement.WithdrawCash(accounts, withdrawAmount, _testDate, taxLedger);
 
         // Assert
         Assert.True(isSuccessful);

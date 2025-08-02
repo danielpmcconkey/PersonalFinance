@@ -185,80 +185,82 @@ public static class Spend
 
     #region Record functions
 
-    public static LifetimeSpend RecordDebtAccrual(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordDebtAccrual(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalDebtAccrualLifetime += amount;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalDebtAccrualLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,amount * -1, $"Debt accrual recorded: {amount}");
+            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Debt accrual recorded: {amount}"));
         }
         return result;
     }
     
-    public static LifetimeSpend RecordDebtPayment(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordDebtPayment(
+        LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalDebtPaidLifetime += amount;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalDebtPaidLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,amount * -1, $"Debt payment recorded: {amount}");
+            
+            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Debt payment recorded: {amount}"));
         }
         return result;
     }
 
-    public static LifetimeSpend RecordFunPoints(LifetimeSpend lifetimeSpend, decimal funPoints, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunPoints(LifetimeSpend lifetimeSpend, decimal funPoints, LocalDateTime currentDate)
     {
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalFunPointsLifetime += funPoints;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalFunPointsLifetime += funPoints;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,0, $"Fun points recorded: {funPoints}");
+            result.messages.Add(new ReconciliationMessage(currentDate,0, $"Fun points recorded: {funPoints}"));
         }
         return result;
     }
     
-    public static LifetimeSpend RecordInvestmentAccrual(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordInvestmentAccrual(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalInvestmentAccrualLifetime += amount;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalInvestmentAccrualLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,amount, $"Investment accrual recorded: {amount}");
+            result.messages.Add(new ReconciliationMessage(currentDate,amount, $"Investment accrual recorded: {amount}"));
         }
         return result;
     }
     
-    public static LifetimeSpend RecordSocialSecurityWage(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordSocialSecurityWage(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalSocialSecurityWageLifetime += amount;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalSocialSecurityWageLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,amount, $"Social security wage recorded: {amount}");
+            result.messages.Add(new ReconciliationMessage(currentDate,amount, $"Social security wage recorded: {amount}"));
         }
         return result;
     }
     
-    public static LifetimeSpend RecordSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalSpendLifetime += amount;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalSpendLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,amount * -1, $"Spend recorded: {amount}");
+            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Spend recorded: {amount}"));
         }
         return result;
     }
     
-    public static LifetimeSpend RecordHealthcareSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordHealthcareSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
         // todo: unit test RecordHealthcareSpend
-        var result = CopyLifetimeSpend(lifetimeSpend);
-        result.TotalLifetimeHealthCareSpend += amount;
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
+        result.spend.TotalLifetimeHealthCareSpend += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            Reconciliation.AddMessageLine(currentDate,amount * -1, $"Healthcare spend recorded: {amount}");
+            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Healthcare spend recorded: {amount}"));
         }
         return result;
     }

@@ -8,18 +8,7 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Simulation
 {
-    #region sim copy functions
-
     
-    #endregion sim copy functions
-    
-    
-
-    
-
-
-    
-
     /// <summary>
     /// reads any LocalDateTime and returns the first of the month closest to it
     /// </summary>
@@ -37,28 +26,9 @@ public static class Simulation
 
     
 
-
-    
-    
-    
-    
-   
-
-    
-
-    
-
-    
-
-    
-
-    
-
-
-    #region checked
-
-    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) PayForStuff(
-        McModel simParams, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats, TaxLedger ledger,
+    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
+        List<ReconciliationMessage> messages) PayForStuff(McModel simParams, PgPerson person, LocalDateTime currentDate,
+            RecessionStats recessionStats, TaxLedger ledger,
         LifetimeSpend spend, BookOfAccounts accounts)
     {
         var funSpend = Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
@@ -70,11 +40,13 @@ public static class Simulation
         var withdrawalAmount = funSpend + notFunSpend;
         
         // set up the return tuple
-        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) results = (
+        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend
+            , List<ReconciliationMessage> messages) results = (
             false, // default to false. only override if completely successful
             AccountCopy.CopyBookOfAccounts(accounts),
             Tax.CopyTaxLedger(ledger),
-            Spend.CopyLifetimeSpend(spend)
+            Spend.CopyLifetimeSpend(spend),
+            []
             );
         
         // first try the not-fun spend
@@ -83,6 +55,7 @@ public static class Simulation
         results.accounts = notFunResult.newAccounts;
         results.ledger = notFunResult.newLedger;
         results.spend = notFunResult.spend;
+        results.messages.AddRange(notFunResult.messages);
         if (!notFunResult.isSuccessful) return results;
             
         // now try the fun spend
@@ -91,39 +64,45 @@ public static class Simulation
         results.accounts = funResult.newAccounts;
         results.ledger = funResult.newLedger;
         results.spend = funResult.spend;
+        results.messages.AddRange(funResult.messages);
         if (!funResult.isSuccessful) return results;
         
         // all good; mark as successful and return
         results.isSuccessful = true;
         if (!MonteCarloConfig.DebugMode) return results;
-        
-        Reconciliation.AddMessageLine(currentDate, notFunSpend, "Monthly required spend");
-        Reconciliation.AddMessageLine(currentDate, funSpend, "Monthly fun spend");
+        results.messages.Add(new ReconciliationMessage(currentDate, notFunSpend, "Monthly required spend"));
+        results.messages.Add(new ReconciliationMessage(currentDate, funSpend, "Monthly fun spend"));
         
         return results;
     }
     
-    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) PayTaxForYear(
-        PgPerson person, LocalDateTime currentDate, TaxLedger ledger,
-        LifetimeSpend spend, BookOfAccounts accounts, int taxYear)
+    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
+        List<ReconciliationMessage> messages) PayTaxForYear(PgPerson person, LocalDateTime currentDate, 
+            TaxLedger ledger, LifetimeSpend spend, BookOfAccounts accounts, int taxYear)
     {
-        // first figure out teh liability
-        var taxLiability = TaxCalculation.CalculateTaxLiabilityForYear(ledger, taxYear);
-        
         // set up the return tuple
-        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) results = (
+        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
+            List<ReconciliationMessage> messages) results = (
             false, // default to false. only override if completely successful
             AccountCopy.CopyBookOfAccounts(accounts),
             Tax.CopyTaxLedger(ledger),
-            Spend.CopyLifetimeSpend(spend)
+            Spend.CopyLifetimeSpend(spend),
+            []
         );
+        
+        // first figure out the liability
+        var taxLiabilityResult = TaxCalculation.CalculateTaxLiabilityForYear(ledger, taxYear);
+        var taxLiability = taxLiabilityResult.amount;
+        results.messages.AddRange(taxLiabilityResult.messages);
+        
         
         // if you have a refund, deposit it
         if (taxLiability < 0)
         {
             var refundAmount = -taxLiability;
             var refundResult = AccountCashManagement.DepositCash(accounts, refundAmount, currentDate);
-            results.accounts = refundResult;
+            results.accounts = refundResult.accounts;
+            results.messages.AddRange(refundResult.messages);
         }
         // if not, pay for it
         else
@@ -133,66 +112,73 @@ public static class Simulation
             results.accounts = notFunResult.newAccounts;
             results.ledger = notFunResult.newLedger;
             results.spend = notFunResult.spend;
+            results.messages.AddRange(notFunResult.messages);
             if (!notFunResult.isSuccessful) return results;
         }
         
         // don't forget to record the tax liability, either way
-        results.ledger = Tax.RecordTaxPaid(
-            results.ledger, currentDate, taxLiability); // todo: record paycheck tax withholding as tax paid
+        var recordResults = Tax.RecordTaxPaid(results.ledger, currentDate, taxLiability); // todo: record paycheck tax withholding as tax paid
+        results.ledger = recordResults.ledger;
+        results.messages.AddRange(recordResults.messages);
         
         // mark it as successful and return
         results.isSuccessful = true;
         return results;
     }
     
-    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) ProcessPaycheck(
-        PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
-        McModel simParams, CurrentPrices prices)
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
+        ProcessPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
+            LifetimeSpend spend, McModel simParams, CurrentPrices prices)
     {
-        var paydayResult = 
-            Lib.MonteCarlo.StaticFunctions.Payday.ProcessPreRetirementPaycheck(
+        var paydayResult = Payday.ProcessPreRetirementPaycheck(
                 person, currentDate, accounts, ledger, spend, simParams, prices);
-        return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend);
+        return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
 
-    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend)  ProcessSocialSecurityCheck(
-        PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
-        McModel simParams)
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
+        ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts,
+            TaxLedger ledger, LifetimeSpend spend, McModel simParams)
     {
-        var paydayResult = 
-            Lib.MonteCarlo.StaticFunctions.Payday.ProcessSocialSecurityCheck(
+        var paydayResult = Payday.ProcessSocialSecurityCheck(
                 person, currentDate, accounts, ledger, spend, simParams);
-        return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend);
+        return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
     
-    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) ProcessPayday (
-        PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
-        McModel simParams, CurrentPrices prices)
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
+        ProcessPayday (PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
+            LifetimeSpend spend, McModel simParams, CurrentPrices prices)
     {
-        (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) results = 
+        (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) results = 
             (AccountCopy.CopyBookOfAccounts(accounts),
                 Tax.CopyTaxLedger(ledger),
-                Spend.CopyLifetimeSpend(spend));
+                Spend.CopyLifetimeSpend(spend),
+                []);
         
         // if still working, you get a paycheck
         if (!person.IsRetired)
         {
+            if(MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
+                currentDate, null, "processing pre-retirement paycheck"));
             var paydayResult = ProcessPaycheck(
                 person, currentDate, accounts, ledger, spend, simParams, prices);
             results.accounts = paydayResult.accounts;
             results.ledger = paydayResult.ledger;
             results.spend = paydayResult.spend;
+            results.messages.AddRange(paydayResult.messages);
         }
 
         // if you aren't yet drawing SS, just return now
         if (currentDate < simParams.SocialSecurityStart) return results;
         
         // this isn't an "else" you can be working and draw SS
-        var ssRelust = ProcessSocialSecurityCheck(
+        if(MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
+            currentDate, null, "processing social security check"));
+        var ssResult = ProcessSocialSecurityCheck(
             person, currentDate, accounts, ledger, spend, simParams);
-        results.accounts = ssRelust.accounts;
-        results.ledger = ssRelust.ledger;
-        results.spend = ssRelust.spend;
+        results.accounts = ssResult.accounts;
+        results.ledger = ssResult.ledger;
+        results.spend = ssResult.spend;
+        results.messages.AddRange(ssResult.messages);
         return results;
     }
     
@@ -220,34 +206,43 @@ public static class Simulation
         
     }
     
-    public static (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend) SpendCash(
-        decimal amount, bool isFun, BookOfAccounts accounts, LocalDateTime currentDate, TaxLedger ledger, LifetimeSpend spend, PgPerson person)
+    public static (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend,
+        List<ReconciliationMessage> messages) SpendCash(decimal amount, bool isFun, BookOfAccounts accounts, 
+            LocalDateTime currentDate, TaxLedger ledger, LifetimeSpend spend, PgPerson person)
     {
         // set up the return tuple
-        (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend) results = (
-            false, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), Spend.CopyLifetimeSpend(spend));
+        (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend,
+            List<ReconciliationMessage> messages) results = (
+            false, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger),
+            Spend.CopyLifetimeSpend(spend), []);
         
         // try to withdraw the money
         var withdrawalResults = AccountCashManagement.WithdrawCash(
             accounts, amount, currentDate, ledger);
         results.newAccounts = withdrawalResults.newAccounts;
         results.newLedger = withdrawalResults.newLedger;
+        results.messages.AddRange(withdrawalResults.messages);
         if (!withdrawalResults.isSuccessful)
         {
             // let them declare bankruptcy upstream
             return results;
         }
-        results.spend = Spend.RecordSpend(spend, amount, currentDate);
+        var recordResults = Spend.RecordSpend(spend, amount, currentDate);
+        results.spend = recordResults.spend;
+        results.messages.AddRange(recordResults.messages);
+        
         if (isFun)
         {
             var funPoints = Spend.CalculateFunPointsForSpend(amount, person, currentDate);
-            results.spend = Spend.RecordFunPoints(spend, funPoints, currentDate);
+            var funRecordResults = Spend.RecordFunPoints(spend, funPoints, currentDate);
+            results.spend = funRecordResults.spend;
+            results.messages.AddRange(funRecordResults.messages);
         }
         results.isSuccessful = true;
         return results;
     }
 
-    #endregion
+  
 
 
 
