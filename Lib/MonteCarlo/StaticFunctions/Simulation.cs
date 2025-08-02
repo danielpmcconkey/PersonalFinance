@@ -91,7 +91,7 @@ public static class Simulation
         );
         
         // first figure out the liability
-        var taxLiabilityResult = TaxCalculation.CalculateTaxLiabilityForYear(ledger, taxYear);
+        var taxLiabilityResult = TaxCalculation.CalculateTaxLiabilityForYear(results.ledger, taxYear);
         var taxLiability = taxLiabilityResult.amount;
         results.messages.AddRange(taxLiabilityResult.messages);
         
@@ -100,7 +100,7 @@ public static class Simulation
         if (taxLiability < 0)
         {
             var refundAmount = -taxLiability;
-            var refundResult = AccountCashManagement.DepositCash(accounts, refundAmount, currentDate);
+            var refundResult = AccountCashManagement.DepositCash(results.accounts, refundAmount, currentDate);
             results.accounts = refundResult.accounts;
             results.messages.AddRange(refundResult.messages);
         }
@@ -108,7 +108,7 @@ public static class Simulation
         else
         {
             var notFunResult = SpendCash(
-                taxLiability, false, accounts, currentDate, ledger, spend, person);
+                taxLiability, false, results.accounts, currentDate, results.ledger, results.spend, person);
             results.accounts = notFunResult.newAccounts;
             results.ledger = notFunResult.newLedger;
             results.spend = notFunResult.spend;
@@ -197,7 +197,7 @@ public static class Simulation
         LocalDateTime currentDate, PgPerson person, McModel simParams)
     {
         if (person.IsRetired) return (true, person);
-        if (currentDate != simParams.RetirementDate) return (false, person);
+        if (currentDate < simParams.RetirementDate) return (false, person);
         
         // this is the day. copy the person, set the flag, and return 
         var personCopy = Person.CopyPerson(person, true);
@@ -218,7 +218,7 @@ public static class Simulation
         
         // try to withdraw the money
         var withdrawalResults = AccountCashManagement.WithdrawCash(
-            accounts, amount, currentDate, ledger);
+            results.newAccounts, amount, currentDate, results.newLedger);
         results.newAccounts = withdrawalResults.newAccounts;
         results.newLedger = withdrawalResults.newLedger;
         results.messages.AddRange(withdrawalResults.messages);
@@ -227,14 +227,14 @@ public static class Simulation
             // let them declare bankruptcy upstream
             return results;
         }
-        var recordResults = Spend.RecordSpend(spend, amount, currentDate);
+        var recordResults = Spend.RecordSpend(results.spend, amount, currentDate);
         results.spend = recordResults.spend;
         results.messages.AddRange(recordResults.messages);
         
         if (isFun)
         {
             var funPoints = Spend.CalculateFunPointsForSpend(amount, person, currentDate);
-            var funRecordResults = Spend.RecordFunPoints(spend, funPoints, currentDate);
+            var funRecordResults = Spend.RecordFunPoints(results.spend, funPoints, currentDate);
             results.spend = funRecordResults.spend;
             results.messages.AddRange(funRecordResults.messages);
         }

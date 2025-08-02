@@ -38,6 +38,13 @@ public static class MonteCarloConfig
 
     public static bool ShouldReconcileInterestAccrual;
     public static bool ShouldReconcileTaxCalcs;
+    public static bool ShouldReconcileAccountCleanUp;
+    public static bool ShouldReconcileRmd;
+    public static bool ShouldReconcileLoanPaydown;
+    public static bool ShouldReconcilePayingForStuff;
+    public static bool ShouldReconcilePayDay;
+    public static bool ShouldReconcileRebalancing;
+    public static bool ShouldReconcilePricingGrowth;
 
     static MonteCarloConfig()
     {
@@ -52,6 +59,13 @@ public static class MonteCarloConfig
         ModelTrainingMode = ConfigManager.ReadBoolSetting("ModelTrainingMode");
         ShouldReconcileInterestAccrual = ConfigManager.ReadBoolSetting("ShouldReconcileInterestAccrual");
         ShouldReconcileTaxCalcs = ConfigManager.ReadBoolSetting("ShouldReconcileTaxCalcs");
+        ShouldReconcileAccountCleanUp = ConfigManager.ReadBoolSetting("ShouldReconcileAccountCleanUp");
+        ShouldReconcileRmd = ConfigManager.ReadBoolSetting("ShouldReconcileRmd");
+        ShouldReconcileLoanPaydown = ConfigManager.ReadBoolSetting("ShouldReconcileLoanPaydown");
+        ShouldReconcilePayingForStuff = ConfigManager.ReadBoolSetting("ShouldReconcilePayingForStuff");
+        ShouldReconcilePayDay = ConfigManager.ReadBoolSetting("ShouldReconcilePayDay");
+        ShouldReconcileRebalancing = ConfigManager.ReadBoolSetting("ShouldReconcileRebalancing");
+        ShouldReconcilePricingGrowth = ConfigManager.ReadBoolSetting("ShouldReconcilePricingGrowth");
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
 }

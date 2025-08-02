@@ -141,7 +141,7 @@ public class LifeSimulator
     private void AccrueInterest()
     {
         if (_sim.PgPerson.IsBankrupt) return;
-        if (MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileInterestAccrual)
         {
             _reconciliationLedger.AddFullReconLine(_sim, "Accruing interest");
         }
@@ -151,7 +151,7 @@ public class LifeSimulator
         _sim.BookOfAccounts = result.newAccounts;
         _sim.LifetimeSpend = result.newSpend;
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileInterestAccrual) return;
 
         _reconciliationLedger.AddMessages(result.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "Accrued interest");
@@ -179,7 +179,7 @@ public class LifeSimulator
     private void CleanUpAccounts()
     {
         if (_sim.PgPerson.IsBankrupt) return;
-        if (MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileInterestAccrual)
         {
             _reconciliationLedger.AddFullReconLine(_sim, "Cleaning up accounts");
         }
@@ -187,7 +187,7 @@ public class LifeSimulator
         _sim.BookOfAccounts =
             AccountCleanup.CleanUpAccounts(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices);
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileAccountCleanUp) return;
 
         _reconciliationLedger.AddFullReconLine(_sim, "Cleaned up accounts");
     }
@@ -204,9 +204,8 @@ public class LifeSimulator
     private void MeetRmdRequirements()
     {
         if (_sim.PgPerson.IsBankrupt) return;
-        if (MonteCarloConfig.DebugMode)
-            _reconciliationLedger.AddFullReconLine(
-                _sim, "Meeting RMD requirements");
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRmd)
+            _reconciliationLedger.AddFullReconLine(_sim, "Meeting RMD requirements");
 
         var age = _sim.CurrentDateInSim.Year - _sim.PgPerson.BirthDate.Year;
         var result = Tax.MeetRmdRequirements(
@@ -214,7 +213,7 @@ public class LifeSimulator
         _sim.BookOfAccounts = result.newBookOfAccounts;
         _sim.TaxLedger = result.newLedger;
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRmd) return;
         _reconciliationLedger.AddMessages(result.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "RMD requirements met");
     }
@@ -226,7 +225,7 @@ public class LifeSimulator
             return;
         }
 
-        if (MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileLoanPaydown)
             _reconciliationLedger.AddFullReconLine(_sim, "Paying down loans");
 
 
@@ -242,7 +241,7 @@ public class LifeSimulator
             return;
         }
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileLoanPaydown) return;
         _reconciliationLedger.AddMessages(paymentResult.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "Pay down debt completed");
     }
@@ -250,7 +249,7 @@ public class LifeSimulator
     private void PayForStuff()
     {
         if (_sim.PgPerson.IsBankrupt) return;
-        if (MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayingForStuff)
             _reconciliationLedger.AddFullReconLine(_sim, "Time to spend the money");
 
         var results = Simulation.PayForStuff(_sim.SimParameters, _sim.PgPerson,
@@ -260,19 +259,29 @@ public class LifeSimulator
         _sim.LifetimeSpend = results.spend;
         if (results.isSuccessful == false) DeclareBankruptcy();
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcilePayingForStuff) return;
         _reconciliationLedger.AddMessages(results.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "Monthly spend spent");
     }
 
     private void PayTax()
     {
+        /*
+         *
+         *
+         * you are here
+         *
+         * you are validating your code through the recon. You've discovered that you need to log IRA distributions in
+         * the 1040. You also believe that you aren't investing excess cash
+         *
+         * 
+         */
         if (_sim.PgPerson.IsBankrupt) return;
 
         var taxYear = _sim.CurrentDateInSim.Year - 1;
         var newTaxLedger = _sim.TaxLedger;
 
-        if (MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileTaxCalcs)
             _reconciliationLedger.AddFullReconLine(_sim, $"Paying taxes for tax year {taxYear}");
 
         var taxResult = Simulation.PayTaxForYear(_sim.PgPerson, _sim.CurrentDateInSim,
@@ -281,14 +290,14 @@ public class LifeSimulator
         _sim.TaxLedger = taxResult.ledger;
         _sim.LifetimeSpend = taxResult.spend;
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return;
         _reconciliationLedger.AddMessages(taxResult.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "Paid taxes");
     }
 
     private void ProcessPayday()
     {
-        if (!MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayDay)
             _reconciliationLedger.AddFullReconLine(_sim, "processing payday");
 
         var results = Simulation.ProcessPayday(_sim.PgPerson, _sim.CurrentDateInSim,
@@ -298,7 +307,7 @@ public class LifeSimulator
         _sim.LifetimeSpend = results.spend;
 
 
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcilePayDay) return;
         _reconciliationLedger.AddMessages(results.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "processed payday");
     }
@@ -307,7 +316,7 @@ public class LifeSimulator
     {
         // todo: create a UT that ensures that excess cash gets invested pre-retirement
         if (_sim.PgPerson.IsBankrupt) return;
-        if (MonteCarloConfig.DebugMode) 
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing) 
             _reconciliationLedger.AddFullReconLine(_sim, "Rebalancing portfolio");
         
         var results = Rebalance.RebalancePortfolio(
@@ -315,7 +324,7 @@ public class LifeSimulator
             _sim.TaxLedger, _sim.PgPerson);
         _sim.BookOfAccounts = results.newBookOfAccounts;
         _sim.TaxLedger = results.newLedger;
-        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRebalancing) return;
         _reconciliationLedger.AddMessages(results.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "Rebalanced portfolio");
     }
@@ -324,7 +333,7 @@ public class LifeSimulator
     {
         _sim.CurrentPrices = Simulation.SetNewPrices(
             _sim.CurrentPrices, _hypotheticalPrices, _sim.CurrentDateInSim);
-        if (MonteCarloConfig.DebugMode)
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePricingGrowth)
         {
             _reconciliationLedger.AddMessageLine(new ReconciliationMessage(
                 _sim.CurrentDateInSim, _sim.CurrentPrices.CurrentLongTermGrowthRate,

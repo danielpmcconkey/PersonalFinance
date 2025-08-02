@@ -178,22 +178,29 @@ public static class TaxCalculation
         (decimal amount, List<ReconciliationMessage> messages) result = (0m, []);
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
-            
+            result.messages.Add(new ReconciliationMessage(null, null, "Beginning to calculate total outstanding tax liability"));
         }
-
-        decimal totalLiability = 0M;
-        var form1040 = new Form1040(ledger, taxYear);
-        totalLiability = form1040.CalculateTaxLiability();
-        var stateLiability = CalculateNorthCarolinaTaxLiabilityForYear(
-            ledger, taxYear, form1040.AdjustedGrossIncome);
-        totalLiability += stateLiability;
         
-        if (!MonteCarloConfig.DebugMode || MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        // federal
+        var form1040 = new Form1040(ledger, taxYear);
+        var federalLiability = form1040.CalculateTaxLiability();
+        
+        // NC taxes
+        var formD400 = new FormD400(ledger, taxYear, form1040.AdjustedGrossIncome);
+        var stateLiability = formD400.CalculateTaxLiability();
+        
+        
+        var totalLiability = federalLiability + stateLiability;
+        result.amount = totalLiability;
+        
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
         result.messages.Add(new ReconciliationMessage(
             null, null, "Calculating tax liability for year " + taxYear));
         result.messages.AddRange(form1040.ReconciliationMessages);
-        result.messages.Add(new ReconciliationMessage(null, stateLiability, "State tax liability"));
-        result.messages.Add(new ReconciliationMessage(null, totalLiability, "Total tax liability"));
+        result.messages.Add(new ReconciliationMessage(null, federalLiability, "Federal outstanding tax liability"));
+        result.messages.AddRange(formD400.ReconciliationMessages);
+        result.messages.Add(new ReconciliationMessage(null, stateLiability, "State outstanding tax liability"));
+        result.messages.Add(new ReconciliationMessage(null, totalLiability, "Total outstanding tax liability"));
         return result;
     }
     public static decimal CalculateNorthCarolinaTaxLiabilityForYear(

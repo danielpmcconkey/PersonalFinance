@@ -185,7 +185,8 @@ public static class Spend
 
     #region Record functions
 
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordDebtAccrual(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordDebtAccrual(
+        LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
         (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
         result.spend.TotalDebtAccrualLifetime += amount;

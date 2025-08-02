@@ -9,6 +9,8 @@ public class FormD400
     private TaxLedger _ledger;
     private int _taxYear;
     private decimal _federalAdjustedGrossIncome;
+    
+    public List<ReconciliationMessage> ReconciliationMessages = [];
 
     public FormD400(TaxLedger ledger, int taxYear, decimal federalAdjustedGrossIncome)
     {
@@ -36,6 +38,13 @@ public class FormD400
         var line19 = line17 + line18;
         var line20 = TaxCalculation.CalculateStateWithholdingForYear(_ledger, _taxYear);
         decimal whatYouOwe = line15 - line20;
+        
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return whatYouOwe;
+        ReconciliationMessages.Add(new ReconciliationMessage(null, _federalAdjustedGrossIncome, "Federal AGI used in NC tax calc"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, line15, "Total NC tax"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, line20, "State withholding"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, whatYouOwe, "What you owe"));
+
         return whatYouOwe;
     }
 }

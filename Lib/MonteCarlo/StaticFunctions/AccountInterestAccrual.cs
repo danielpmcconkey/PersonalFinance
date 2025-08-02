@@ -74,11 +74,14 @@ public static class AccountInterestAccrual
         
         result.newPosition.CurrentBalance += amount;
 
-        result.newSpend.TotalDebtAccrualLifetime += amount;
+        var recordResult = Spend.RecordDebtAccrual(result.newSpend, amount, currentDate);
+        result.newSpend = recordResult.spend;
+        
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileInterestAccrual) return result;
         
         result.messages.Add(new ReconciliationMessage(
             currentDate, amount, $"Debt accrual for position {result.newPosition.Name}"));
+        result.messages.AddRange(recordResult.messages);
         
         return result;
     }
@@ -97,7 +100,7 @@ public static class AccountInterestAccrual
         result.newAccounts.DebtAccounts = [];
         foreach (var account in bookOfAccounts.DebtAccounts)
         {
-            var localResult = AccrueInterestOnDebtAccount(currentDate, account, lifetimeSpend);
+            var localResult = AccrueInterestOnDebtAccount(currentDate, account, result.newSpend);
             result.newAccounts.DebtAccounts.Add(localResult.newAccount);
             result.newSpend = localResult.newSpend;
             result.messages.AddRange(localResult.messages);
@@ -191,7 +194,7 @@ public static class AccountInterestAccrual
         
         // do the recon stuff, then return
         var newAmount =  results.newPosition.CurrentValue;
-        results.newSpend.TotalInvestmentAccrualLifetime += newAmount - oldAmount;
+        results.newSpend.TotalInvestmentAccrualLifetime += (newAmount - oldAmount);
         results.messages.Add(new ReconciliationMessage(currentDate, newAmount - oldAmount,
             $"Interest accrual for position {results.newPosition.Name}"));
         
