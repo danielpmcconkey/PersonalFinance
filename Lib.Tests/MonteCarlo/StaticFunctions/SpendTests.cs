@@ -219,7 +219,8 @@ public class SpendTests
             TotalDebtAccrualLifetime = 300m,
             TotalSocialSecurityWageLifetime = 4000m,
             TotalDebtPaidLifetime = 500m,
-            TotalFunPointsLifetime = 600m
+            TotalFunPointsLifetime = 600m,
+            TotalLifetimeHealthCareSpend = 38.88m,
         };
 
         // Act
@@ -237,6 +238,7 @@ public class SpendTests
         Assert.Equal(original.TotalSocialSecurityWageLifetime, copy.TotalSocialSecurityWageLifetime);
         Assert.Equal(original.TotalDebtPaidLifetime, copy.TotalDebtPaidLifetime);
         Assert.Equal(original.TotalFunPointsLifetime, copy.TotalFunPointsLifetime);
+        Assert.Equal(original.TotalLifetimeHealthCareSpend, copy.TotalLifetimeHealthCareSpend);
     }
 
     [Fact]

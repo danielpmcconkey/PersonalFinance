@@ -87,7 +87,14 @@ public class Form1040
         var line31 = 0m; 
         var line32 = line27 + line28 + line29 + line31;
         var line33TotalPayments = line25FederalWithholding + line26 + line32;
-        return line24TotalTax - line33TotalPayments;
+        
+        var remainingLiability = line24TotalTax - line33TotalPayments;
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
+        {
+            Reconciliation.AddMessageLine(new(_taxYear,12,31,0,0), 
+                remainingLiability, "Total federal liability");
+        }
+        return remainingLiability;
     }
 
     private decimal CalculateTax()

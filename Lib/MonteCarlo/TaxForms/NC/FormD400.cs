@@ -36,6 +36,11 @@ public class FormD400
         var line19 = line17 + line18;
         var line20 = TaxCalculation.CalculateStateWithholdingForYear(_ledger, _taxYear);
         decimal whatYouOwe = line15 - line20;
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
+        {
+            Reconciliation.AddMessageLine(new(_taxYear,12,31,0,0), 
+                whatYouOwe, "Total state liability");
+        }
         return whatYouOwe;
     }
 }

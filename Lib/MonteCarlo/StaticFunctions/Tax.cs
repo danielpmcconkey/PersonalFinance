@@ -34,7 +34,7 @@ public static class Tax
     {
         var result = CopyTaxLedger(ledger);
         result.LongTermCapitalGains.Add((earnedDate, amount));
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Long term capital gain logged");
         }
@@ -44,7 +44,7 @@ public static class Tax
     {
         var result = CopyTaxLedger(ledger);
         result.ShortTermCapitalGains.Add((earnedDate, amount));
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Short term capital gain logged");
         }
@@ -55,7 +55,7 @@ public static class Tax
     {
         var result = CopyTaxLedger(ledger);
         result.W2Income.Add((earnedDate, amount));
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Income logged");
         }
@@ -65,7 +65,7 @@ public static class Tax
     {
         var result = CopyTaxLedger(ledger);
         result.TaxableIraDistribution.Add((earnedDate, amount));
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Taxable distribution logged");
         }
@@ -106,7 +106,7 @@ public static class Tax
         
         var result = CopyTaxLedger(ledger);
         result.TotalTaxPaid += amount;
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Tax payment logged");
         }
@@ -122,7 +122,7 @@ public static class Tax
         
         result.FederalWithholdings.Add((earnedDate, amountFed));
         result.StateWithholdings.Add((earnedDate, amountState));
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amountFed, "Federal withholding logged");
             Reconciliation.AddMessageLine(earnedDate, amountState, "State withholding logged");
@@ -134,7 +134,7 @@ public static class Tax
     {
         var result = CopyTaxLedger(ledger);
         result.SocialSecurityIncome.Add((earnedDate, amount));
-        if (StaticConfig.MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(earnedDate, amount, "Social security income logged");
         }
@@ -180,7 +180,7 @@ public static class Tax
         results.newBookOfAccounts = localResult.newBookOfAccounts;
         results.newLedger = localResult.newLedger;
         
-        if (MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(currentDate, results.amountSold, 
                 $"RMD: Sold investment to meet RMD requirement");

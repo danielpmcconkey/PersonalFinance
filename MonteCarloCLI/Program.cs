@@ -22,6 +22,7 @@ var dan = Person.GetPersonById(danIdGuid);
 var investmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(danIdGuid);
 var debtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(danIdGuid);
 
+
 logger.Info("Pulling historical pricing data");
 decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
 
@@ -39,7 +40,7 @@ else
     logger.Info("Running in single model mode");
     
     logger.Info("Pulling model champion from the database");
-    McModel champion = DataStage.GetModelChampion();
+    McModel champion =DataStage.GetModelChampion(dan);
     // over-write the start and end dates from the DB champion model to use what's in the app config
     champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
     champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
@@ -47,7 +48,7 @@ else
     logger.Info(logger.FormatBarSeparator('*'));
     logger.Info(logger.FormatHeading("Beginning Monte Carlo run"));
     logger.Info(logger.FormatBarSeparator('*'));
-    var results = Simulation.RunSingleModelSession(
+    var results = SimulationTrigger.RunSingleModelSession(
         logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
     logger.Info("Single model simulation of all lives completed");
     if (MonteCarloConfig.DebugMode)

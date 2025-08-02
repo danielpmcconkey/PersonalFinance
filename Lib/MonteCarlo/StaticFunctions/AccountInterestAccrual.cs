@@ -10,7 +10,7 @@ public static class AccountInterestAccrual
         LocalDateTime currentDate, BookOfAccounts bookOfAccounts, CurrentPrices prices, LifetimeSpend lifetimeSpend)
     {
         var newAccounts = AccountCopy.CopyBookOfAccounts(bookOfAccounts);
-        var newSpend = Simulation.CopyLifetimeSpend(lifetimeSpend);
+        var newSpend = Spend.CopyLifetimeSpend(lifetimeSpend);
         
         var results = AccrueInterestOnInvestmentAccounts(currentDate, newAccounts, prices, newSpend);
         newAccounts = results.newAccounts;
@@ -31,7 +31,7 @@ public static class AccountInterestAccrual
         
         // set up the return tuple
         (McDebtAccount newAccount, LifetimeSpend newSpend)  result = (
-            AccountCopy.CopyDebtAccount(account), Simulation.CopyLifetimeSpend(lifetimeSpend));
+            AccountCopy.CopyDebtAccount(account), Spend.CopyLifetimeSpend(lifetimeSpend));
         
         /*
          * for debt accounts, we just need to update the balances according to the apr
@@ -58,7 +58,7 @@ public static class AccountInterestAccrual
         */
 
         (McDebtPosition newPosition, LifetimeSpend newSpend) result = 
-            (AccountCopy.CopyDebtPosition(position), Simulation.CopyLifetimeSpend(lifetimeSpend));;
+            (AccountCopy.CopyDebtPosition(position), Spend.CopyLifetimeSpend(lifetimeSpend));;
         
         decimal amount = position.CurrentBalance * (position.AnnualPercentageRate / 12);
         
@@ -80,7 +80,7 @@ public static class AccountInterestAccrual
         
         // set up the return tuple
         (BookOfAccounts newAccounts, LifetimeSpend newSpend) result = 
-            (AccountCopy.CopyBookOfAccounts(bookOfAccounts), Simulation.CopyLifetimeSpend(lifetimeSpend));
+            (AccountCopy.CopyBookOfAccounts(bookOfAccounts), Spend.CopyLifetimeSpend(lifetimeSpend));
         
         result.newAccounts.DebtAccounts = [];
         foreach (var account in bookOfAccounts.DebtAccounts)
@@ -100,7 +100,7 @@ public static class AccountInterestAccrual
 
         // set up the return tuple
         (BookOfAccounts newAccounts, LifetimeSpend newSpend) results = (
-            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Simulation.CopyLifetimeSpend(lifetimeSpend));
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), Spend.CopyLifetimeSpend(lifetimeSpend));
         results.newAccounts.InvestmentAccounts = [];
         
         // add the cash and primary residence accounts back as-is
@@ -128,7 +128,7 @@ public static class AccountInterestAccrual
         
         // set up the return tuple
         (McInvestmentAccount newAccount, LifetimeSpend newSpend) results = (
-            AccountCopy.CopyInvestmentAccount(account), Simulation.CopyLifetimeSpend(lifetimeSpend));
+            AccountCopy.CopyInvestmentAccount(account), Spend.CopyLifetimeSpend(lifetimeSpend));
         results.newAccount.Positions = [];
         
         foreach (var p in account.Positions)
@@ -150,7 +150,7 @@ public static class AccountInterestAccrual
         
         // set up the return tuple
         (McInvestmentPosition newPosition, LifetimeSpend newSpend) results = (
-            AccountCopy.CopyInvestmentPosition(position), Simulation.CopyLifetimeSpend(lifetimeSpend));
+            AccountCopy.CopyInvestmentPosition(position), Spend.CopyLifetimeSpend(lifetimeSpend));
         
         
         var oldAmount = (StaticConfig.MonteCarloConfig.DebugMode == false) ? 0 : position.CurrentValue;

@@ -10,225 +10,245 @@ public static class Simulation
 {
     #region sim copy functions
 
-    public static LifetimeSpend CopyLifetimeSpend(LifetimeSpend lifetimeSpend)
-    {
-        return new LifetimeSpend()
-        {
-            TotalDebtAccrualLifetime = lifetimeSpend.TotalDebtAccrualLifetime,
-            TotalDebtPaidLifetime = lifetimeSpend.TotalDebtPaidLifetime,
-            TotalInvestmentAccrualLifetime = lifetimeSpend.TotalInvestmentAccrualLifetime,
-            TotalSocialSecurityWageLifetime = lifetimeSpend.TotalSocialSecurityWageLifetime,
-            TotalSpendLifetime = lifetimeSpend.TotalSpendLifetime,
-        };
-    }
+    
     #endregion sim copy functions
-    public static NetWorthMeasurement CalculatePercentileValue(NetWorthMeasurement[] sequence,
-        decimal percentile)
-    {
-        // assumes the list is already sorted
-        /*
-         * length of sequence = 15
-         * percentile = .7
-         * target row = 0.7 * 15 = 10.5
-         * target row = 11 (rounded to nearest int)
-         * target row = 10 (zero-indexed)
-         *
-         * */
-        int numRows = sequence.Length;
-        decimal targetRowDecimal = numRows * percentile;
-        int targetRowInt = (int)(Math.Round(targetRowDecimal, 0));
-        return sequence[targetRowInt];
-    }
     
-    /// <summary>
-    /// reads the output from running all lives on a single model and creates statistical views
-    /// </summary>
-    public static SimulationAllLivesResult InterpretSimulationResults(List<NetWorthMeasurement>[] allMeasurements)
-    {
-        throw new NotImplementedException();
-        // List<SimulationAllLivesResult> batchResults = [];
-        // var minDate = allMeasurements.Min(x => x.MeasuredDate);
-        // var maxDate = allMeasurements.Max(x => x.MeasuredDate);
-        // LocalDateTime dateCursor = minDate;
-        // int totalBankruptcies = 0;
-        // while (dateCursor <= maxDate)
-        // {
-        //     // get all the total spend measurements for this date
-        //     NetWorthMeasurement[] valuesAtDate = allMeasurements
-        //         .Where(x => x.MeasuredDate == dateCursor)
-        //         .OrderBy(x => x.TotalSpend)
-        //         .ToArray();
-        //
-        //     // total bankruptcies is a running list of all bankruptcies so
-        //     // far. it will grow as the date cursor moves forward
-        //     totalBankruptcies += valuesAtDate.Where(x => x.NetWorth <= 0).Count();
-        //     var simAt90PercentileSpend = CalculatePercentileValue(valuesAtDate, 0.9M);
-        //     var simAt75PercentileSpend = CalculatePercentileValue(valuesAtDate, 0.75M);
-        //     var simAt50PercentileSpend = CalculatePercentileValue(valuesAtDate, 0.5M);
-        //     var simAt25PercentileSpend = CalculatePercentileValue(valuesAtDate, 0.25M);
-        //     var simAt10PercentileSpend = CalculatePercentileValue(valuesAtDate, 0.1M);
-        //     batchResults.Add(new SimulationAllLivesResult()
-        //     {
-        //         Id = Guid.NewGuid(),
-        //         ModelId = _mcModel.Id,
-        //         MeasuredDate = dateCursor,
-        //         NetWorthAt90thPercentile = simAt90PercentileSpend.NetWorth,
-        //         NetWorthAt75thPercentile = simAt75PercentileSpend.NetWorth,
-        //         NetWorthAt50thPercentile = simAt50PercentileSpend.NetWorth,
-        //         NetWorthAt25thPercentile = simAt25PercentileSpend.NetWorth,
-        //         NetWorthAt10thPercentile = simAt10PercentileSpend.NetWorth,
-        //         SpendAt90thPercentile = simAt90PercentileSpend.TotalSpend,
-        //         SpendAt75thPercentile = simAt75PercentileSpend.TotalSpend,
-        //         SpendAt50thPercentile = simAt50PercentileSpend.TotalSpend,
-        //         SpendAt25thPercentile = simAt25PercentileSpend.TotalSpend,
-        //         SpendAt10thPercentile = simAt10PercentileSpend.TotalSpend,
-        //         TaxesAt90thPercentile = simAt90PercentileSpend.TotalTax,
-        //         TaxesAt75thPercentile = simAt75PercentileSpend.TotalTax,
-        //         TaxesAt50thPercentile = simAt50PercentileSpend.TotalTax,
-        //         TaxesAt25thPercentile = simAt25PercentileSpend.TotalTax,
-        //         TaxesAt10thPercentile = simAt10PercentileSpend.TotalTax,
-        //         BankruptcyRate = (1.0M * totalBankruptcies) / (1.0M * allMeasurements.Count),
-        //     });
-        //     dateCursor = dateCursor.PlusMonths(1);
-        // }
-        // return batchResults;
-    }
     
-    /// <summary>
-    /// Trigger the simulator for a single run after you've created all the default accounts, parameters and pricing.
-    /// Can be used by RunSingle and Train.
-    /// </summary>
+
     
-    public static List<NetWorthMeasurement> ExecuteSingleModelSingleLife(Logger logger, McModel model, PgPerson person, 
-        List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
-        Dictionary<LocalDateTime, Decimal> hypotheticalPrices)
-    {
-        LifeSimulator sim = new LifeSimulator(
-            logger, model, person, investmentAccounts, debtAccounts, hypotheticalPrices);
-        return sim.Run();
-    }
+
+
+    
 
     /// <summary>
-    /// runs all simulation lives for a single model
+    /// reads any LocalDateTime and returns the first of the month closest to it
     /// </summary>
-    /// <returns>an array of NetWorthMeasurement lists. Each element in the array represents one simulated life</returns>
-    public static List<NetWorthMeasurement>[] ExecuteSingleModelAllLives(Logger logger,
-        McModel model, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
-        Dictionary<LocalDateTime, decimal>[] allPricingDicts)
+    private static LocalDateTime NormalizeDate(LocalDateTime providedDate)
     {
-        int numLivesPerModelRun = MonteCarloConfig.NumLivesPerModelRun;
-        List<NetWorthMeasurement>[] runs = new List<NetWorthMeasurement>[numLivesPerModelRun];
-        
-        if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLivesPerModelRun, i =>
-        {
-            var newPerson = Person.CopyPerson(person, false);
-            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, allPricingDicts[i]);
-            runs[i] = sim.Run();
-        });
-        else for(int i = 0; i < numLivesPerModelRun; i++)
-        {
-            var newPerson = Person.CopyPerson(person, false);
-            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, allPricingDicts[i]);
-            runs[i] = sim.Run();
-        }
-        return runs;
+        // todo: figure out why we're not using NormalizeDate any more
+        var firstOfThisMonth = new LocalDateTime(providedDate.Year, providedDate.Month, 1, 0, 0);
+        var firstOfNextMonth = firstOfThisMonth.PlusMonths(1);
+        var timeSpanToThisFirst = providedDate - firstOfThisMonth;
+        var timeSpanToNextFirst = firstOfNextMonth - providedDate;
+        return (timeSpanToThisFirst.Days <= timeSpanToNextFirst.Days) ?
+            firstOfThisMonth : // t2 is longer, return this first
+            firstOfNextMonth; // t1 is longer than t2, return next first
     }
 
     
-    /// <summary>
-    /// provides results from a pre-determined model. It still runs that
-    /// moddel numSimulations times, each over a different "randomized"
-    /// set of price simulations
-    /// </summary>
-    public static SimulationAllLivesResult RunSingleModelSession(
-        Logger logger, McModel simParams, PgPerson person, List<McInvestmentAccount> investmentAccounts,
-        List<McDebtAccount> debtAccounts, decimal[] historicalPrices)
-    {   
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        logger.Debug("Creating simulation pricing");
+
+
+    
+    
+    
+    
+   
+
+    
+
+    
+
+    
+
+    
+
+    
+
+
+    #region checked
+
+    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) PayForStuff(
+        McModel simParams, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats, TaxLedger ledger,
+        LifetimeSpend spend, BookOfAccounts accounts)
+    {
+        var funSpend = Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+        var notFunSpend = Spend.CalculateMonthlyRequiredSpend(simParams, person, currentDate);
         
-        /*
-         * create the pricing for all lives
-         */
-        var hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(historicalPrices);
+        // required spend can't move. But your fun spend can go down if we're in a recession
+        funSpend = Spend.CalculateRecessionSpendOverride(simParams, funSpend, recessionStats);
         
-        stopwatch.Stop();
-        var duration = stopwatch.Elapsed;
-        logger.Debug(logger.FormatTimespanDisplay("Created simulation pricing", duration));
+        var withdrawalAmount = funSpend + notFunSpend;
         
+        // set up the return tuple
+        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) results = (
+            false, // default to false. only override if completely successful
+            AccountCopy.CopyBookOfAccounts(accounts),
+            Tax.CopyTaxLedger(ledger),
+            Spend.CopyLifetimeSpend(spend)
+            );
         
-        stopwatch = Stopwatch.StartNew();
-        logger.Debug("Running all lives for a single model");
+        // first try the not-fun spend
+        var notFunResult = SpendCash(
+            notFunSpend, false, accounts, currentDate, ledger, spend, person);
+        results.accounts = notFunResult.newAccounts;
+        results.ledger = notFunResult.newLedger;
+        results.spend = notFunResult.spend;
+        if (!notFunResult.isSuccessful) return results;
+            
+        // now try the fun spend
+        var funResult = SpendCash(
+            funSpend, true, results.accounts, currentDate, results.ledger, results.spend, person);
+        results.accounts = funResult.newAccounts;
+        results.ledger = funResult.newLedger;
+        results.spend = funResult.spend;
+        if (!funResult.isSuccessful) return results;
         
-        /*
-         * run all sim lives
-         */
-        var allLivesRuns = ExecuteSingleModelAllLives(
-            logger, simParams, person, investmentAccounts, debtAccounts, hypotheticalPrices);
+        // all good; mark as successful and return
+        results.isSuccessful = true;
+        if (!MonteCarloConfig.DebugMode) return results;
         
-        stopwatch.Stop();
-        logger.Debug(logger.FormatTimespanDisplay("Ran all lives for a single model", duration));
+        Reconciliation.AddMessageLine(currentDate, notFunSpend, "Monthly required spend");
+        Reconciliation.AddMessageLine(currentDate, funSpend, "Monthly fun spend");
         
-        /*
-         * batch up the results into something meaningful
-         */
-        var results = InterpretSimulationResults(allLivesRuns);
         return results;
     }
     
-    /// <summary>
-    /// pull the recent champions from the DB, mate them to one another, write the best results back to the DB
-    /// </summary>
-    /// <returns></returns>
-    public static void RunModelTrainingSession(
-        Logger logger, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts, 
-        decimal[] historicalPrices)
-    {   
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        logger.Debug("Creating simulation pricing");
+    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) PayTaxForYear(
+        PgPerson person, LocalDateTime currentDate, TaxLedger ledger,
+        LifetimeSpend spend, BookOfAccounts accounts, int taxYear)
+    {
+        // first figure out teh liability
+        var taxLiability = TaxCalculation.CalculateTaxLiabilityForYear(ledger, taxYear);
         
-        /*
-         * create the pricing for all lives
-         */
-        var hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(historicalPrices);
+        // set up the return tuple
+        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) results = (
+            false, // default to false. only override if completely successful
+            AccountCopy.CopyBookOfAccounts(accounts),
+            Tax.CopyTaxLedger(ledger),
+            Spend.CopyLifetimeSpend(spend)
+        );
         
-        stopwatch.Stop();
-        var duration = stopwatch.Elapsed;
-        logger.Debug(logger.FormatTimespanDisplay("Created simulation pricing", duration));
-        
-        
-        /*
-         * pull the current champs from the DB
-         */
-        throw new NotImplementedException();
-        var startDate = MonteCarloConfig.MonteCarloSimStartDate;
-        var endDate = MonteCarloConfig.MonteCarloSimEndDate;
-        McModel[] currentChamps = [
-                // todo: pull model champs from the database
-                            ];
-        
-        
-        /*
-         * breed and run
-         */
-        List<(McModel simParams, SimulationAllLivesResult result)> results = [];
-        for(int i1 = 0; i1 < currentChamps.Length; i1++)
+        // if you have a refund, deposit it
+        if (taxLiability < 0)
         {
-            for (int i2 = 0; i2 < currentChamps.Length; i2++)
-            {
-                logger.Info($"running {i1} bred with {i2}");
-                var offspring = Model.MateModels(currentChamps[i1], currentChamps[i2], person.BirthDate);
-                var allLivesRuns2 = ExecuteSingleModelAllLives(
-                    logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
-                var modelResults = InterpretSimulationResults(allLivesRuns2);
-                
-                results.Add((offspring, modelResults));
-            }
+            var refundAmount = -taxLiability;
+            var refundResult = AccountCashManagement.DepositCash(accounts, refundAmount, currentDate);
+            results.accounts = refundResult;
+        }
+        // if not, pay for it
+        else
+        {
+            var notFunResult = SpendCash(
+                taxLiability, false, accounts, currentDate, ledger, spend, person);
+            results.accounts = notFunResult.newAccounts;
+            results.ledger = notFunResult.newLedger;
+            results.spend = notFunResult.spend;
+            if (!notFunResult.isSuccessful) return results;
         }
         
-        /*
-         * write results back to the db
-         */
-        throw new NotImplementedException();
+        // don't forget to record the tax liability, either way
+        results.ledger = Tax.RecordTaxPaid(
+            results.ledger, currentDate, taxLiability); // todo: record paycheck tax withholding as tax paid
+        
+        // mark it as successful and return
+        results.isSuccessful = true;
+        return results;
     }
+    
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) ProcessPaycheck(
+        PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
+        McModel simParams, CurrentPrices prices)
+    {
+        var paydayResult = 
+            Lib.MonteCarlo.StaticFunctions.Payday.ProcessPreRetirementPaycheck(
+                person, currentDate, accounts, ledger, spend, simParams, prices);
+        return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend);
+    }
+
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend)  ProcessSocialSecurityCheck(
+        PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
+        McModel simParams)
+    {
+        var paydayResult = 
+            Lib.MonteCarlo.StaticFunctions.Payday.ProcessSocialSecurityCheck(
+                person, currentDate, accounts, ledger, spend, simParams);
+        return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend);
+    }
+    
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) ProcessPayday (
+        PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
+        McModel simParams, CurrentPrices prices)
+    {
+        (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend) results = 
+            (AccountCopy.CopyBookOfAccounts(accounts),
+                Tax.CopyTaxLedger(ledger),
+                Spend.CopyLifetimeSpend(spend));
+        
+        // if still working, you get a paycheck
+        if (!person.IsRetired)
+        {
+            var paydayResult = ProcessPaycheck(
+                person, currentDate, accounts, ledger, spend, simParams, prices);
+            results.accounts = paydayResult.accounts;
+            results.ledger = paydayResult.ledger;
+            results.spend = paydayResult.spend;
+        }
+
+        // if you aren't yet drawing SS, just return now
+        if (currentDate < simParams.SocialSecurityStart) return results;
+        
+        // this isn't an "else" you can be working and draw SS
+        var ssRelust = ProcessSocialSecurityCheck(
+            person, currentDate, accounts, ledger, spend, simParams);
+        results.accounts = ssRelust.accounts;
+        results.ledger = ssRelust.ledger;
+        results.spend = ssRelust.spend;
+        return results;
+    }
+    
+    public static CurrentPrices SetNewPrices(CurrentPrices prices, Dictionary<LocalDateTime, Decimal>  hypotheticalPrices,
+        LocalDateTime currentDate)
+    {
+        if (!hypotheticalPrices.TryGetValue(currentDate, out var priceGrowthRate))
+        {
+            throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
+        }
+
+        return Pricing.SetLongTermGrowthRateAndPrices(prices, priceGrowthRate);
+    }
+    
+    public static (bool isRetired, PgPerson person) SetIsRetiredFlagIfNeeded(
+        LocalDateTime currentDate, PgPerson person, McModel simParams)
+    {
+        if (person.IsRetired) return (true, person);
+        if (currentDate != simParams.RetirementDate) return (false, person);
+        
+        // this is the day. copy the person, set the flag, and return 
+        var personCopy = Person.CopyPerson(person, true);
+        personCopy.IsRetired = true;
+        return (true, personCopy);
+        
+    }
+    
+    public static (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend) SpendCash(
+        decimal amount, bool isFun, BookOfAccounts accounts, LocalDateTime currentDate, TaxLedger ledger, LifetimeSpend spend, PgPerson person)
+    {
+        // set up the return tuple
+        (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend) results = (
+            false, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), Spend.CopyLifetimeSpend(spend));
+        
+        // try to withdraw the money
+        var withdrawalResults = AccountCashManagement.WithdrawCash(
+            accounts, amount, currentDate, ledger);
+        results.newAccounts = withdrawalResults.newAccounts;
+        results.newLedger = withdrawalResults.newLedger;
+        if (!withdrawalResults.isSuccessful)
+        {
+            // let them declare bankruptcy upstream
+            return results;
+        }
+        results.spend = Spend.RecordSpend(spend, amount, currentDate);
+        if (isFun)
+        {
+            var funPoints = Spend.CalculateFunPointsForSpend(amount, person, currentDate);
+            results.spend = Spend.RecordFunPoints(spend, funPoints, currentDate);
+        }
+        results.isSuccessful = true;
+        return results;
+    }
+
+    #endregion
+
+
+
 }

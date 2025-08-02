@@ -49,7 +49,7 @@ public static class Payday
         (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend) result = (
             AccountCopy.CopyBookOfAccounts(bookOfAccounts),
             Tax.CopyTaxLedger(ledger),
-            Simulation.CopyLifetimeSpend(lifetimeSpend));
+            Spend.CopyLifetimeSpend(lifetimeSpend));
 
         // income
         var grossMonthlyPay = (person.AnnualSalary + person.AnnualBonus) / 12m;
@@ -154,7 +154,7 @@ public static class Payday
         PgPerson person, LifetimeSpend spend, LocalDateTime currentDate)
     {
         // set up the return tuple
-        (LifetimeSpend spend, decimal amount) result = (Simulation.CopyLifetimeSpend(spend), 0m);
+        (LifetimeSpend spend, decimal amount) result = (Spend.CopyLifetimeSpend(spend), 0m);
         
         // calculate pre-tax deductions
         var annualPreTaxHealthDeductions = person.PreTaxHealthDeductions;

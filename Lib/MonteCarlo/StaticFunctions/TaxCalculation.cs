@@ -19,7 +19,7 @@ public static class TaxCalculation
         
         if (totalRmdSoFar >= totalRmdRequirement) 
         {
-            if (MonteCarloConfig.DebugMode == true)
+            if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
             {
                 Reconciliation.AddMessageLine(currentDate, 0, 
                     $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)");
@@ -27,7 +27,7 @@ public static class TaxCalculation
             return 0; // no sales needed
         }
         
-        if (MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
         {
             Reconciliation.AddMessageLine(currentDate, 0, 
                 $"RMD: additional RMD sales needed ({totalRmdRequirement - totalRmdSoFar})");
@@ -174,6 +174,11 @@ public static class TaxCalculation
         totalLiability += form1040.CalculateTaxLiability();
         totalLiability += CalculateNorthCarolinaTaxLiabilityForYear(
             ledger, taxYear, form1040.AdjustedGrossIncome);
+        if (MonteCarloConfig.DebugMode == true && MonteCarloConfig.ShouldReconcileTaxCalcs)
+        {
+            Reconciliation.AddMessageLine(new(taxYear,12,31,0,0), 
+                totalLiability, "Total tax liability");
+        }
         return totalLiability;
     }
     public static decimal CalculateNorthCarolinaTaxLiabilityForYear(
