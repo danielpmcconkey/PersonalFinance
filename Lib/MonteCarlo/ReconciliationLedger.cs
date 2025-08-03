@@ -39,10 +39,13 @@ public class ReconciliationLedger
             new SpreadsheetColumn(){ Ordinal = 15, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt Accrual Lifetime", PropertyName = "TotalDebtAccrualLifetime" },
             new SpreadsheetColumn(){ Ordinal = 16, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Social Security Wage Lifetime", PropertyName = "TotalSocialSecurityWageLifetime" },
             new SpreadsheetColumn(){ Ordinal = 17, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt Paid Lifetime", PropertyName = "TotalDebtPaidLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 18, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Retired", PropertyName = "IsRetired" },
-            new SpreadsheetColumn(){ Ordinal = 19, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Bankrupt", PropertyName = "IsBankrupt" },
-            new SpreadsheetColumn(){ Ordinal = 20, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In A Recession", PropertyName = "AreWeInARecession" },
-            new SpreadsheetColumn(){ Ordinal = 21, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In Extreme Austerity Measures", PropertyName = "AreWeInExtremeAusterityMeasures" },
+            new SpreadsheetColumn(){ Ordinal = 18, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Fun Points Lifetime", PropertyName = "TotalFunPointsLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 19, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Health Care Spend Lifetime", PropertyName = "TotalHealthCareSpendLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 20, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Tax Paid Lifetime", PropertyName = "TotalTaxPaidLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 21, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Retired", PropertyName = "IsRetired" },
+            new SpreadsheetColumn(){ Ordinal = 22, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Bankrupt", PropertyName = "IsBankrupt" },
+            new SpreadsheetColumn(){ Ordinal = 23, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In A Recession", PropertyName = "AreWeInARecession" },
+            new SpreadsheetColumn(){ Ordinal = 24, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In Extreme Austerity Measures", PropertyName = "AreWeInExtremeAusterityMeasures" },
         ];
         
         SpreadsheetWriter writer = new SpreadsheetWriter(filePath, "Reconciliation", columns);

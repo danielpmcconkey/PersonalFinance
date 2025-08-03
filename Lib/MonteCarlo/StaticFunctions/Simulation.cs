@@ -28,7 +28,7 @@ public static class Simulation
     {
         if (!MonteCarloConfig.DebugMode) return false;
         if (currentDate < MonteCarloConfig.ReconciliationSimStartDate) return false;
-        if (currentDate > MonteCarloConfig.MonteCarloSimEndDate) return false;
+        if (currentDate > MonteCarloConfig.ReconciliationSimEndDate) return false;
         return true;
     }
 
