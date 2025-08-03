@@ -8,26 +8,30 @@ namespace Lib.MonteCarlo.StaticFunctions;
 public static class Rebalance
 {
     #region Calculation functions
-    
+    // todo: figure out why the UTs for CalculateWhetherItsBucketRebalanceTime were passing before
     public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, McModel simParams)
     {
         // check whether it's time to move funds
         bool isTime = false;
+        
+        // check whether it's close enough to retirement to think about rebalancing
+        var rebalanceBegin = simParams.RetirementDate
+            .PlusMonths(-1 * simParams.NumMonthsPriorToRetirementToBeginRebalance);
+        if (currentDate < rebalanceBegin) return false;
+        
+        // check whether our frequency aligns to the calendar
+        // monthly is a free-bee
+        if(simParams.RebalanceFrequency == RebalanceFrequency.MONTHLY) return true;
+        // quarterly and yearly need to be determined
         int currentMonthNum = currentDate.Month - 1; // we want it zero-indexed to make the modulus easier
-        return (
-            (
-                // check whether it's close enough to retirement to think about rebalancing
-                currentDate >= simParams.RetirementDate
-                    .PlusMonths(-1 * simParams.NumMonthsPriorToRetirementToBeginRebalance)
-            ) &&
-            (
-                // check whether our frequency aligns to the calendar
-                simParams.RebalanceFrequency is RebalanceFrequency.MONTHLY) ||
-            (simParams.RebalanceFrequency is RebalanceFrequency.QUARTERLY
-             && currentMonthNum % 3 == 0) ||
-            (simParams.RebalanceFrequency is RebalanceFrequency.YEARLY
-             && currentMonthNum % 12 == 0)
-        );
+        
+        int modulus = simParams.RebalanceFrequency switch
+        {
+            RebalanceFrequency.QUARTERLY => 3,
+            RebalanceFrequency.YEARLY => 12,
+            _ => throw new ArgumentOutOfRangeException()
+        };
+        return currentMonthNum % modulus == 0;
     }
 
     #endregion Calculation functions

@@ -92,6 +92,7 @@ public class Form1040
         var remainingLiability = line24TotalTax - line33TotalPayments;
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return remainingLiability;
         ReconciliationMessages.Add(new ReconciliationMessage(null, line1A, "W2 income"));
+        ReconciliationMessages.Add(new ReconciliationMessage(null, line4B, "IRA distributions"));
         ReconciliationMessages.Add(new ReconciliationMessage(null, line6B, "Taxable SS income"));
         ReconciliationMessages.Add(new ReconciliationMessage(null, line7, "Capital gains"));
         ReconciliationMessages.Add(new ReconciliationMessage(null, 

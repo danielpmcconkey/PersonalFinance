@@ -266,16 +266,6 @@ public class LifeSimulator
 
     private void PayTax()
     {
-        /*
-         *
-         *
-         * you are here
-         *
-         * you are validating your code through the recon. You've discovered that you need to log IRA distributions in
-         * the 1040. You also believe that you aren't investing excess cash
-         *
-         * 
-         */
         if (_sim.PgPerson.IsBankrupt) return;
 
         var taxYear = _sim.CurrentDateInSim.Year - 1;
@@ -314,6 +304,19 @@ public class LifeSimulator
 
     private void RebalancePortfolio()
     {
+        /*
+         *
+         *
+         * you are here. You're pretty sure that rebalancing works, but you want to log a few things better to ensure
+         * that you're moving funds in the right order, at the right time. you also aren't investing excess cash when
+         * you are well ahead of retirement. you need to build a ramp fuction that determines how much cash on hand you
+         * need based on how close you are to remirement
+         *
+         * and you still think you have a problem tracking investment accrual. look at the last spreadsheet.
+         *
+         * 
+         * 
+         */
         // todo: create a UT that ensures that excess cash gets invested pre-retirement
         if (_sim.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing) 
