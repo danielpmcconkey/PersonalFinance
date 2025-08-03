@@ -19,7 +19,7 @@ public struct TaxLedger
     public List<(LocalDateTime earnedDate, decimal amount)> StateWithholdings { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> LongTermCapitalGains { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> ShortTermCapitalGains { get; set; } = []; // todo: manage long term vs short term gains
-    public decimal TotalTaxPaid { get; set; } = 0; // lifetime total
+    public decimal TotalTaxPaidLifetime { get; set; } = 0; // lifetime total
     public decimal SocialSecurityWageMonthly { get; set; } = 0; // copied here to make head-room calc easier
     public LocalDateTime SocialSecurityElectionStartDate { get; set; } = new(2999, 1, 1, 0, 0);
 }

@@ -77,10 +77,10 @@ public static class AccountInterestAccrual
         var recordResult = Spend.RecordDebtAccrual(result.newSpend, amount, currentDate);
         result.newSpend = recordResult.spend;
         
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileInterestAccrual) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         
         result.messages.Add(new ReconciliationMessage(
-            currentDate, amount, $"Debt accrual for position {result.newPosition.Name}"));
+            currentDate, -amount, $"Debt accrual for position {result.newPosition.Name}"));
         result.messages.AddRange(recordResult.messages);
         
         return result;
@@ -178,7 +178,7 @@ public static class AccountInterestAccrual
             AccountCopy.CopyInvestmentPosition(position), Spend.CopyLifetimeSpend(lifetimeSpend), []);
         
         
-        var oldAmount = (StaticConfig.MonteCarloConfig.DebugMode == false) ? 0 : position.CurrentValue;
+        var oldAmount = (!MonteCarloConfig.DebugMode) ? 0 : position.CurrentValue;
         
         var newPrice = position.InvestmentPositionType switch
         {
@@ -189,7 +189,7 @@ public static class AccountInterestAccrual
         results.newPosition.Price = newPrice;
         
         // return here unless we're reconciling
-        if (MonteCarloConfig.DebugMode == false || MonteCarloConfig.ShouldReconcileInterestAccrual == false)
+        if (!MonteCarloConfig.DebugMode)
             return results;
         
         // do the recon stuff, then return

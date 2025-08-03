@@ -19,7 +19,7 @@ public static class AccountCashManagement
         totalCash += amount;
         result.accounts = UpdateCashAccountBalance(accounts, totalCash, currentDate);
         
-        if (StaticConfig.MonteCarloConfig.DebugMode == false) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         
         result.messages.Add(new ReconciliationMessage(currentDate, amount, "Generic cash deposit"));
         

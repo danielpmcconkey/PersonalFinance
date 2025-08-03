@@ -25,7 +25,7 @@ public static class TaxCalculation
         
         if (totalRmdSoFar >= totalRmdRequirement) 
         {
-            if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return results;
+            if (!MonteCarloConfig.DebugMode) return results;
             results.messages.Add(new ReconciliationMessage(currentDate, null, 
                     $"RMD: no additional RMD sales needed ({totalRmdSoFar} previously sold this year)"));
             return results;
@@ -33,7 +33,7 @@ public static class TaxCalculation
         
         results.amount = totalRmdRequirement - totalRmdSoFar;
 
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return results;
+        if (!MonteCarloConfig.DebugMode) return results;
         results.messages.Add(new ReconciliationMessage(currentDate, 0, 
                 $"RMD: additional RMD sales needed ({totalRmdRequirement - totalRmdSoFar})"));
         return results;
@@ -176,7 +176,7 @@ public static class TaxCalculation
     {
         // set up return tuple
         (decimal amount, List<ReconciliationMessage> messages) result = (0m, []);
-        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileTaxCalcs)
+        if (MonteCarloConfig.DebugMode)
         {
             result.messages.Add(new ReconciliationMessage(null, null, "Beginning to calculate total outstanding tax liability"));
         }
@@ -193,7 +193,7 @@ public static class TaxCalculation
         var totalLiability = federalLiability + stateLiability;
         result.amount = totalLiability;
         
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(
             null, null, "Calculating tax liability for year " + taxYear));
         result.messages.AddRange(form1040.ReconciliationMessages);

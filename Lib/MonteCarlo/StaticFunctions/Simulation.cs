@@ -24,7 +24,13 @@ public static class Simulation
             firstOfNextMonth; // t1 is longer than t2, return next first
     }
 
-    
+    public static bool IsReconciliationPeriod(LocalDateTime currentDate)
+    {
+        if (!MonteCarloConfig.DebugMode) return false;
+        if (currentDate < MonteCarloConfig.ReconciliationSimStartDate) return false;
+        if (currentDate > MonteCarloConfig.MonteCarloSimEndDate) return false;
+        return true;
+    }
 
     public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
         List<ReconciliationMessage> messages) PayForStuff(McModel simParams, PgPerson person, LocalDateTime currentDate,
@@ -117,7 +123,7 @@ public static class Simulation
         }
         
         // don't forget to record the tax liability, either way
-        var recordResults = Tax.RecordTaxPaid(results.ledger, currentDate, taxLiability); // todo: record paycheck tax withholding as tax paid
+        var recordResults = Tax.RecordTaxPaid(results.ledger, currentDate, taxLiability);
         results.ledger = recordResults.ledger;
         results.messages.AddRange(recordResults.messages);
         

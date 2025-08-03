@@ -11,27 +11,29 @@ public static class Rebalance
     // todo: figure out why the UTs for CalculateWhetherItsBucketRebalanceTime were passing before
     public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, McModel simParams)
     {
-        // check whether it's time to move funds
-        bool isTime = false;
-        
-        // check whether it's close enough to retirement to think about rebalancing
-        var rebalanceBegin = simParams.RetirementDate
-            .PlusMonths(-1 * simParams.NumMonthsPriorToRetirementToBeginRebalance);
-        if (currentDate < rebalanceBegin) return false;
-        
         // check whether our frequency aligns to the calendar
         // monthly is a free-bee
         if(simParams.RebalanceFrequency == RebalanceFrequency.MONTHLY) return true;
         // quarterly and yearly need to be determined
-        int currentMonthNum = currentDate.Month - 1; // we want it zero-indexed to make the modulus easier
+        var currentMonthNum = currentDate.Month - 1; // we want it zero-indexed to make the modulus easier
         
-        int modulus = simParams.RebalanceFrequency switch
+        var modulus = simParams.RebalanceFrequency switch
         {
+            RebalanceFrequency.MONTHLY => 1, // we already met this case
             RebalanceFrequency.QUARTERLY => 3,
             RebalanceFrequency.YEARLY => 12,
-            _ => throw new ArgumentOutOfRangeException()
+            _ => 0 // shouldn't happen but we get warnings if we don't have a default
         };
         return currentMonthNum % modulus == 0;
+    }
+    
+    // todo: unit test CalculateWhetherItsCloseEnoughToRetirementToStockUpCash
+    public static bool CalculateWhetherItsCloseEnoughToRetirementToStockUpCash(LocalDateTime currentDate, McModel simParams)
+    {
+        // check whether it's close enough to retirement to think about rebalancing
+        var rebalanceBegin = simParams.RetirementDate
+            .PlusMonths(-1 * simParams.NumMonthsPriorToRetirementToBeginRebalance);
+        return currentDate >= rebalanceBegin;
     }
 
     #endregion Calculation functions
@@ -271,22 +273,29 @@ public static class Rebalance
         RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
             CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
     {
-        // determine how much cash you need on hand
-        var cashNeededTotal = Spend.CalculateCashNeedForNMonths(
-            simParams, person, currentDate, simParams.NumMonthsCashOnHand);
+        // determine how much cash you need on hand here. this is because you need it in rebalancing and in investing
+        // excess cash. even if you aren't close enough to retirement to begin rebalancing, you still need a few months
+        // cash on hand to cover bills
+        var cashNeededTotal = person.RequiredMonthlySpend * 8; // todo: put the num months of required spend to always have into the config
+        
+        bool isCloseEnoughToRetirement = CalculateWhetherItsCloseEnoughToRetirementToStockUpCash(currentDate, simParams);
+        if (isCloseEnoughToRetirement) // update the cash on hand need based on the sim params
+            cashNeededTotal = Spend.CalculateCashNeedForNMonths(
+                simParams, person, currentDate, simParams.NumMonthsCashOnHand);
         
         // set up return tuple
         (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) results = (
             AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
         
         // move funds if it's time
-        if (CalculateWhetherItsBucketRebalanceTime(currentDate, simParams))
+        if (isCloseEnoughToRetirement && CalculateWhetherItsBucketRebalanceTime(currentDate, simParams))
         {
             if (MonteCarloConfig.DebugMode)
             {
                 results.messages.Add(new ReconciliationMessage(
                     currentDate, null, "Rebalance: time to move funds"));
             }
+            
 
             // top up your cash bucket by moving from mid or long, depending on recession stats 
             var rebalanceCashResults = RebalanceMidOrLongToCash(

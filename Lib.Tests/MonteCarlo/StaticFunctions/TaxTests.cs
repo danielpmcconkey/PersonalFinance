@@ -80,7 +80,7 @@ public class TaxTests
         original.StateWithholdings.Add((_baseDate, stateWithholdings));
         original.ShortTermCapitalGains.Add((_baseDate, shortTermCapitalGains));
         original.LongTermCapitalGains.Add((_baseDate, longTermCapitalGains));
-        original.TotalTaxPaid = totalTaxPaid;
+        original.TotalTaxPaidLifetime = totalTaxPaid;
 
         // Act
         var copy = Tax.CopyTaxLedger(original);
@@ -118,7 +118,7 @@ public class TaxTests
         Assert.Equal(shortTermCapitalGains, shortTermCapitalGainsResults);
         Assert.Equal(longTermCapitalGains, longTermCapitalGainsResults);
         
-        Assert.Equal(original.TotalTaxPaid, copy.TotalTaxPaid);
+        Assert.Equal(original.TotalTaxPaidLifetime, copy.TotalTaxPaidLifetime);
         
     }
     

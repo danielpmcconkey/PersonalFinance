@@ -39,7 +39,7 @@ public class FormD400
         var line20 = TaxCalculation.CalculateStateWithholdingForYear(_ledger, _taxYear);
         decimal whatYouOwe = line15 - line20;
         
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return whatYouOwe;
+        if (!MonteCarloConfig.DebugMode) return whatYouOwe;
         ReconciliationMessages.Add(new ReconciliationMessage(null, _federalAdjustedGrossIncome, "Federal AGI used in NC tax calc"));
         ReconciliationMessages.Add(new ReconciliationMessage(null, line15, "Total NC tax"));
         ReconciliationMessages.Add(new ReconciliationMessage(null, line20, "State withholding"));

@@ -15,9 +15,7 @@ public class ReconciliationLedger
     private readonly bool _debugMode = MonteCarloConfig.DebugMode;
     public void ExportToSpreadsheet()
     {
-        if (StaticConfig.MonteCarloConfig.DebugMode == false || 
-            _reconciliationLineItems.Count == 0) 
-            return;
+        if (!MonteCarloConfig.DebugMode || _reconciliationLineItems.Count == 0) return;
         
         string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
         string filePath = $"{StaticConfig.MonteCarloConfig.ReconOutputDirectory}MonteCarloRecon{timeSuffix}.xlsx";
@@ -82,6 +80,9 @@ public class ReconciliationLedger
             null,
             null,
             null,
+            null,
+            null,
+            null,
             null
         );
         _reconciliationLineItems.Add(line);
@@ -126,7 +127,10 @@ public class ReconciliationLedger
             sim.CurrentDateInSim >= sim.SimParameters.RetirementDate,
             sim.PgPerson.IsBankrupt,
             sim.RecessionStats.AreWeInARecession,
-            sim.RecessionStats.AreWeInExtremeAusterityMeasures
+            sim.RecessionStats.AreWeInExtremeAusterityMeasures,
+            sim.LifetimeSpend.TotalFunPointsLifetime,
+            sim.LifetimeSpend.TotalLifetimeHealthCareSpend,
+            sim.TaxLedger.TotalTaxPaidLifetime
         );
         return line;
     }

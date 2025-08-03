@@ -191,7 +191,7 @@ public static class InvestmentSales
                 Tax.CopyTaxLedger(taxLedger),
                 []
             );
-        if (MonteCarloConfig.DebugMode == true)
+        if (MonteCarloConfig.DebugMode)
         {
             results.messages.Add(new ReconciliationMessage(currentDate, position.Quantity * position.Price,
                 $"Selling position {position.Name}"));

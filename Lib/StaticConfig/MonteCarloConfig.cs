@@ -45,6 +45,8 @@ public static class MonteCarloConfig
     public static bool ShouldReconcilePayDay;
     public static bool ShouldReconcileRebalancing;
     public static bool ShouldReconcilePricingGrowth;
+    public static LocalDateTime ReconciliationSimStartDate;
+    public static LocalDateTime ReconciliationSimEndDate;
 
     static MonteCarloConfig()
     {
@@ -66,6 +68,8 @@ public static class MonteCarloConfig
         ShouldReconcilePayDay = ConfigManager.ReadBoolSetting("ShouldReconcilePayDay");
         ShouldReconcileRebalancing = ConfigManager.ReadBoolSetting("ShouldReconcileRebalancing");
         ShouldReconcilePricingGrowth = ConfigManager.ReadBoolSetting("ShouldReconcilePricingGrowth");
+        ReconciliationSimStartDate = ConfigManager.ReadDateSetting("ReconciliationSimStartDate");
+        ReconciliationSimEndDate = ConfigManager.ReadDateSetting("ReconciliationSimEndDate");
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
 }

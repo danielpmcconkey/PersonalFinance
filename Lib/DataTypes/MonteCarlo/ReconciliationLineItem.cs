@@ -22,6 +22,9 @@ public class ReconciliationLineItem
     public decimal? TotalDebtAccrualLifetime { get; set; }
     public decimal? TotalSocialSecurityWageLifetime { get; set; }
     public decimal? TotalDebtPaidLifetime { get; set; }
+    public decimal? TotalFunPointsLifetime { get; set; }
+    public decimal? TotalHealthCareSpendLifetime { get; set; }
+    public decimal? TotalTaxPaidLifetime { get; set; }
     public bool? IsRetired { get; set; }
     public bool? IsBankrupt { get; set; }
     public bool? AreWeInARecession { get; set; }
@@ -49,7 +52,10 @@ public class ReconciliationLineItem
         bool? isRetired = null,
         bool? isBankrupt = null,
         bool? areWeInARecession = null,
-        bool? areWeInExtremeAusterityMeasures = null)
+        bool? areWeInExtremeAusterityMeasures = null,
+        decimal? totalFunPointsLifetime = null,
+        decimal? totalHealthCareSpendLifetime = null,
+        decimal? totalTaxPaidLifetime = null)
     {
         Ordinal = ordinal;
         Date = date;
@@ -73,5 +79,8 @@ public class ReconciliationLineItem
         IsBankrupt = isBankrupt;
         AreWeInARecession = areWeInARecession;
         AreWeInExtremeAusterityMeasures = areWeInExtremeAusterityMeasures;
+        TotalFunPointsLifetime = totalFunPointsLifetime;
+        TotalHealthCareSpendLifetime = totalHealthCareSpendLifetime;
+        TotalTaxPaidLifetime = totalTaxPaidLifetime;
     }
 }

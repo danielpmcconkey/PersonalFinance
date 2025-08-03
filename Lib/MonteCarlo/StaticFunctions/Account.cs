@@ -82,7 +82,7 @@ public static class Account
             TotalMidTermInvestments = AccountCalculation.CalculateMidBucketTotalBalance(sim.BookOfAccounts),
             TotalLongTermInvestments = AccountCalculation.CalculateLongBucketTotalBalance(sim.BookOfAccounts),
             TotalSpend = sim.LifetimeSpend.TotalSpendLifetime,
-            TotalTax = sim.TaxLedger.TotalTaxPaid,
+            TotalTax = sim.TaxLedger.TotalTaxPaidLifetime,
         };
 
         

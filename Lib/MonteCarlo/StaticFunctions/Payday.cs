@@ -150,7 +150,7 @@ public static class Payday
         results.accounts = investMatchResults.accounts;
         
 
-        if (!StaticConfig.MonteCarloConfig.DebugMode) return results;
+        if (!MonteCarloConfig.DebugMode) return results;
         results.messages = investRothResults.messages;
         results.messages.Add(new ReconciliationMessage(currentDate, roth401KAmount, "Roth 401k investment from paycheck"));
         results.messages = invest401KResults.messages;
@@ -171,8 +171,8 @@ public static class Payday
         var result = (annual401KPostTax + annualInsuranceDeductions) / 12m;
         if (!MonteCarloConfig.DebugMode) return (result, []);
         List<ReconciliationMessage> messages = [];
-        messages.Add(new ReconciliationMessage(currentDate, annual401KPostTax / 12, "Post tax 401k contribution"));
-        messages.Add(new ReconciliationMessage(currentDate, annualInsuranceDeductions / 12, "Post tax insurance deductions"));
+        messages.Add(new ReconciliationMessage(currentDate, -annual401KPostTax / 12, "Post tax 401k contribution"));
+        messages.Add(new ReconciliationMessage(currentDate, -annualInsuranceDeductions / 12, "Post tax insurance deductions"));
         messages.Add(new ReconciliationMessage(currentDate, -result, "Total post tax paycheck deductions"));
         return (result, messages);
     }
@@ -199,9 +199,9 @@ public static class Payday
         
         if (!MonteCarloConfig.DebugMode) return result;
         result.messages.AddRange(recordHealthSpend.messages);
-        result.messages.Add(new ReconciliationMessage(currentDate, annualPreTaxHealthDeductions / 12m, "Pre-tax health deduction"));
-        result.messages.Add(new ReconciliationMessage(currentDate, annualHsaContribution / 12m, "Pre-tax HSA contribution"));
-        result.messages.Add(new ReconciliationMessage(currentDate, annual401KPreTax / 12m, "Pre-tax 401K contribution"));
+        result.messages.Add(new ReconciliationMessage(currentDate, -annualPreTaxHealthDeductions / 12m, "Pre-tax health deduction"));
+        result.messages.Add(new ReconciliationMessage(currentDate, -annualHsaContribution / 12m, "Pre-tax HSA contribution"));
+        result.messages.Add(new ReconciliationMessage(currentDate, -annual401KPreTax / 12m, "Pre-tax 401K contribution"));
         result.messages.Add(new ReconciliationMessage(currentDate, -preTaxDeductions, "Total pre tax paycheck deductions"));
         return result;
     }
@@ -234,7 +234,7 @@ public static class Payday
         result.ledger = recordWithholding.ledger;
         
         var recordPaid = Tax.RecordTaxPaid(
-            result.ledger, currentDate, monthlyOasdi + monthlyMedicare);
+            result.ledger, currentDate, monthlyOasdi + monthlyMedicare + federalWithholding + stateWithholding);
         result.ledger = recordPaid.ledger;
         
         if (!MonteCarloConfig.DebugMode) return result;

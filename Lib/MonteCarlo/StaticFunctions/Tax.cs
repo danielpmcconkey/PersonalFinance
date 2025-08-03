@@ -21,7 +21,7 @@ public static class Tax
             StateWithholdings = ledger.StateWithholdings,
             LongTermCapitalGains = ledger.LongTermCapitalGains,
             ShortTermCapitalGains = ledger.ShortTermCapitalGains,
-            TotalTaxPaid = ledger.TotalTaxPaid,
+            TotalTaxPaidLifetime = ledger.TotalTaxPaidLifetime,
         };
     }
 
@@ -34,7 +34,7 @@ public static class Tax
     {
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         result.ledger.LongTermCapitalGains.Add((earnedDate, amount));
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Long term capital gain logged"));
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Long term capital gain logged"));
         return result;
@@ -43,7 +43,7 @@ public static class Tax
     {
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         result.ledger.ShortTermCapitalGains.Add((earnedDate, amount));
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Short term capital gain logged"));
         return result;
     }
@@ -52,7 +52,7 @@ public static class Tax
     {
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         result.ledger.W2Income.Add((earnedDate, amount));
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Income logged"));
         return result;
     }
@@ -60,7 +60,7 @@ public static class Tax
     {
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         result.ledger.TaxableIraDistribution.Add((earnedDate, amount));
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Taxable distribution logged"));
         return result;
     }
@@ -98,8 +98,8 @@ public static class Tax
         // todo: unit test RecordTaxPaid
         
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
-        result.ledger.TotalTaxPaid += amount;
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        result.ledger.TotalTaxPaidLifetime += amount;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Tax payment logged"));
         return result;
     }
@@ -113,9 +113,9 @@ public static class Tax
         
         result.ledger.FederalWithholdings.Add((earnedDate, amountFed));
         result.ledger.StateWithholdings.Add((earnedDate, amountState));
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
-        result.messages.Add(new ReconciliationMessage(earnedDate, amountFed, "Federal withholding logged"));
-        result.messages.Add(new ReconciliationMessage(earnedDate, amountState, "State withholding logged"));
+        if (!MonteCarloConfig.DebugMode) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, -amountFed, "Federal withholding logged"));
+        result.messages.Add(new ReconciliationMessage(earnedDate, -amountState, "State withholding logged"));
         return result;
     }
     
@@ -123,7 +123,7 @@ public static class Tax
     {
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         result.ledger.SocialSecurityIncome.Add((earnedDate, amount));
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return result;
+        if (!MonteCarloConfig.DebugMode) return result;
         result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Social security income logged"));
         return result;
     }
@@ -170,7 +170,7 @@ public static class Tax
         results.newBookOfAccounts = localResult.newBookOfAccounts;
         results.newLedger = localResult.newLedger;
         
-        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs) return results;
+        if (!MonteCarloConfig.DebugMode) return results;
         results.messages.AddRange(localResult.messages);
         results.messages.Add(new ReconciliationMessage(currentDate, localResult.amountSold, 
             "RMD: Total investment sold to meet RMD requirement"));

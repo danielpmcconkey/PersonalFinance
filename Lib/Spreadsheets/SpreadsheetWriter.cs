@@ -19,7 +19,12 @@ public class SpreadsheetWriter
 
     public void CreateSpreadsheet(IEnumerable<object> data)
     {
-        if(data.Count() > 10000) throw new Exception($"Too many rows {data.Count()}");
+        if (data.Count() > 5000)
+        {
+            // truncate the data set
+            CreateSpreadsheet( data.Take(5000));
+            return;
+        }
         
         using var spreadsheet = SpreadsheetDocument.Create(_filePath, SpreadsheetDocumentType.Workbook);
     
