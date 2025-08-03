@@ -49,6 +49,9 @@ public class LifeSimulator
         var copiedPerson = Person.CopyPerson(person, false);
         copiedPerson.AnnualSocialSecurityWage =
             monthlySocialSecurityWage * 12; // todo: set other caLculated fields for a person here
+        copiedPerson.Annual401KPreTax = copiedPerson.Annual401KContribution * simParams.Percent401KTraditional;
+        copiedPerson.Annual401KPostTax = Math.Max(
+            0, copiedPerson.Annual401KContribution - copiedPerson.Annual401KPreTax);
         var ledger = new TaxLedger();
         ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
         ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
@@ -80,7 +83,7 @@ public class LifeSimulator
                     
                      
                 
-                if (MonteCarloConfig.DebugMode && _isReconcilingTime)
+                if (MonteCarloConfig.DebugMode)
                 {
                     _reconciliationLedger.AddFullReconLine(
                         _sim, $"Starting new month: {_sim.CurrentDateInSim}");

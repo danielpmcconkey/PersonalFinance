@@ -90,7 +90,7 @@ public static class Payday
         result.bookOfAccounts = depositResult.accounts;
         
         // add to savings accounts
-        var savingsResult = AddRetirementSavings(
+        var savingsResult = AddPaycheckRelatedRetirementSavings(
             person, currentDate, result.bookOfAccounts, simParams, prices);
         result.bookOfAccounts = savingsResult.accounts;
 
@@ -106,26 +106,29 @@ public static class Payday
         return result;
     }
 
-    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) AddRetirementSavings(
+    // todo: need to UT AddRetirementSavings
+    /// <summary>
+    /// This is for pre-retirement use only. Used for investing pay-check-related stuff like 401K and HSA. It's presumed
+    /// that the cash that funds these purchases was already deducted from your paycheck (or is free, like the match)  
+    /// </summary>
+    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) AddPaycheckRelatedRetirementSavings(
         PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, McModel simParams, CurrentPrices prices)
     {
-        // todo: UT AddRetirementSavings
         if (person.IsBankrupt || person.IsRetired) return (bookOfAccounts, []);
 
         (BookOfAccounts accounts, List<ReconciliationMessage> messages) results = (
             AccountCopy.CopyBookOfAccounts(bookOfAccounts), []);
         
         if (MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
-                currentDate, null, "Adding retirement savings"));
+                currentDate, null, "Adding pay-check-related retirement savings"));
         
         
 
         var roth401KAmount =
-            person.Annual401KContribution * (1 - simParams.Percent401KTraditional) / 12m;
+            person.Annual401KPostTax / 12m;
         var traditional401KAmount =
-            person.Annual401KContribution * (simParams.Percent401KTraditional) / 12m;
+            person.Annual401KPreTax / 12m;
         var monthly401KMatch = (person.AnnualSalary * person.Annual401KMatchPercent) / 12m;
-        var taxDefferedAmount = traditional401KAmount + monthly401KMatch;
         var hsaAmount =
             (person.AnnualHsaContribution + person.AnnualHsaEmployerContribution) / 12m;
 
@@ -134,7 +137,7 @@ public static class Payday
         results.accounts = investRothResults.accounts;
 
         var invest401KResults = Investment.InvestFunds(
-            results.accounts, currentDate, taxDefferedAmount,
+            results.accounts, currentDate, traditional401KAmount,
             McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, prices);
         results.accounts = invest401KResults.accounts;
 
@@ -142,7 +145,6 @@ public static class Payday
             results.accounts, currentDate, hsaAmount, McInvestmentPositionType.LONG_TERM,
             McInvestmentAccountType.HSA, prices);
         results.accounts = investHsaResults.accounts;
-        
 
         var investMatchResults = Investment.InvestFunds(
             results.accounts, currentDate, monthly401KMatch, McInvestmentPositionType.LONG_TERM,
@@ -151,14 +153,15 @@ public static class Payday
         
 
         if (!MonteCarloConfig.DebugMode) return results;
-        results.messages = investRothResults.messages;
+        results.messages.AddRange(investRothResults.messages);
         results.messages.Add(new ReconciliationMessage(currentDate, roth401KAmount, "Roth 401k investment from paycheck"));
-        results.messages = invest401KResults.messages;
+        results.messages.AddRange(invest401KResults.messages);
         results.messages.Add(new ReconciliationMessage(currentDate, traditional401KAmount, "Traditional 401k investment from paycheck"));
-        results.messages = investHsaResults.messages;
+        results.messages.AddRange(investHsaResults.messages);
         results.messages.Add(new ReconciliationMessage(currentDate, hsaAmount, "HSA investment from paycheck"));
-        results.messages = investMatchResults.messages;
+        results.messages.AddRange(investMatchResults.messages);
         results.messages.Add(new ReconciliationMessage(currentDate, monthly401KMatch, "Employer 401k match investment"));
+        results.messages.Add(new ReconciliationMessage(currentDate, null, "Done adding pay-check-related retirement savings"));
         return results;
     }
 
