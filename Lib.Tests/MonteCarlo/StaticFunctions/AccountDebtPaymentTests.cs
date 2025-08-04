@@ -154,7 +154,7 @@ public class AccountDebtPaymentTests
             Positions = [ position ]
         };
 
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts = [ debtAccount ];
         accounts = AccountCashManagement.DepositCash(accounts, 2000m, _testDate).accounts;
          
@@ -188,7 +188,7 @@ public class AccountDebtPaymentTests
             Positions = [ position ]
         };
 
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts = [ debtAccount ];
         accounts = AccountCashManagement.DepositCash(accounts, 100m, _testDate).accounts;
          

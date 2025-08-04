@@ -328,7 +328,7 @@ public class TaxTests
     {
         // Arrange
         var ledger = CreateTestLedger();
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         // we want $500k in tax deferred accounts
         for (int i = 0; i < 250; i++)
         {

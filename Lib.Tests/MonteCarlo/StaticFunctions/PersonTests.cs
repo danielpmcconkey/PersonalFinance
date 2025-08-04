@@ -12,28 +12,7 @@ public class PersonTests
 {
     private PgPerson CreateTestPerson()
     {
-        return new PgPerson
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Person",
-            BirthDate = LocalDateTime.FromDateTime(DateTime.Now.AddYears(-30)),
-            AnnualSalary = 50000M,
-            AnnualBonus = 5000M,
-            MonthlyFullSocialSecurityBenefit = 2000M,
-            Annual401KMatchPercent = 0.05M,
-            IsRetired = true,
-            IsBankrupt = true,
-            AnnualSocialSecurityWage = 1500M * 12m,
-            Annual401KContribution = 1,
-            AnnualHsaContribution = 2,
-            AnnualHsaEmployerContribution = 3,
-            FederalAnnualWithholding = 4,
-            StateAnnualWithholding = 5,
-            PreTaxHealthDeductions = 12,
-            PostTaxInsuranceDeductions = 13,
-            RequiredMonthlySpend = 14,
-            RequiredMonthlySpendHealthCare = 15,
-        };
+        return TestDataManager.CreateTestPerson();
     }
 
     [Fact]

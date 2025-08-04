@@ -12,7 +12,7 @@ public class AccountCalculationTests
     public void CalculateDebtTotal_EmptyAccounts_ReturnsZero()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
 
         // Act
         var result = AccountCalculation.CalculateDebtTotal(accounts);
@@ -25,7 +25,7 @@ public class AccountCalculationTests
     public void CalculateDebtTotal_NullDebtAccounts_ThrowsInvalidDataException()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts = null;
 
         // Act & Assert
@@ -36,7 +36,7 @@ public class AccountCalculationTests
     public void CalculateDebtTotal_SingleAccountSinglePosition_ReturnsCorrectTotal()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(accounts.DebtAccounts);
 
         var positions = new List<McDebtPosition>() { 
@@ -55,7 +55,7 @@ public class AccountCalculationTests
     public void CalculateDebtTotal_MultipleAccountsMultiplePositions_ReturnsCorrectTotal()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(accounts.DebtAccounts);
 
         var positions1 = new List<McDebtPosition>() { 
@@ -82,7 +82,7 @@ public class AccountCalculationTests
     {
         // Arrange
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(accounts.DebtAccounts);
 
         var positions = new List<McDebtPosition>() { 
@@ -106,7 +106,7 @@ public class AccountCalculationTests
         {
             TestDataManager.CreateTestInvestmentPosition(1.0m, 1000.0m, McInvestmentPositionType.SHORT_TERM, true),
         };
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
         accounts.Cash.Positions = positions;
 
@@ -126,7 +126,7 @@ public class AccountCalculationTests
             TestDataManager.CreateTestInvestmentPosition(1.0m, 1000.0m, McInvestmentPositionType.SHORT_TERM, true),
             TestDataManager.CreateTestInvestmentPosition(1.0m, 500.0m, McInvestmentPositionType.SHORT_TERM, true),
         };
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
         accounts.Cash.Positions = positions;
 
@@ -147,7 +147,7 @@ public class AccountCalculationTests
             TestDataManager.CreateTestInvestmentPosition(1.0m, 500.0m, McInvestmentPositionType.SHORT_TERM, false),
             
         };
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
         accounts.Cash.Positions = positions;
 
@@ -163,7 +163,7 @@ public class AccountCalculationTests
     {
         // Arrange
         
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
 
         // Act
@@ -177,7 +177,7 @@ public class AccountCalculationTests
     public void CalculateCashBalance_WithNullCash_ThrowsInvalidDataException()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
         
         accounts.Cash = null!;
@@ -199,7 +199,7 @@ public class AccountCalculationTests
             Positions = null!
         };
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.Cash = cashAccount;
         Debug.Assert(accounts.Cash != null, "accounts.Cash != null");
 
@@ -383,7 +383,7 @@ public class AccountCalculationTests
             AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
             Positions = [TestDataManager.CreateTestInvestmentPosition(100m, 10m, McInvestmentPositionType.LONG_TERM, true)]
         };
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
         bookOfAccounts.InvestmentAccounts.Add(account1);
 
@@ -412,7 +412,7 @@ public class AccountCalculationTests
             AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
             Positions = [TestDataManager.CreateTestInvestmentPosition(120m, 5m, McInvestmentPositionType.LONG_TERM, true)]
         };
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
         bookOfAccounts.InvestmentAccounts.Add(account1);
         bookOfAccounts.InvestmentAccounts.Add(account2);
@@ -438,7 +438,7 @@ public class AccountCalculationTests
                 TestDataManager.CreateTestInvestmentPosition(100m, 10m, McInvestmentPositionType.MID_TERM, true)
             ]
         };
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
         bookOfAccounts.InvestmentAccounts.Add(account1);
 
@@ -463,7 +463,7 @@ public class AccountCalculationTests
                 TestDataManager.CreateTestInvestmentPosition(100m, 10m, McInvestmentPositionType.LONG_TERM, false)
             ]
         };
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
         bookOfAccounts.InvestmentAccounts.Add(account1);
 
@@ -492,7 +492,7 @@ public class AccountCalculationTests
             AccountType = McInvestmentAccountType.PRIMARY_RESIDENCE,
             Positions = [TestDataManager.CreateTestInvestmentPosition(120m, 5m, McInvestmentPositionType.LONG_TERM, true)]
         };
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
         bookOfAccounts.InvestmentAccounts.Add(account1);
         bookOfAccounts.InvestmentAccounts.Add(account2);
@@ -522,7 +522,7 @@ public class AccountCalculationTests
             AccountType = McInvestmentAccountType.CASH,
             Positions = [TestDataManager.CreateTestInvestmentPosition(120m, 5m, McInvestmentPositionType.SHORT_TERM, true)]
         };
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         Assert.NotNull(bookOfAccounts.InvestmentAccounts);
         bookOfAccounts.InvestmentAccounts.Add(account1);
         bookOfAccounts.InvestmentAccounts.Add(account2);
@@ -538,7 +538,7 @@ public class AccountCalculationTests
     public void CalculateTotalBalanceByBucketType_WithNullInvestmentAccounts_ThrowsInvalidDataException()
     {
         // Arrange
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         bookOfAccounts.InvestmentAccounts = null;
 
         // Act & Assert
@@ -631,7 +631,7 @@ public class AccountCalculationTests
     public void CalculateLongBucketTotalBalance_WithMixedPositions_OnlyCountsLongTerm()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var positions = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM),
@@ -652,7 +652,7 @@ public class AccountCalculationTests
     public void CalculateMidBucketTotalBalance_WithMixedPositions_OnlyCountsMidTerm()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var positions = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM),
@@ -673,7 +673,7 @@ public class AccountCalculationTests
     public void CalculateShortBucketTotalBalance_WithMixedPositions_OnlyCountsShortTerm()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var positions = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM),
@@ -694,7 +694,7 @@ public class AccountCalculationTests
     public void CalculateNetWorth_WithValidAccounts_ReturnsCorrectBalance()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         
         // Add investment position
         var investmentPositions = new List<McInvestmentPosition>
@@ -721,7 +721,7 @@ public class AccountCalculationTests
     public void CalculateNetWorth_ExcludesPrimaryResidence()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var positions = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(1000m, 1m, McInvestmentPositionType.LONG_TERM)
@@ -757,7 +757,7 @@ public class AccountCalculationTests
     public void CalculateNetWorth_WithClosedPositions_ExcludesFromCalculation()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var positions = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(

@@ -14,29 +14,10 @@ public class RebalanceTests
 
     private McModel CreateTestModel(RebalanceFrequency frequency = RebalanceFrequency.MONTHLY)
     {
-        return new McModel
-        {
-            RetirementDate = _retirementDate,
-            NumMonthsCashOnHand = 12,
-            NumMonthsMidBucketOnHand = 24,
-            NumMonthsPriorToRetirementToBeginRebalance = 60,
-            RebalanceFrequency = frequency,
-            Id = Guid.Empty,
-            PersonId = Guid.Empty,
-            ParentAId = Guid.Empty,
-            ParentBId = Guid.Empty, AusterityRatio = 0m,
-            DesiredMonthlySpendPostRetirement = 0,
-            DesiredMonthlySpendPreRetirement = 0,
-            ExtremeAusterityNetWorthTrigger = 0,
-            ExtremeAusterityRatio = 0,
-            ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            Percent401KTraditional = 0,
-            RecessionCheckLookBackMonths = 0,
-            RecessionRecoveryPointModifier = 0,
-            SimEndDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
-        };
+        var model = TestDataManager.CreateTestModel();
+        model.RetirementDate = _retirementDate;
+        model.RebalanceFrequency = frequency;
+        return model;
     }
     private PgPerson CreateTestPerson()
     {
@@ -121,7 +102,7 @@ public class RebalanceTests
     public void MoveFromInvestmentToCash_SellsCorrectAmount()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var position = TestDataManager.CreateTestInvestmentPosition(100m, 1m, McInvestmentPositionType.LONG_TERM);
         accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
             new List<McInvestmentPosition> { position },
@@ -146,7 +127,7 @@ public class RebalanceTests
         // Arrange
         var debtPayment1 = 399.99m;
         var debtPayment2 = 400.01m;
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts.Add(new McDebtAccount()
         {
             Id = Guid.NewGuid(),
@@ -195,7 +176,7 @@ public class RebalanceTests
         // Arrange
         var debtPayment1 = 399.07m;
         var debtPayment2 = 400.11m;
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts.Add(new McDebtAccount()
         {
             Id = Guid.NewGuid(),
@@ -262,7 +243,7 @@ public class RebalanceTests
         // Arrange
         var debtPayment1 = 399.99m;
         var debtPayment2 = 400.01m;
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts.Add(new McDebtAccount()
         {
             Id = Guid.NewGuid(),
@@ -308,7 +289,7 @@ public class RebalanceTests
     public void RebalanceLongToMid_DuringRecession_DoesNotRebalance()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var simParams = CreateTestModel();
         var recessionStats = new RecessionStats { AreWeInARecession = true };
         var ledger = new TaxLedger();
@@ -346,7 +327,7 @@ public class RebalanceTests
         simParams.NumMonthsMidBucketOnHand = 24;
         simParams.DesiredMonthlySpendPostRetirement = 1000;
         person.RequiredMonthlySpend = 1000;
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         // we'll need 36k in cash and 48k in mid
         var numPositionsWanted = 100;
         var priceEach = 10m;
@@ -405,7 +386,7 @@ public class RebalanceTests
     public void SellInOrder_SellsFromProvidedOrder()
     {
         // Arrange
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var position1 = TestDataManager.CreateTestInvestmentPosition(
             100m, 1m, McInvestmentPositionType.LONG_TERM);
         var position2 = TestDataManager.CreateTestInvestmentPosition(

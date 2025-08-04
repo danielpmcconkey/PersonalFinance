@@ -195,9 +195,9 @@ public static class Payday
             (annualPreTaxHealthDeductions + annualHsaContribution + annual401KPreTax) / 12m;
         result.amount = preTaxDeductions;
         
-        // record the health spend
+        // record the health portion of the spend
         var recordHealthSpend =
-            Spend.RecordHealthcareSpend(result.spend, annualPreTaxHealthDeductions, currentDate);
+            Spend.RecordHealthcareSpend(result.spend, annualPreTaxHealthDeductions / 12, currentDate);
         result.spend = recordHealthSpend.spend;
         
         if (!MonteCarloConfig.DebugMode) return result;
@@ -221,9 +221,9 @@ public static class Payday
                                TaxConstants.OasdiBasePercent * (grossMonthlyPay * 12m),
                                TaxConstants.OasdiMax))
                            / 12m;
-        var annualStandardMedicare = TaxConstants.StandardMedicareTaxRate * grossMonthlyPay;
-        var amountOfSalaryOverMedicareThreshold =
-            (grossMonthlyPay * 12) - TaxConstants.AdditionalMedicareThreshold;
+        var annualStandardMedicare = TaxConstants.StandardMedicareTaxRate * grossMonthlyPay * 12m;
+        var amountOfSalaryOverMedicareThreshold = 
+            Math.Max(0, (grossMonthlyPay * 12) - TaxConstants.AdditionalMedicareThreshold);
         var annualAdditionalMedicare =
             TaxConstants.AdditionalMedicareTaxRate * amountOfSalaryOverMedicareThreshold;
         var annualTotalMedicare = annualStandardMedicare + annualAdditionalMedicare;

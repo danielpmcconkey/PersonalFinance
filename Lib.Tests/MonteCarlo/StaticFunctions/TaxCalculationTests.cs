@@ -126,7 +126,7 @@ public class TaxCalculationTests
     {
         // Arrange
         var ledger = new TaxLedger();
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         // we want $500k in tax deferred accounts
         accounts.Traditional401K.Positions = [
             TestDataManager.CreateTestInvestmentPosition(

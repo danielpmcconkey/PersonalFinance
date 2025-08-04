@@ -17,7 +17,7 @@ public class AccountCleanupFunctionsTests
     public void RemoveClosedPositions_RemovesClosedInvestmentPositions()
     {
         // Arrange
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         
         var positions = new List<McInvestmentPosition>
         {
@@ -41,7 +41,7 @@ public class AccountCleanupFunctionsTests
     public void RemoveClosedPositions_RemovesClosedDebtPositions()
     {
         // Arrange
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         
         var positions = new List<McDebtPosition>
         {
@@ -93,7 +93,7 @@ public class AccountCleanupFunctionsTests
         var initialMaxPositionValue = StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue;
         StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue = 1000M;
 
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         bookOfAccounts.InvestmentAccounts = [
             TestDataManager.CreateTestInvestmentAccount([
                     TestDataManager.CreateTestInvestmentPosition(20m, 100m, McInvestmentPositionType.LONG_TERM, true), // large position
@@ -129,7 +129,7 @@ public class AccountCleanupFunctionsTests
         var initialMaxPositionValue = StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue;
         StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue = 1000M;
 
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         bookOfAccounts.InvestmentAccounts = [
             TestDataManager.CreateTestInvestmentAccount([
                     TestDataManager.CreateTestInvestmentPosition(20m, 100m, McInvestmentPositionType.LONG_TERM, true), // large, open position
@@ -185,7 +185,7 @@ public class AccountCleanupFunctionsTests
     {
         // Arrange
 
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         bookOfAccounts.InvestmentAccounts = [
             TestDataManager.CreateTestInvestmentAccount([
                     TestDataManager.CreateTestInvestmentPosition(200000m, 1m, McInvestmentPositionType.LONG_TERM, true),

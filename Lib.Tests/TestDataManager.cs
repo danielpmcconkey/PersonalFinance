@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using NodaTime;
@@ -10,7 +11,7 @@ internal static class TestDataManager
     /// <summary>
     /// creates a book of accounts with empty positions
     /// </summary>
-    internal static BookOfAccounts CreateTestBookOfAccounts()
+    internal static BookOfAccounts CreateEmptyBookOfAccounts()
     {
         List<McInvestmentAccount> investmentAccounts =
         [
@@ -135,5 +136,67 @@ internal static class TestDataManager
         var sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
         _hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(sAndP500HistoricalTrends);
         return _hypotheticalPrices;
+    }
+    
+    internal static PgPerson CreateTestPerson()
+    {
+        return new PgPerson
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Person",
+            BirthDate = LocalDateTime.FromDateTime(DateTime.Now.AddYears(-30)),
+            AnnualSalary = 50000M,
+            AnnualBonus = 5000M,
+            MonthlyFullSocialSecurityBenefit = 2000M,
+            Annual401KMatchPercent = 0.05M,
+            IsRetired = true,
+            IsBankrupt = false,
+            AnnualSocialSecurityWage = 1500M * 12m,
+            Annual401KContribution = 1,
+            AnnualHsaContribution = 2,
+            AnnualHsaEmployerContribution = 3,
+            FederalAnnualWithholding = 4,
+            StateAnnualWithholding = 5,
+            PreTaxHealthDeductions = 12,
+            PostTaxInsuranceDeductions = 13,
+            RequiredMonthlySpend = 14,
+            RequiredMonthlySpendHealthCare = 15,
+        };
+    }
+    internal static McModel CreateTestModel()
+    {
+        return new McModel
+        {
+            RetirementDate = new LocalDateTime(2045,2,1,0,0),
+            NumMonthsCashOnHand = 12,
+            NumMonthsMidBucketOnHand = 24,
+            NumMonthsPriorToRetirementToBeginRebalance = 60,
+            RebalanceFrequency = RebalanceFrequency.MONTHLY,
+            Id = Guid.Empty,
+            PersonId = Guid.Empty,
+            ParentAId = Guid.Empty,
+            ParentBId = Guid.Empty, AusterityRatio = 0m,
+            DesiredMonthlySpendPostRetirement = 0,
+            DesiredMonthlySpendPreRetirement = 0,
+            ExtremeAusterityNetWorthTrigger = 0,
+            ExtremeAusterityRatio = 0,
+            ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
+            Percent401KTraditional = 0,
+            RecessionCheckLookBackMonths = 0,
+            RecessionRecoveryPointModifier = 0,
+            SimEndDate = new LocalDateTime(2025, 1, 1, 0, 0),
+            SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
+            SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+        };
+    }
+
+    internal static LifetimeSpend CreateEmptySpend()
+    {
+        return new LifetimeSpend();
+    }
+    
+    internal static TaxLedger CreateEmptyTaxLedger()
+    {
+        return new TaxLedger();
     }
 }

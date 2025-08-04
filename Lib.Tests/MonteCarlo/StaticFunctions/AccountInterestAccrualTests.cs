@@ -34,7 +34,7 @@ public class AccountInterestAccrualTests
         };
         var newDebtAccount = TestDataManager.CreateTestDebtAccount(debtPositions);
         
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
 
         bookOfAccounts.InvestmentAccounts = new List<McInvestmentAccount>()
         {
@@ -77,7 +77,7 @@ public class AccountInterestAccrualTests
         var startingCashPrice = 1.0m;
         var startingHomePrice = 300000.0m;
         
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         var investmentPositionsCash = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(startingCashPrice, 10000.0m, McInvestmentPositionType.SHORT_TERM, true)
@@ -125,7 +125,7 @@ public class AccountInterestAccrualTests
         MonteCarloConfig.DebugMode = true;
         MonteCarloConfig.ShouldReconcileInterestAccrual = true;
         
-        var bookOfAccounts = TestDataManager.CreateTestBookOfAccounts();
+        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
         var investmentPositions = new List<McInvestmentPosition>
         {
             TestDataManager.CreateTestInvestmentPosition(1.0m, 100.0m, McInvestmentPositionType.LONG_TERM, true)

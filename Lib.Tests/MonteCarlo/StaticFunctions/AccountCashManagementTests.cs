@@ -13,7 +13,7 @@ public class AccountCashManagementTests
     
     private BookOfAccounts CreateTestAccounts(decimal initialCash = 0)
     {
-        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         if (initialCash > 0)
         {
             accounts = AccountCashManagement.DepositCash(accounts, initialCash, _testDate).accounts;
