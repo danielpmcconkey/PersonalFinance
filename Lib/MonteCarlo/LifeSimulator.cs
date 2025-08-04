@@ -147,6 +147,8 @@ public class LifeSimulator
                     {
                         MeetRmdRequirements();
                     }
+                    
+                    InvestExcessCash();
                 }
 
                 var measurement = Account.CreateNetWorthMeasurement(_sim);
@@ -282,6 +284,32 @@ public class LifeSimulator
         _sim.Log.Debug($"Declaring bankruptcy took {stopwatch.ElapsedMilliseconds} ms");
 #endif 
         
+    }
+
+    private void InvestExcessCash()
+    {
+        // todo: create a UT that ensures that excess cash gets invested pre-retirement
+#if PERFORMANCEPROFILING
+        Stopwatch stopwatch = new();
+        stopwatch.Start();
+#endif 
+        _sim.Log.Debug("Rebalancing portfolio");
+        if (_sim.PgPerson.IsBankrupt) return;
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing && _isReconcilingTime) 
+            _reconciliationLedger.AddFullReconLine(_sim, "Rebalancing portfolio");
+        
+        var results = Rebalance.InvestExcessCash(
+            _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.SimParameters, _sim.PgPerson);
+        _sim.BookOfAccounts = results.newBookOfAccounts;
+        
+#if PERFORMANCEPROFILING
+        stopwatch.Stop();
+        _sim.Log.Debug($"Investing excess cash took {stopwatch.ElapsedMilliseconds} ms");
+#endif 
+        
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRebalancing || !_isReconcilingTime) return;
+        _reconciliationLedger.AddMessages(results.messages);
+        _reconciliationLedger.AddFullReconLine(_sim, "Rebalanced portfolio");
     }
 
     private void MeetRmdRequirements()

@@ -76,9 +76,14 @@ public class SpendTests
         var simParams = CreateTestModel();
         var person = CreateTestPerson();
         var months = 3;
+        // create an empty book of accounts
+        var accounts = Account.CreateBookOfAccounts(
+            [], 
+            [new McDebtAccount(){Id = Guid.NewGuid(), Name = "empty", Positions = []}]
+        );
 
         // Act
-        var result = Spend.CalculateCashNeedForNMonths(simParams, person, _baseDate, months);
+        var result = Spend.CalculateCashNeedForNMonths(simParams, person, accounts, _baseDate, months);
 
         // Assert
         var expectedMonthlyTotal = simParams.DesiredMonthlySpendPreRetirement + person.RequiredMonthlySpend;
@@ -176,9 +181,15 @@ public class SpendTests
         var simParams = CreateTestModel();
         var currentDate = _baseDate.PlusYears(13); // Age 63, full health costs
         var person = CreateTestPerson();
+        
+        // create an empty book of accounts
+        var accounts = Account.CreateBookOfAccounts(
+            [], 
+            [new McDebtAccount(){Id = Guid.NewGuid(), Name = "empty", Positions = []}]
+        );
 
         // Act
-        var result = Spend.CalculateMonthlyRequiredSpend(simParams, CreateTestPerson(), currentDate);
+        var result = Spend.CalculateMonthlyRequiredSpend(simParams, CreateTestPerson(), currentDate, accounts);
 
         // Assert
         var expectedTotal = person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare;

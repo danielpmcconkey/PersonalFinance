@@ -12,14 +12,15 @@ public static class Spend
     /// <summary>
     /// used for rebalancing functions to determine how much cash should be on hand. This is always based on current age
     /// </summary>
-    public static decimal CalculateCashNeedForNMonths(McModel simParams, PgPerson person, LocalDateTime currentDate, int nMonths)
+    public static decimal CalculateCashNeedForNMonths(McModel simParams, PgPerson person, BookOfAccounts accounts,
+        LocalDateTime currentDate, int nMonths)
     {
         var cashNeeded = 0m;
         for (var i = 0; i < nMonths; i++)
         {
             var futureDate = currentDate.PlusMonths(i);
             cashNeeded += CalculateMonthlyFunSpend(simParams, person, futureDate) +
-                          CalculateMonthlyRequiredSpend(simParams, person, futureDate);
+                          CalculateMonthlyRequiredSpend(simParams, person, futureDate, accounts);
         }
         return cashNeeded;
     }
@@ -59,11 +60,21 @@ public static class Spend
          * post-retirment, we'll start out with the full amount until age 66. Then, for every year, we'll decline our
          * spending until, at age 88, we've reached 0, because we're in assisted living and our fun time is over.
          */
-        if (currentDate < simParams.RetirementDate) return simParams.DesiredMonthlySpendPreRetirement;
+        if (currentDate < simParams.RetirementDate)
+        {
+            return simParams.DesiredMonthlySpendPreRetirement;
+        }
         
         var age = currentDate.Year - person.BirthDate.Year;
-        if (age < 66) return simParams.DesiredMonthlySpendPostRetirement;
-        if (age >= 88) return 0;
+        if (age < 66)
+        {
+            return simParams.DesiredMonthlySpendPostRetirement;
+        }
+
+        if (age >= 88)
+        {
+            return 0;
+        }
         
         var declineAmountPerYear = simParams.DesiredMonthlySpendPostRetirement / (88 - 65); 
         var howManyYearsAbove65 = age - 65;
@@ -139,11 +150,32 @@ public static class Spend
         
         return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
     }
-    public static decimal CalculateMonthlyRequiredSpend(McModel simParams, PgPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyRequiredSpend(McModel simParams, PgPerson person, LocalDateTime currentDate
+        , BookOfAccounts accounts)
     {
         var standardSpend = person.RequiredMonthlySpend;
         var healthCareSpend = CalculateMonthlyHealthSpend(simParams, person, currentDate);
-        return standardSpend + healthCareSpend;
+        var debtSpend = accounts.DebtAccounts
+            .SelectMany(x => x.Positions
+                .Where(y => y.IsOpen))
+            .Sum(x => x.MonthlyPayment);
+        return standardSpend + healthCareSpend + debtSpend;
+    }
+    /// <summary>
+    /// the CalculateMonthlyRequiredSpend will take debts into account for purposes of rebalancing and investing extra
+    /// cash. it does so to ensure adequate cash on hand. this function passes an empty book of accouts on hand to get
+    /// the required spend without debt payments. this is here in support of the Simulation.PayForStuff method that only
+    /// wants the actual required spend, assuming that PayDownDebt will be taking care of the debt payment
+    /// </summary>
+    public static decimal CalculateMonthlyRequiredSpendWithoutDebt(McModel simParams, PgPerson person,
+        LocalDateTime currentDate)
+    {
+        // create an empty book of accounts
+        var accounts = Account.CreateBookOfAccounts(
+            [], 
+            [new McDebtAccount(){Id = Guid.NewGuid(), Name = "empty", Positions = []}]
+            );
+        return CalculateMonthlyRequiredSpend(simParams, person, currentDate, accounts);
     }
 
     /// <summary>

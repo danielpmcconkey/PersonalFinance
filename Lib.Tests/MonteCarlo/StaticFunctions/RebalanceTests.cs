@@ -141,28 +141,113 @@ public class RebalanceTests
     }
 
     [Fact]
-    public void InvestExcessCash_WithExcessCash_InvestsCorrectly()
+    public void InvestExcessCash_PreRebalancingTime_InvestsCorrectly()
     {
         // Arrange
+        var debtPayment1 = 399.99m;
+        var debtPayment2 = 400.01m;
         var accounts = TestDataManager.CreateTestBookOfAccounts();
+        accounts.DebtAccounts.Add(new McDebtAccount()
+        {
+            Id = Guid.NewGuid(),
+            Name = "test debt account",
+            Positions = [
+                // one open, one closed
+                new McDebtPosition(){ Id = Guid.NewGuid(), IsOpen = true, CurrentBalance = 75000m, 
+                    MonthlyPayment = debtPayment1, Name = "test p", AnnualPercentageRate = 0.23m, Entry = _baseDate },
+                new McDebtPosition(){ Id = Guid.NewGuid(), IsOpen = false, CurrentBalance = 75000m, 
+                    MonthlyPayment = debtPayment2, Name = "test p", AnnualPercentageRate = 0.23m, Entry = _baseDate }
+            ]
+        });
         var currentPrices = new CurrentPrices
         {
             CurrentLongTermInvestmentPrice = 100m
         };
+        var simParams = CreateTestModel();
+        simParams.RetirementDate = _baseDate.PlusYears(27);
+        simParams.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
+        var person = CreateTestPerson();
+        person.RequiredMonthlySpend = 1000;
+        person.RequiredMonthlySpendHealthCare = 1500;
+        var expectedCashReserve = 
+            person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare + debtPayment1;
         
-        // start out with $10k in cash
-        var initialCashBalance = 10000m;
+        // start out with $100k in cash
+        var initialCashBalance = 100000m;
         accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate).accounts;
         
-        // pretend we need to hold back $4500 and can invest the rest
-        var reserveAmount = 4500m;
-        
-        var expectedInvestment = initialCashBalance - reserveAmount;
+        var expectedInvestment = initialCashBalance - expectedCashReserve;
         
 
         // Act
         var result = Rebalance.InvestExcessCash(
-            _baseDate, accounts, currentPrices, reserveAmount).accounts;
+            _baseDate, accounts, currentPrices, simParams, person).newBookOfAccounts;
+        var actualLongTermInvestmentBalance = AccountCalculation.CalculateLongBucketTotalBalance(result);
+        var actualBrokerageBalance = AccountCalculation.CalculateInvestmentAccountTotalValue(result.Brokerage);
+
+        // Assert
+        Assert.Equal(expectedInvestment, actualLongTermInvestmentBalance); // Should invest it all in long-term
+        Assert.Equal(expectedInvestment, actualBrokerageBalance); // Should invest it all in the brokerage account
+    }
+    [Fact]
+    public void InvestExcessCash_PostRebalancingTime_InvestsCorrectly()
+    {
+        // Arrange
+        var debtPayment1 = 399.07m;
+        var debtPayment2 = 400.11m;
+        var accounts = TestDataManager.CreateTestBookOfAccounts();
+        accounts.DebtAccounts.Add(new McDebtAccount()
+        {
+            Id = Guid.NewGuid(),
+            Name = "test debt account",
+            Positions = [
+                // one open, one closed
+                new McDebtPosition(){ Id = Guid.NewGuid(), IsOpen = true, CurrentBalance = 75000m, 
+                    MonthlyPayment = debtPayment1, Name = "test p", AnnualPercentageRate = 0.23m, Entry = _baseDate },
+                new McDebtPosition(){ Id = Guid.NewGuid(), IsOpen = false, CurrentBalance = 75000m, 
+                    MonthlyPayment = debtPayment2, Name = "test p", AnnualPercentageRate = 0.23m, Entry = _baseDate }
+            ]
+        });
+        var currentPrices = new CurrentPrices
+        {
+            CurrentLongTermInvestmentPrice = 100m
+        };
+        var simParams = CreateTestModel();
+        simParams.RetirementDate = _baseDate.PlusYears(1);
+        simParams.NumMonthsPriorToRetirementToBeginRebalance = 18; // close enough
+        simParams.NumMonthsCashOnHand = 15;
+        var person = CreateTestPerson();
+        person.BirthDate = _baseDate.PlusYears(-60); // age is 60, so no medicare anytime soon
+        person.RequiredMonthlySpend = 1000;
+        person.RequiredMonthlySpendHealthCare = 1500;
+        simParams.DesiredMonthlySpendPostRetirement = 700;
+        simParams.DesiredMonthlySpendPreRetirement = 600; // same number to make it easier
+        var spanUntilRetirement = (simParams.RetirementDate - _baseDate);
+        var numMonthsUntilRetirement = (spanUntilRetirement.Years * 12) + spanUntilRetirement.Months;
+        var requiredSpend = (person.RequiredMonthlySpend * simParams.NumMonthsCashOnHand);
+        var requiredSpendHealthCare =  (person.RequiredMonthlySpendHealthCare *
+                                       (simParams.NumMonthsCashOnHand - numMonthsUntilRetirement));
+        var desiredSpendPre = (simParams.DesiredMonthlySpendPreRetirement * numMonthsUntilRetirement);
+        var desiredSpendPost = (simParams.DesiredMonthlySpendPostRetirement *
+                                (simParams.NumMonthsCashOnHand - numMonthsUntilRetirement));
+        var expectedCashReserve = 0m
+            + requiredSpend
+            + requiredSpendHealthCare
+            + (debtPayment1 * simParams.NumMonthsCashOnHand)
+            + desiredSpendPre
+            + desiredSpendPost
+            ;
+        
+        // start out more money than you need
+        var initialCashBalance = expectedCashReserve * 3m;
+        accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate).accounts;
+        
+        var expectedInvestment = initialCashBalance - expectedCashReserve;
+        
+
+        // Act
+        var result = Rebalance.InvestExcessCash(
+            _baseDate, accounts, currentPrices, simParams, person).newBookOfAccounts;
         var actualLongTermInvestmentBalance = AccountCalculation.CalculateLongBucketTotalBalance(result);
         var actualBrokerageBalance = AccountCalculation.CalculateInvestmentAccountTotalValue(result.Brokerage);
 
@@ -175,30 +260,48 @@ public class RebalanceTests
     public void InvestExcessCash_WithExcessCash_ReducesTheCashBalanceCorrectly()
     {
         // Arrange
+        var debtPayment1 = 399.99m;
+        var debtPayment2 = 400.01m;
         var accounts = TestDataManager.CreateTestBookOfAccounts();
+        accounts.DebtAccounts.Add(new McDebtAccount()
+        {
+            Id = Guid.NewGuid(),
+            Name = "test debt account",
+            Positions = [
+                // one open, one closed
+                new McDebtPosition(){ Id = Guid.NewGuid(), IsOpen = true, CurrentBalance = 75000m, 
+                    MonthlyPayment = debtPayment1, Name = "test p", AnnualPercentageRate = 0.23m, Entry = _baseDate },
+                new McDebtPosition(){ Id = Guid.NewGuid(), IsOpen = false, CurrentBalance = 75000m, 
+                    MonthlyPayment = debtPayment2, Name = "test p", AnnualPercentageRate = 0.23m, Entry = _baseDate }
+            ]
+        });
         var currentPrices = new CurrentPrices
         {
             CurrentLongTermInvestmentPrice = 100m
         };
+        var simParams = CreateTestModel();
+        simParams.RetirementDate = _baseDate.PlusYears(27);
+        simParams.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
+        var person = CreateTestPerson();
+        person.RequiredMonthlySpend = 1000;
+        person.RequiredMonthlySpendHealthCare = 1500;
+        var expectedCashReserve = 
+            person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare + debtPayment1;
         
-        // start out with $10k in cash
-        var initialCashBalance = 10000m;
+        // start out with $100k in cash
+        var initialCashBalance = 100000m;
         accounts = AccountCashManagement.DepositCash(accounts, initialCashBalance, _baseDate).accounts;
         
-        // pretend we need to hold back $4500 and can invest the rest
-        var reserveAmount = 4500m;
-        
-        var expectedInvestment = initialCashBalance - reserveAmount;
+        var expectedInvestment = initialCashBalance - expectedCashReserve;
         
 
         // Act
         var result = Rebalance.InvestExcessCash(
-                _baseDate, accounts, currentPrices, reserveAmount)
-            .accounts;
+            _baseDate, accounts, currentPrices, simParams, person).newBookOfAccounts;
+        var actualCash = AccountCalculation.CalculateCashBalance(result);
 
         // Assert
-        var newCashBalance = AccountCalculation.CalculateCashBalance(result);
-        Assert.Equal(reserveAmount, newCashBalance); // Should keep reserve amount
+        Assert.Equal(initialCashBalance - expectedInvestment, actualCash);
     }
 
     [Fact]
@@ -225,11 +328,11 @@ public class RebalanceTests
         /*
          * right, this is a bit of a mess, as rebalance is so very complicated. basically, as you age, your expected
          * spend will change, and, therefore, your amount of cash needed isn't linear. So you need to use the same
-         * method to calculate that here as you do in the reballance. Don't worry, we'll UT that on its own separately.
+         * method to calculate that here as you do in the rebalance. Don't worry, we'll UT that on its own separately.
          *
          * Once you know your cash and mid amounts that you want on-hand, you have to sell enough whole positions until
          * you at or over that amount. Each sale will log a capital gain and each sale will update your cash balance.
-         * When reballancing to top up your mid bucket, you'll need to sell, then withdraw cash, then buy.
+         * When rebalancing to top up your mid bucket, you'll need to sell, then withdraw cash, then buy.
          *
          * Finally, when you're done reballancing, it'll check if you have excess cash on hand and re-invest that back
          * into long-term. 
@@ -262,9 +365,9 @@ public class RebalanceTests
         
         
         var cashNeededTotal = Spend.CalculateCashNeedForNMonths(
-            simParams, person, currentDate, simParams.NumMonthsCashOnHand);
+            simParams, person, accounts, currentDate, simParams.NumMonthsCashOnHand);
         var midNeededTotal = Spend.CalculateCashNeedForNMonths(
-            simParams, person, currentDate, simParams.NumMonthsMidBucketOnHand);
+            simParams, person, accounts, currentDate, simParams.NumMonthsMidBucketOnHand);
         
         // we'll be selling in blocks of priceEach * quantityEach
         var valuePerPosition = priceEach * quantityEach;
@@ -278,10 +381,7 @@ public class RebalanceTests
         var expectedLongBalance = (numPositionsWanted - numPositionsSoldFromLong) * valuePerPosition;
         var expectedCapitalGains = numPositionsSoldFromLong * valuePerPosition * .5m;
         
-        // but now we'll re-invest any extra cash at the end of reballancing
-        var excessCash = expectedCashBalance - cashNeededTotal;
-        expectedCashBalance -= excessCash;
-        expectedLongBalance += excessCash;
+        
 
         // Act
         var result = Rebalance.RebalancePortfolio(
