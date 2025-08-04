@@ -50,135 +50,259 @@ public class InvestmentSalesTests
     }
 
     [Fact]
-    public void SellInvestmentPosition_WithValidPosition_SellsAndUpdatesCash()
+    public void SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType_WithValidPosition_SellsAndUpdatesCash()
     {
         // Arrange
-        var position = CreateTestPosition(price: 100m, quantity: 10m);
-        var account = CreateTestAccount(McInvestmentAccountType.TAXABLE_BROKERAGE, position);
+        var amountToSell = 1000m;
+        var individualPositionValue = 300m;
+        var totalPositionValue = 0m;
+        var numSales = 0;
+        var positionType = McInvestmentPositionType.LONG_TERM;
+        McInvestmentAccount account = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Account",
+            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+            Positions = []
+        };
+        while (totalPositionValue < amountToSell)
+        {
+            account.Positions.Add(new McInvestmentPosition()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test Position",
+                Price = individualPositionValue,
+                Quantity = 1m,
+                InitialCost = individualPositionValue * 0.5m,
+                InvestmentPositionType = positionType,
+                IsOpen = true,
+                Entry = _testDate.PlusYears(-2)
+            });
+            totalPositionValue += individualPositionValue;
+            numSales++;
+        }
         var book = CreateTestBookOfAccounts(account);
         var taxLedger = new TaxLedger();
-        var expectedSaleAmount = position.CurrentValue;
+        var expectedSaleAmount = totalPositionValue;
 
         // Act
-        var result = InvestmentSales.SellInvestmentPosition(
-            position, book, _testDate, taxLedger, McInvestmentAccountType.TAXABLE_BROKERAGE);
+        var result = InvestmentSales.SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
+            amountToSell, positionType,  InvestmentConfig.SalesOrderWithRoom, book, taxLedger, _testDate);
+        var cashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
+        var numClosedPositions = result.newBookOfAccounts.InvestmentAccounts[0].Positions.Count(x => !x.IsOpen);
 
         // Assert
-        Assert.Equal(expectedSaleAmount, result.saleAmount);
-        Assert.Equal(0m, position.Quantity);
-        Assert.False(position.IsOpen);
-        Assert.True(result.newBookOfAccounts.Cash.Positions.Exists(p => p.CurrentValue == expectedSaleAmount));
+        Assert.Equal(expectedSaleAmount, result.amountSold);
+        Assert.Equal(expectedSaleAmount, cashBalance);
+        Assert.Equal(numSales, numClosedPositions);
     }
 
     [Fact]
-    public void SellInvestmentPosition_WithTaxablePosition_SellsAndUpdatesTaxLedgerCapitalGains()
+    public void SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType_WithTaxablePosition_SellsAndUpdatesTaxLedgerCapitalGains()
     {
         // Arrange
-        var position = CreateTestPosition(price: 100m, quantity: 10m);
-        position.InitialCost = 100m;
-        position.Entry = _testDate.PlusYears(-2);
-        var profit = (100m * 10m) - 100m;
-        var account = CreateTestAccount(McInvestmentAccountType.TAXABLE_BROKERAGE, position);
+        var amountToSell = 1000m;
+        var individualPositionValue = 300m;
+        var totalPositionValue = 0m;
+        var numSales = 0;
+        var positionType = McInvestmentPositionType.LONG_TERM;
+        var expectedCapitalGains = 0m;
+        McInvestmentAccount account = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Account",
+            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+            Positions = []
+        };
+        while (totalPositionValue < amountToSell)
+        {
+            account.Positions.Add(new McInvestmentPosition()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test Position",
+                Price = individualPositionValue,
+                Quantity = 1m,
+                InitialCost = individualPositionValue * 0.5m,
+                InvestmentPositionType = positionType,
+                IsOpen = true,
+                Entry = _testDate.PlusYears(-2)
+            });
+            totalPositionValue += individualPositionValue;
+            numSales++;
+            expectedCapitalGains += individualPositionValue * 0.5m;
+        }
         var book = CreateTestBookOfAccounts(account);
         var taxLedger = new TaxLedger();
-        var expectedSaleAmount = position.CurrentValue;
+        var expectedSaleAmount = totalPositionValue;
 
         // Act
-        var result = InvestmentSales.SellInvestmentPosition(
-            position, book, _testDate, taxLedger, McInvestmentAccountType.TAXABLE_BROKERAGE);
-
-        var recordedIncome = result.newLedger.LongTermCapitalGains.Sum(x => x.amount);
+        var result = InvestmentSales.SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
+            amountToSell, positionType,  InvestmentConfig.SalesOrderWithRoom, book, taxLedger, _testDate);
+        var capitalGains = result.newLedger.LongTermCapitalGains
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
 
         // Assert
-        Assert.Equal(profit, recordedIncome);
+        Assert.Equal(expectedSaleAmount, result.amountSold);
+        Assert.Equal(expectedCapitalGains, capitalGains);
     }
     
     [Fact]
-    public void SellInvestmentPosition_WithTaxDeferredPosition_SellsAndUpdatesTaxLedgerIncome()
+    public void SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType_WithTaxDeferredPosition_SellsAndUpdatesTaxLedgerDistribution()
     {
         // Arrange
-        var position = CreateTestPosition(price: 100m, quantity: 10m);
-        position.InitialCost = 100m;
-        position.Entry = _testDate.PlusYears(-2);
-        var account = CreateTestAccount(McInvestmentAccountType.TRADITIONAL_IRA, position);
+        var amountToSell = 1000m;
+        var individualPositionValue = 300m;
+        var totalPositionValue = 0m;
+        var numSales = 0;
+        var positionType = McInvestmentPositionType.LONG_TERM;
+        McInvestmentAccount account = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Account",
+            AccountType = McInvestmentAccountType.TRADITIONAL_IRA,
+            Positions = []
+        };
+        while (totalPositionValue < amountToSell)
+        {
+            account.Positions.Add(new McInvestmentPosition()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test Position",
+                Price = individualPositionValue,
+                Quantity = 1m,
+                InitialCost = individualPositionValue * 0.5m,
+                InvestmentPositionType = positionType,
+                IsOpen = true,
+                Entry = _testDate.PlusYears(-2)
+            });
+            totalPositionValue += individualPositionValue;
+            numSales++;
+        }
         var book = CreateTestBookOfAccounts(account);
         var taxLedger = new TaxLedger();
-        var expectedSaleAmount = position.CurrentValue;
+        var expectedSaleAmount = totalPositionValue;
 
         // Act
-        var result = InvestmentSales.SellInvestmentPosition(
-            position, book, _testDate, taxLedger, McInvestmentAccountType.TRADITIONAL_IRA);
-
-        var recordedIncome = result.newLedger.TaxableIraDistribution.Sum(x => x.amount);
+        var result = InvestmentSales.SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
+            amountToSell, positionType,  InvestmentConfig.SalesOrderWithRoom, book, taxLedger, _testDate);
+        var income = result.newLedger.TaxableIraDistribution
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
 
         // Assert
-        Assert.Equal(1000m, recordedIncome);
+        Assert.Equal(expectedSaleAmount, result.amountSold);
+        Assert.Equal(expectedSaleAmount, income);
     }
     [Fact]
-    public void SellInvestmentPosition_WithTaxFreePosition_SellsAndDoesntUpdateTaxLedger()
+    public void SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType_WithTaxFreePosition_SellsAndDoesntUpdateTaxLedger()
     {
         // Arrange
-        var position = CreateTestPosition(price: 100m, quantity: 10m);
-        position.InitialCost = 100m;
-        position.Entry = _testDate.PlusYears(-2);
-        var account = CreateTestAccount(McInvestmentAccountType.ROTH_401_K, position);
+        var amountToSell = 1000m;
+        var individualPositionValue = 300m;
+        var totalPositionValue = 0m;
+        var numSales = 0;
+        var positionType = McInvestmentPositionType.LONG_TERM;
+        McInvestmentAccount account = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Account",
+            AccountType = McInvestmentAccountType.HSA,
+            Positions = []
+        };
+        while (totalPositionValue < amountToSell)
+        {
+            account.Positions.Add(new McInvestmentPosition()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test Position",
+                Price = individualPositionValue,
+                Quantity = 1m,
+                InitialCost = individualPositionValue * 0.5m,
+                InvestmentPositionType = positionType,
+                IsOpen = true,
+                Entry = _testDate.PlusYears(-2)
+            });
+            totalPositionValue += individualPositionValue;
+            numSales++;
+        }
         var book = CreateTestBookOfAccounts(account);
         var taxLedger = new TaxLedger();
-        const decimal preSetCapitalGains = 200m;
-        const decimal preSetIncome = 300m;
-        taxLedger.LongTermCapitalGains.Add((_testDate, preSetCapitalGains));
-        taxLedger.TaxableIraDistribution.Add((_testDate, preSetIncome));
+        var expectedSaleAmount = totalPositionValue;
 
         // Act
-        var result = InvestmentSales.SellInvestmentPosition(
-            position, book, _testDate, taxLedger, McInvestmentAccountType.ROTH_401_K);
-
-        var recordedGains = result.newLedger.LongTermCapitalGains.Sum(x => x.amount);
-        var recordedIncome = result.newLedger.TaxableIraDistribution.Sum(x => x.amount);
+        var result = InvestmentSales.SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
+            amountToSell, positionType,  InvestmentConfig.SalesOrderWithRoom, book, taxLedger, _testDate);
+        var distributions = result.newLedger.TaxableIraDistribution
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
+        var longTermCapitalGains = result.newLedger.LongTermCapitalGains
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
+        var shortTermCapitalGains = result.newLedger.ShortTermCapitalGains
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
+        var w2Income = result.newLedger.W2Income
+            .Where(x => x.earnedDate == _testDate)
+            .Sum(x => x.amount);
 
         // Assert
-        Assert.Equal(preSetIncome, recordedIncome);
-        Assert.Equal(preSetCapitalGains, recordedGains);
+        Assert.Equal(expectedSaleAmount, result.amountSold);
+        Assert.Equal(0, distributions);
+        Assert.Equal(0, longTermCapitalGains);
+        Assert.Equal(0, shortTermCapitalGains);
+        Assert.Equal(0, w2Income);
     }
 
     [Fact]
-    public void SellInvestmentPosition_WithClosedPosition_ReturnsUnchangedState()
+    public void SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType_WithClosedPosition_ReturnsUnchangedState()
     {
         // Arrange
-        var position = CreateTestPosition(isOpen: false);
-        var account = CreateTestAccount(McInvestmentAccountType.TAXABLE_BROKERAGE, position);
+        var amountToSell = 1000m;
+        var individualPositionValue = 300m;
+        var totalPositionValue = 0m;
+        var numSales = 0;
+        var positionType = McInvestmentPositionType.LONG_TERM;
+        McInvestmentAccount account = new()
+        {
+            Id = Guid.NewGuid(),
+            Name = "Test Account",
+            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+            Positions = []
+        };
+        while (totalPositionValue < amountToSell)
+        {
+            account.Positions.Add(new McInvestmentPosition()
+            {
+                Id = Guid.NewGuid(),
+                Name = "Test Position",
+                Price = individualPositionValue,
+                Quantity = 1m,
+                InitialCost = individualPositionValue * 0.5m,
+                InvestmentPositionType = positionType,
+                IsOpen = false,
+                Entry = _testDate.PlusYears(-2)
+            });
+            totalPositionValue += individualPositionValue;
+            numSales++;
+        }
         var book = CreateTestBookOfAccounts(account);
         var taxLedger = new TaxLedger();
+        var expectedSaleAmount = totalPositionValue;
 
         // Act
-        var result = InvestmentSales.SellInvestmentPosition(
-            position, book, _testDate, taxLedger, McInvestmentAccountType.TAXABLE_BROKERAGE);
+        var result = InvestmentSales.SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
+            amountToSell, positionType,  InvestmentConfig.SalesOrderWithRoom, book, taxLedger, _testDate);
+        var cashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
+        var numClosedPositions = result.newBookOfAccounts.InvestmentAccounts[0].Positions.Count(x => !x.IsOpen);
 
         // Assert
-        Assert.Equal(0m, result.saleAmount);
-        Assert.Equal(book, result.newBookOfAccounts);
-        Assert.Equal(taxLedger, result.newLedger);
+        Assert.Equal(0, result.amountSold);
+        Assert.Equal(0, cashBalance);
+        Assert.Equal(numSales, numClosedPositions);
     }
 
-    [Fact]
-    public void RemovePositionFromBookOfAccounts_RemovesPositionCorrectly()
-    {
-        // Arrange
-        var positionToRemove = CreateTestPosition();
-        var positionToKeep = CreateTestPosition();
-        var account = CreateTestAccount(
-            McInvestmentAccountType.TAXABLE_BROKERAGE, 
-            positionToRemove, 
-            positionToKeep);
-        var book = CreateTestBookOfAccounts(account);
-
-        // Act
-        var result = InvestmentSales.RemovePositionFromBookOfAccounts(positionToRemove, book);
-
-        // Assert
-        Assert.Single(result.InvestmentAccounts[0].Positions);
-        Assert.Equal(positionToKeep.Id, result.InvestmentAccounts[0].Positions[0].Id);
-    }
+    
 
     [Fact]
     public void SellInvestmentsToRmdAmount_WithSufficientLongTermPositions_SellsCorrectAmount()
