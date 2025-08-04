@@ -193,7 +193,7 @@ public static class Simulation
     {
         if (!hypotheticalPrices.TryGetValue(currentDate, out var priceGrowthRate))
         {
-            throw new InvalidDataException("CurrentDate not found in _hypotheticalPrices");
+            throw new InvalidDataException("CurrentDate not found in hypotheticalPrices");
         }
 
         return Pricing.SetLongTermGrowthRateAndPrices(prices, priceGrowthRate);

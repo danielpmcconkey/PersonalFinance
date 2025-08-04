@@ -3,6 +3,8 @@ using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.DataTypes;
+using Lib.MonteCarlo.TaxForms.Federal;
+using Lib.MonteCarlo.TaxForms.NC;
 using Lib.StaticConfig;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
@@ -544,32 +546,112 @@ public class SimulationTests
     [Fact]
     internal void PayTaxForYear_PaysBothStateAndFederal()
     {
+        var person = TestDataManager.CreateTestPerson();
+        var currentDate = new LocalDateTime(2026, 1, 1, 0, 0);
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var totalIncome = 100000m;
+        ledger = Tax.RecordW2Income(ledger, currentDate.PlusMonths(-1), totalIncome).ledger;
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, totalIncome, currentDate).accounts;
+        var taxYear = currentDate.Year - 1;
+        var form1040 = new Form1040(ledger, taxYear);
+        var expectedFederalLiability = form1040.CalculateTaxLiability();
+        var formD400 = new FormD400(ledger, taxYear, form1040.AdjustedGrossIncome);
+        var expectedStateLiability = formD400.CalculateTaxLiability();
+        var expectedTotalLiability = expectedFederalLiability + expectedStateLiability;
+        var expectedCash = totalIncome - expectedTotalLiability;
+        
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+        var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
+            
         // Assert
-        Assert.True(false);
+        Assert.Equal(expectedCash, actualCash);
     }
     [Fact]
     internal void PayTaxForYear_RecordsThePayment()
     {
+        var person = TestDataManager.CreateTestPerson();
+        var currentDate = new LocalDateTime(2026, 1, 1, 0, 0);
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var totalIncome = 100000m;
+        ledger = Tax.RecordW2Income(ledger, currentDate.PlusMonths(-1), totalIncome).ledger;
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, totalIncome, currentDate).accounts;
+        var taxYear = currentDate.Year - 1;
+        var form1040 = new Form1040(ledger, taxYear);
+        var expectedFederalLiability = form1040.CalculateTaxLiability();
+        var formD400 = new FormD400(ledger, taxYear, form1040.AdjustedGrossIncome);
+        var expectedStateLiability = formD400.CalculateTaxLiability();
+        var expectedTotalLiability = expectedFederalLiability + expectedStateLiability;
+        var expectedCash = totalIncome - expectedTotalLiability;
+        
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+        var recordedPayment = newLedger.TotalTaxPaidLifetime;
+            
         // Assert
-        Assert.True(false);
+        Assert.Equal(expectedTotalLiability, recordedPayment);
     }
     [Fact]
     internal void PayTaxForYear_WithInsufficientFunds_Fails()
     {
+        var person = TestDataManager.CreateTestPerson();
+        var currentDate = new LocalDateTime(2026, 1, 1, 0, 0);
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var totalIncome = 100000m;
+        ledger = Tax.RecordW2Income(ledger, currentDate.PlusMonths(-1), totalIncome).ledger;
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, 4.99m, currentDate).accounts;
+        var taxYear = currentDate.Year - 1;
+        
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+            
         // Assert
-        Assert.True(false);
+        Assert.False(isSuccessful);
     }
     [Fact]
     internal void PayTaxForYear_WithSufficientFunds_Succeeds()
     {
+        var person = TestDataManager.CreateTestPerson();
+        var currentDate = new LocalDateTime(2026, 1, 1, 0, 0);
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var totalIncome = 100000m;
+        ledger = Tax.RecordW2Income(ledger, currentDate.PlusMonths(-1), totalIncome).ledger;
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, totalIncome, currentDate).accounts;
+        var taxYear = currentDate.Year - 1;
+        
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+            
         // Assert
-        Assert.True(false);
+        Assert.True(isSuccessful);
     }
     
     [Fact]
     internal void SetNewPrices_WithInvalidDate_ThrowsInvalidDataException()
     {
+        // Assemble
+        var prices = new CurrentPrices();
+        var hypotheticalPrices = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
+        var invalidDate = new LocalDateTime(2024, 1, 1, 0, 0);
+        
+        // Act
+       
+        
         // Assert
-        Assert.True(false);
+        Assert.Throws<InvalidDataException>(() => 
+            Simulation.SetNewPrices(prices, hypotheticalPrices[0], invalidDate));
+        
     }
 }
