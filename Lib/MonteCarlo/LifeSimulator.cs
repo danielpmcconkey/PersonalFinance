@@ -98,10 +98,7 @@ public class LifeSimulator
                 /*
                  *
                  *
-                 * you are here
-                 * 
-                 * you want to re-think the cash re-investment flow because it rebalances, spends excess, then spends
-                 * monthly
+                 * you are here 
                  *
                  * you should double check the interest accrual, the rebalancing, and the loan paydown reconciliations
                  * since you made changes
@@ -113,7 +110,6 @@ public class LifeSimulator
                  * you want to re-think performance. find what's slow and help it
                  *
                  * you want better UTs on the orchestration functions
-                 *
                  *
                  * 
                  */

@@ -90,7 +90,7 @@ public static class AccountCashManagement
         result.messages.AddRange(localResult.messages);
         
         // now do we have enough?
-        tryResult = TryWithdrawCash(accounts, amount, currentDate);
+        tryResult = TryWithdrawCash(result.newAccounts, amount, currentDate);
         result.isSuccessful = tryResult.isSuccessful;
         result.newAccounts = tryResult.newAccounts;
         result.messages.AddRange(tryResult.messages);
@@ -104,7 +104,7 @@ public static class AccountCashManagement
         result.messages.AddRange(localResult.messages);
         
         // now do we have enough?
-        tryResult = TryWithdrawCash(accounts, amount, currentDate);
+        tryResult = TryWithdrawCash(result.newAccounts, amount, currentDate);
         result.isSuccessful = tryResult.isSuccessful;
         result.newAccounts = tryResult.newAccounts;
         result.messages.AddRange(tryResult.messages);

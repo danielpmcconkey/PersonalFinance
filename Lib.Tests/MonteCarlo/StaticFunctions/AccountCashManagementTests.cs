@@ -131,4 +131,64 @@ public class AccountCashManagementTests
         Assert.Equal(initialBalance - withdrawAmount, 
             AccountCalculation.CalculateCashBalance(newAccounts));
     }
+    [Fact]
+    public void WithdrawCash_WithInSufficientCash_PullsFromInvestmentAccounts()
+    {
+        // Arrange
+        var initialBalance = 1000m;
+        var withdrawAmount = 5000m;
+        var investmentsNeeded = 4000m;
+        var accounts = CreateTestAccounts(initialBalance);
+        // it should sell mid first, so put only enough to close it out, then put too much in long
+        accounts.Brokerage.Positions = [
+            new McInvestmentPosition() {
+                Id = Guid.NewGuid(), Name = "test position", Entry = _testDate.PlusYears(-2),
+                IsOpen = true, InitialCost = 1000m, Price = 1000m, Quantity = 1m, 
+                InvestmentPositionType = McInvestmentPositionType.MID_TERM
+            },
+            new McInvestmentPosition() {
+                Id = Guid.NewGuid(), Name = "test position", Entry = _testDate.PlusYears(-2),
+                IsOpen = true, InitialCost = 1000m, Price = 2000m, Quantity = 1m, 
+                InvestmentPositionType = McInvestmentPositionType.LONG_TERM
+            },
+            new McInvestmentPosition() {
+                Id = Guid.NewGuid(), Name = "test position", Entry = _testDate.PlusYears(-2),
+                IsOpen = true, InitialCost = 1000m, Price = 2000m, Quantity = 1m, 
+                InvestmentPositionType = McInvestmentPositionType.LONG_TERM
+            },
+            new McInvestmentPosition() {
+                Id = Guid.NewGuid(), Name = "test position", Entry = _testDate.PlusYears(-2),
+                IsOpen = true, InitialCost = 1000m, Price = 2000m, Quantity = 1m, 
+                InvestmentPositionType = McInvestmentPositionType.LONG_TERM
+            },
+        ];
+        var expectedMidTermBalance = 0m;
+        var expectedLongTermBalance = 2000m;
+        var expectedCashBalance =
+            initialBalance // what was in to begin with
+            + 1000m // all the mid
+            + 4000m // 2 of the long
+            - withdrawAmount; // the final withdrawal
+            ;
+        var taxLedger = new TaxLedger();
+        var expectedCapitalGains = 2000m;
+
+        // Act
+        var (isSuccessful, newAccounts, newLedger, messages) = 
+            AccountCashManagement.WithdrawCash(accounts, withdrawAmount, _testDate, taxLedger);
+        var newCashBalance = AccountCalculation.CalculateCashBalance(newAccounts);
+        var newMidBalance = AccountCalculation.CalculateTotalBalanceByBucketType(
+            newAccounts, McInvestmentPositionType.MID_TERM);
+        var newLongBalance = AccountCalculation.CalculateTotalBalanceByBucketType(
+            newAccounts, McInvestmentPositionType.LONG_TERM);
+        var capitalGainsRecorded = newLedger.LongTermCapitalGains.Sum(x => x.amount);
+        
+
+        // Assert
+        Assert.True(isSuccessful);
+        Assert.Equal(expectedCashBalance, newCashBalance);
+        Assert.Equal(expectedMidTermBalance, newMidBalance);
+        Assert.Equal(expectedLongTermBalance, newLongBalance);
+        Assert.Equal(expectedCapitalGains, capitalGainsRecorded);
+    }
 }
