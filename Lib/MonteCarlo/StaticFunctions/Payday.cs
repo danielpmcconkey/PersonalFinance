@@ -7,7 +7,6 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Payday
 {
-    // todo: create a UT suite for Payday functions
     public static (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
         ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
             TaxLedger ledger, LifetimeSpend lifetimeSpend, McModel simParams)
@@ -47,8 +46,6 @@ public static class Payday
         ProcessPreRetirementPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, 
             TaxLedger ledger, LifetimeSpend lifetimeSpend, McModel simParams, CurrentPrices prices)
     {
-        // todo: calculate pre and post tax 401k contributions and assign to the person (I think this is done)
-
         if (person.IsRetired) return (bookOfAccounts, ledger, lifetimeSpend, []);
         // set up return tuple
         (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
@@ -106,7 +103,7 @@ public static class Payday
         return result;
     }
 
-    // todo: need to UT AddRetirementSavings
+    
     /// <summary>
     /// This is for pre-retirement use only. Used for investing pay-check-related stuff like 401K and HSA. It's presumed
     /// that the cash that funds these purchases was already deducted from your paycheck (or is free, like the match)  
@@ -166,7 +163,6 @@ public static class Payday
     }
 
 
-    // todo: unit test DeductPostTax
     public static (decimal amount, List<ReconciliationMessage> messages) DeductPostTax(PgPerson person, LocalDateTime currentDate)
     {
         var annual401KPostTax = person.Annual401KPostTax;
@@ -179,7 +175,7 @@ public static class Payday
         messages.Add(new ReconciliationMessage(currentDate, -result, "Total post tax paycheck deductions"));
         return (result, messages);
     }
-    // todo: unit test DeductPreTax
+    
     public static (LifetimeSpend spend, decimal amount, List<ReconciliationMessage> messages) DeductPreTax(
         PgPerson person, LifetimeSpend spend, LocalDateTime currentDate)
     {

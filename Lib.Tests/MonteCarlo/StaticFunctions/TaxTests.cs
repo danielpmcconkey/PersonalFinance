@@ -361,4 +361,49 @@ public class TaxTests
         // Assert
         Assert.Equal(expectedAmountLeft, amountLeft);
     }
+    
+    [Fact]
+    public void MeetRmdRequirements_DoesntChangeNetWorth()
+    {
+        // Arrange
+        var expectatedRmdAmount = 27027.03m;
+        var year = 2057;
+        var ledger = CreateTestLedger();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        // we want $500k in tax deferred accounts
+        for (int i = 0; i < 250; i++)
+        {
+            accounts.Traditional401K.Positions.Add(
+                TestDataManager.CreateTestInvestmentPosition(
+                    100, 10, McInvestmentPositionType.LONG_TERM, true)
+            );
+        }
+        for (int i = 0; i < 250; i++)
+        {
+            accounts.TraditionalIra.Positions.Add(
+                TestDataManager.CreateTestInvestmentPosition(
+                    100, 10, McInvestmentPositionType.LONG_TERM, true)
+            );
+        }
+
+        var howManyPositionsShouldBeSold = Math.Ceiling(expectatedRmdAmount / 1000m);
+        var expectedSale = howManyPositionsShouldBeSold * 1000m;
+        
+        var prices = new CurrentPrices();
+        var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
+        var expectedAmountLeft = 500000m - expectedSale;
+
+        int age = year - 1975;
+        var expectedNetWorth = AccountCalculation.CalculateNetWorth(accounts);
+        
+        
+        
+
+        // Act
+        var result = Tax.MeetRmdRequirements(ledger, currentDate, accounts, age);
+        var actualNetWorth = AccountCalculation.CalculateNetWorth(result.newBookOfAccounts);
+
+        // Assert
+        Assert.Equal(Math.Round(expectedNetWorth  ,2),  Math.Round(actualNetWorth, 2));
+    }
 }

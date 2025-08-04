@@ -97,8 +97,6 @@ public static class Tax
     
     public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordTaxPaid(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
     {
-        // todo: unit test RecordTaxPaid
-        
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         result.ledger.TotalTaxPaidLifetime += amount;
         if (!MonteCarloConfig.DebugMode) return result;
@@ -109,8 +107,6 @@ public static class Tax
     public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordWithholdings(
         TaxLedger ledger, LocalDateTime earnedDate, decimal amountFed, decimal amountState)
     {
-        // todo: Unit test RecordWithholdings
-        
         (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
         
         result.ledger.FederalWithholdings.Add((earnedDate, amountFed));

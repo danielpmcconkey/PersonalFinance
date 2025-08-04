@@ -31,7 +31,7 @@ public static class AccountInterestAccrual
         
         return results;
     }
-// todo: check if there's a unit test on AccrueInterestOnDebtAccount
+    
     public static (McDebtAccount newAccount, LifetimeSpend newSpend, List<ReconciliationMessage> messages) 
         AccrueInterestOnDebtAccount(LocalDateTime currentDate, McDebtAccount account, LifetimeSpend lifetimeSpend)
     {
@@ -85,7 +85,7 @@ public static class AccountInterestAccrual
         
         return result;
     }
-    // todo: check if there's a unit test on AccrueInterestOnDebtAccounts
+    
     public static (BookOfAccounts newAccounts, LifetimeSpend newSpend, List<ReconciliationMessage> messages)
         AccrueInterestOnDebtAccounts(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
             LifetimeSpend lifetimeSpend)
@@ -108,7 +108,6 @@ public static class AccountInterestAccrual
         return result;
     }
     
-    // todo: check if there's a unit test on AccrueInterestOnInvestmentAccounts
     public static (BookOfAccounts newAccounts, LifetimeSpend newSpend, List<ReconciliationMessage> messages) 
         AccrueInterestOnInvestmentAccounts(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
             CurrentPrices prices, LifetimeSpend lifetimeSpend)
@@ -141,7 +140,7 @@ public static class AccountInterestAccrual
         }
         return results;
     }
-    // todo: check if there's a unit test on AccrueInterestOnInvestmentAccount
+    
     public static (McInvestmentAccount newAccount, LifetimeSpend newSpend, List<ReconciliationMessage> messages) 
         AccrueInterestOnInvestmentAccount(LocalDateTime currentDate, McInvestmentAccount account, 
             CurrentPrices prices, LifetimeSpend lifetimeSpend)

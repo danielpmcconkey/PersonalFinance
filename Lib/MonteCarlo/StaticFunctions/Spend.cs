@@ -288,7 +288,6 @@ public static class Spend
     
     public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordHealthcareSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
     {
-        // todo: unit test RecordHealthcareSpend
         (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
         result.spend.TotalLifetimeHealthCareSpend += amount;
         if (MonteCarloConfig.DebugMode)

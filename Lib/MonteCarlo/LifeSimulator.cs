@@ -60,10 +60,12 @@ public class LifeSimulator
             simParams.SocialSecurityStart);
         var copiedPerson = Person.CopyPerson(person, false);
         copiedPerson.AnnualSocialSecurityWage =
-            monthlySocialSecurityWage * 12; // todo: set other caLculated fields for a person here
+            monthlySocialSecurityWage * 12; 
         copiedPerson.Annual401KPreTax = copiedPerson.Annual401KContribution * simParams.Percent401KTraditional;
         copiedPerson.Annual401KPostTax = Math.Max(
             0, copiedPerson.Annual401KContribution - copiedPerson.Annual401KPreTax);
+        copiedPerson.IsBankrupt = false;
+        copiedPerson.IsRetired = false;
         var ledger = new TaxLedger();
         ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
         ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
@@ -103,13 +105,15 @@ public class LifeSimulator
                  * you should double check the interest accrual, the rebalancing, and the loan paydown reconciliations
                  * since you made changes
                  *
-                 * you need to factor in debt payment in total cash on hand calcs
-                 *
                  * you probably need to adjust your fudge factor in the RNG tests that fail in the model mating
                  *
-                 * you want to re-think performance. find what's slow and help it
+                 * you want to implement the cost of still having a job and being anxious about money
                  *
-                 * you want better UTs on the orchestration functions
+                 * you want to implement a "how much have we already earned and had withheld" ability to make the first
+                 * year's tax payment more realistic
+                 *
+                 * you want to figure out the "end of a life sim" output (replacement NetWorthMeasurement) and, once you
+                 * do, you want to re-implement the percentile functions, the model training, etc. 
                  *
                  * 
                  */
@@ -284,7 +288,6 @@ public class LifeSimulator
 
     private void InvestExcessCash()
     {
-        // todo: create a UT that ensures that excess cash gets invested pre-retirement
 #if PERFORMANCEPROFILING
         Stopwatch stopwatch = new();
         stopwatch.Start();
@@ -456,7 +459,6 @@ public class LifeSimulator
 
     private void RebalancePortfolio()
     {
-        // todo: create a UT that ensures that excess cash gets invested pre-retirement
 #if PERFORMANCEPROFILING
         Stopwatch stopwatch = new();
         stopwatch.Start();

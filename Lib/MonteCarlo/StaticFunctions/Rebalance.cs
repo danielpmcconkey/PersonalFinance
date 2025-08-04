@@ -27,7 +27,6 @@ public static class Rebalance
         return currentMonthNum % modulus == 0;
     }
     
-    // todo: unit test CalculateWhetherItsCloseEnoughToRetirementToRebalance
     public static bool CalculateWhetherItsCloseEnoughToRetirementToRebalance(LocalDateTime currentDate, McModel simParams)
     {
         // check whether it's close enough to retirement to think about rebalancing
@@ -107,7 +106,6 @@ public static class Rebalance
         else
         {
             // just add a month's worth of cash needed to keep the sim from accidentally going bankrupt
-            // todo: why does it go bankrupt? why isn't it selling from investments when out of cash?
             const int numMonths = 1;
             var debtSpend = bookOfAccounts.DebtAccounts
                 .SelectMany(x => x.Positions

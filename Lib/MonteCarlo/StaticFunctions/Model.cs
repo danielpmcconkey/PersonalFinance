@@ -50,25 +50,14 @@ public class Model
     
     public static HereditarySource GetHereditarySource()
     {
-        int diceRoll = GetUnSeededRandomInt(1, 10);
-        switch (diceRoll)
+        var diceRoll = GetUnSeededRandomInt(1, 10);
+        return diceRoll switch
         {
-            case 1:
-            case 2:
-            case 3:
-            case 4:
-                return HereditarySource.ParentA;
-            case 5:
-            case 6:
-            case 7:
-            case 8:
-                return HereditarySource.ParentB;
-            case 9:
-            case 10:
-                return HereditarySource.Random;
-            default:
-                throw new NotImplementedException();
-        }
+            1 or 2 or 3 or 4 => HereditarySource.ParentA,
+            5 or 6 or 7 or 8 => HereditarySource.ParentB,
+            9 or 10 => HereditarySource.Random,
+            _ => HereditarySource.Random
+        };
     }
     
     public static int GetUnSeededRandomInt(int minInclusive, int maxInclusive)
