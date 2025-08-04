@@ -1,4 +1,4 @@
-﻿#define PERFORMANCEPROFILING
+﻿//#define PERFORMANCEPROFILING
 using System.Text;
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
@@ -89,6 +89,7 @@ public class LifeSimulator
     {
         try
         {
+            _sim.Log.Debug("Beginning this lifetime.");
             while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
             {
                 SetReconClutch();
@@ -99,13 +100,18 @@ public class LifeSimulator
                  *
                  * you are here
                  * 
-                 * you probably ought to get rid of the SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType_old function
-                 * same with the individual investment sale function, which probably isn't used any more
-                 * you've checked the interest accrual, the rebalancing, and the loan paydown
-                 * you want to re-think the cash re-investment flow because it rebalances, spends excess, then spends monthly
+                 * you want to re-think the cash re-investment flow because it rebalances, spends excess, then spends
+                 * monthly
+                 *
+                 * you should double check the interest accrual, the rebalancing, and the loan paydown reconciliations
+                 * since you made changes
+                 *
                  * you need to factor in debt payment in total cash on hand calcs
+                 *
                  * you probably need to adjust your fudge factor in the RNG tests that fail in the model mating
+                 *
                  * you want to re-think performance. find what's slow and help it
+                 *
                  * you want better UTs on the orchestration functions
                  *
                  *
@@ -157,6 +163,7 @@ public class LifeSimulator
                 _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
             }
 
+            _sim.Log.Debug("Done with this lifetime.");
             if (!MonteCarloConfig.DebugMode) return _measurements;
             
             _sim.Log.Debug("Writing reconciliation data to spreadsheet");
