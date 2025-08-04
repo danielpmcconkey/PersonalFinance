@@ -332,7 +332,7 @@ public class InvestmentSalesTests
         // Assert
         Assert.Equal(expectedSaleAmount, result.amountSold);
         Assert.Equal(cashBalance, expectedSaleAmount);
-        Assert.Single(result.newBookOfAccounts.InvestmentAccounts[0].Positions);
+        Assert.Single(result.newBookOfAccounts.InvestmentAccounts[0].Positions.Where(x => x.IsOpen));
     }
     
     /// <summary>

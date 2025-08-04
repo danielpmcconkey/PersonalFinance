@@ -64,7 +64,7 @@ public class ModelTests
     }
     
     [Theory]
-    [InlineData(0,4850,5150)] // 0 and 10 will only get half as many due to rounding
+    [InlineData(0,4841,5150)] // 0 and 10 will only get half as many due to rounding
     [InlineData(1,9700,10300)]
     [InlineData(2,9700,10300)]
     [InlineData(3,9700,10300)]

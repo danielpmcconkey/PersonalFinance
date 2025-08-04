@@ -1,3 +1,5 @@
+//#define PERFORMANCEPROFILING
+using System.Diagnostics;
 using Lib.DataTypes.MonteCarlo;
 using Lib.StaticConfig;
 using NodaTime;
@@ -157,8 +159,7 @@ public static class Tax
         var amountLeft = amountLeftCalcResult.amount;
         results.messages.AddRange(amountLeftCalcResult.messages);
         if (amountLeft <= 0) return results;
-        
-        
+    
         // we gotta go sellin' shit
         // copy the accounts and ledger before we modify them
         results.newBookOfAccounts = AccountCopy.CopyBookOfAccounts(accounts);
@@ -169,7 +170,7 @@ public static class Tax
         
         results.newBookOfAccounts = localResult.newBookOfAccounts;
         results.newLedger = localResult.newLedger;
-        
+     
         if (!MonteCarloConfig.DebugMode) return results;
         results.messages.AddRange(localResult.messages);
         results.messages.Add(new ReconciliationMessage(currentDate, localResult.amountSold, 
