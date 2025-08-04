@@ -383,6 +383,46 @@ public class RebalanceTests
     }
 
     [Fact]
+    public void RebalancePortfolio_DoesntChangeNetWorth()
+    {
+        // just set up enough to make sure that we have crap in long, nothing in mid or cash so that we'll move both
+        var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var person = CreateTestPerson();
+        simParams.NumMonthsCashOnHand = 18;
+        simParams.NumMonthsMidBucketOnHand = 24;
+        simParams.DesiredMonthlySpendPostRetirement = 1000;
+        person.RequiredMonthlySpend = 1000;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        // we'll need 36k in cash and 48k in mid
+        var numPositionsWanted = 100;
+        var priceEach = 10m;
+        var quantityEach = 100;
+        for (int i = 0; i < numPositionsWanted; i++)
+        {
+            var position = TestDataManager.CreateTestInvestmentPosition(
+                priceEach, quantityEach, McInvestmentPositionType.LONG_TERM);
+            position.InitialCost = priceEach * quantityEach * 0.5m; // 100% growth
+            position.Entry = new LocalDateTime(2020, 1, 1, 0, 0);
+            accounts.Brokerage.Positions.Add(position);
+        }
+        var currentDate = _retirementDate.PlusMonths(12); // Within rebalance window, post retirement
+        person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
+        var expectedNetWorth = AccountCalculation.CalculateNetWorth(accounts);
+        
+        
+        
+
+        // Act
+        var result = Rebalance.RebalancePortfolio(
+            currentDate, accounts, new RecessionStats(), new CurrentPrices(), simParams, new TaxLedger(), person);
+        
+        var actualNetWorth = AccountCalculation.CalculateNetWorth(result.newBookOfAccounts);
+
+        // Assert
+        Assert.Equal(Math.Round(expectedNetWorth  ,2),  Math.Round(actualNetWorth, 2));
+    }
+
+    [Fact]
     public void SellInOrder_SellsFromProvidedOrder()
     {
         // Arrange

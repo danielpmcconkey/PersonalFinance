@@ -82,6 +82,180 @@ public class SimulationTests
         Assert.True(result.isSuccessful);
     }
     
+    [Fact]
+    public void PayForStuff_OnlySpendsRequiredAndFun()
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        var person = TestDataManager.CreateTestPerson();
+        person.RequiredMonthlySpendHealthCare = 500m;
+        person.RequiredMonthlySpend = 700m;
+        person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
+        var recessionStats = new RecessionStats();
+        recessionStats.AreWeInARecession = false;
+        recessionStats.AreWeInExtremeAusterityMeasures = false;
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var initialCash = 10000m;
+        accounts = AccountCashManagement.DepositCash(accounts, initialCash, currentDate).accounts;
+        var expectedSpend = // 2000, 
+            person.RequiredMonthlySpend
+            + person.RequiredMonthlySpendHealthCare
+            + Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+        var expectedCash = initialCash - expectedSpend;
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+        var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
+        // Assert
+        Assert.True(isSuccessful);
+        Assert.Equal(expectedCash, actualCash);
+    }
+    
+    [Fact]
+    public void PayForStuff_WhenInRecession_SpendsLess()
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        simParams.AusterityRatio = 0.9m;
+        var person = TestDataManager.CreateTestPerson();
+        person.RequiredMonthlySpendHealthCare = 500m;
+        person.RequiredMonthlySpend = 700m;
+        person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
+        var recessionStats = new RecessionStats();
+        recessionStats.AreWeInARecession = true;
+        recessionStats.AreWeInExtremeAusterityMeasures = false;
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var initialCash = 10000m;
+        accounts = AccountCashManagement.DepositCash(accounts, initialCash, currentDate).accounts;
+        var expectedSpend =
+            person.RequiredMonthlySpend
+            + person.RequiredMonthlySpendHealthCare
+            + (Spend.CalculateMonthlyFunSpend(simParams, person, currentDate) * simParams.AusterityRatio);
+        var expectedCash = initialCash - expectedSpend;
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+        var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
+        // Assert
+        Assert.True(isSuccessful);
+        Assert.Equal(expectedCash, actualCash);
+    }
+    
+    [Fact]
+    public void PayForStuff_WhenInExtremeAusterity_SpendsEvenLess()
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        simParams.AusterityRatio = 0.9m;
+        simParams.ExtremeAusterityRatio = 0.7m;
+        var person = TestDataManager.CreateTestPerson();
+        person.RequiredMonthlySpendHealthCare = 500m;
+        person.RequiredMonthlySpend = 700m;
+        person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
+        var recessionStats = new RecessionStats();
+        recessionStats.AreWeInARecession = true; // make sure that they don't stack
+        recessionStats.AreWeInExtremeAusterityMeasures = true;
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var initialCash = 10000m;
+        accounts = AccountCashManagement.DepositCash(accounts, initialCash, currentDate).accounts;
+        var expectedSpend =
+            person.RequiredMonthlySpend
+            + person.RequiredMonthlySpendHealthCare
+            + (Spend.CalculateMonthlyFunSpend(simParams, person, currentDate) * simParams.ExtremeAusterityRatio);
+        var expectedCash = initialCash - expectedSpend;
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+        var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
+        // Assert
+        Assert.True(isSuccessful);
+        Assert.Equal(expectedCash, actualCash);
+    }
+    
+    [Fact]
+    public void PayForStuff_WhenSuccessful_RecordsSpend()
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        var person = TestDataManager.CreateTestPerson();
+        person.RequiredMonthlySpendHealthCare = 500m;
+        person.RequiredMonthlySpend = 700m;
+        person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
+        var recessionStats = new RecessionStats();
+        recessionStats.AreWeInARecession = false;
+        recessionStats.AreWeInExtremeAusterityMeasures = false;
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var initialCash = 10000m;
+        accounts = AccountCashManagement.DepositCash(accounts, initialCash, currentDate).accounts;
+        var expectedSpend = // 2000, 
+            person.RequiredMonthlySpend
+            + person.RequiredMonthlySpendHealthCare
+            + Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+        var expectedCash = initialCash - expectedSpend;
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+        var recordedSpend = newSpend.TotalSpendLifetime;
+        // Assert
+        Assert.True(isSuccessful);
+        Assert.Equal(expectedSpend, recordedSpend);
+    }
+    
+    [Fact]
+    public void PayForStuff_WhenSuccessful_RecordsFun()
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        var person = TestDataManager.CreateTestPerson();
+        person.RequiredMonthlySpendHealthCare = 500m;
+        person.RequiredMonthlySpend = 700m;
+        person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
+        var recessionStats = new RecessionStats();
+        recessionStats.AreWeInARecession = false;
+        recessionStats.AreWeInExtremeAusterityMeasures = false;
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var spend = TestDataManager.CreateEmptySpend();
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var initialCash = 10000m;
+        accounts = AccountCashManagement.DepositCash(accounts, initialCash, currentDate).accounts;
+        var funSpend = Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+        var expectedSpend = // 2000, 
+            person.RequiredMonthlySpend
+            + person.RequiredMonthlySpendHealthCare
+            + funSpend;
+        var expectedFun = Spend.CalculateFunPointsForSpend(funSpend, person, currentDate);
+        // Act
+        var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
+            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+        var recordedFun = newSpend.TotalFunPointsLifetime;
+        // Assert
+        Assert.True(isSuccessful);
+        Assert.Equal(expectedFun, recordedFun);
+    }
+    
     /// <summary>
     /// this is a monster of a UT, but it's better than copy+paste the same scenario over and over again
     /// </summary>
@@ -365,5 +539,37 @@ public class SimulationTests
 
         // Assert
         Assert.True(result.isSuccessful);
+    }
+
+    [Fact]
+    internal void PayTaxForYear_PaysBothStateAndFederal()
+    {
+        // Assert
+        Assert.True(false);
+    }
+    [Fact]
+    internal void PayTaxForYear_RecordsThePayment()
+    {
+        // Assert
+        Assert.True(false);
+    }
+    [Fact]
+    internal void PayTaxForYear_WithInsufficientFunds_Fails()
+    {
+        // Assert
+        Assert.True(false);
+    }
+    [Fact]
+    internal void PayTaxForYear_WithSufficientFunds_Succeeds()
+    {
+        // Assert
+        Assert.True(false);
+    }
+    
+    [Fact]
+    internal void SetNewPrices_WithInvalidDate_ThrowsInvalidDataException()
+    {
+        // Assert
+        Assert.True(false);
     }
 }
