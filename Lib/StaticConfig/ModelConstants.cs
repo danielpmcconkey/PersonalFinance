@@ -2,6 +2,12 @@ namespace Lib.StaticConfig;
 
 public static class ModelConstants
 {
+    public static decimal FunPenaltyBankruptcy = -25000m;
+    public static decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
+    public static decimal FunPenaltyNotRetiredPercentOfRequiredSpend = 2m;
+    public static decimal FunPenaltyRetiredInRecessionPercentOfRequiredSpend = 0.5m;
+    public static decimal FunPenaltyRetiredInExtremeAusterityPercentOfRequiredSpend = 1m;
+    
     public static (int years, int months) RetirementAgeMin = (59, 6);
     public static (int years, int months) RetirementAgeMax = (70, 0);
     

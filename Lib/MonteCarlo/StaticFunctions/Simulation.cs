@@ -188,6 +188,54 @@ public static class Simulation
         return results;
     }
     
+    public static  (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunAndAnxiety(
+        McModel simParams, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats,
+        LifetimeSpend spend)
+    {
+        // set up the return tuple
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) results = (
+                Spend.CopyLifetimeSpend(spend),
+                []
+            );
+        
+        var extraFun = 0.0m;
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        
+        if (person.IsBankrupt) extraFun += ModelConstants.FunPenaltyBankruptcy;
+        else
+        {
+            // ignore other penalties and bonuses if bankrupt. bankruptcy sucks regardless
+
+            if (person.IsRetired)
+            {
+                extraFun += ModelConstants.FunBonusRetirement;
+            }
+
+            if (!person.IsRetired)
+            {
+                extraFun += requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
+            }
+
+            if (person.IsRetired && recessionStats.AreWeInARecession)
+            {
+                extraFun += requiredSpend * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend * -1;
+            }
+
+            if (person.IsRetired && recessionStats.AreWeInExtremeAusterityMeasures)
+            {
+                extraFun += requiredSpend * ModelConstants.FunPenaltyRetiredInExtremeAusterityPercentOfRequiredSpend *
+                            -1;
+            }
+        }
+
+        var spendResult = Spend.RecordFunPoints(spend, extraFun, currentDate);
+        results.spend = spendResult.spend;
+        
+        if (!MonteCarloConfig.DebugMode) return results;
+        results.messages.AddRange(spendResult.messages);
+        return results;
+    }
+    
     public static CurrentPrices SetNewPrices(CurrentPrices prices, Dictionary<LocalDateTime, Decimal>  hypotheticalPrices,
         LocalDateTime currentDate)
     {

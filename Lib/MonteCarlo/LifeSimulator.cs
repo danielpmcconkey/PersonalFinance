@@ -102,12 +102,15 @@ public class LifeSimulator
                  *
                  * you are here 
                  *
-                 * you should double check the interest accrual, the rebalancing, and the loan paydown reconciliations
-                 * since you made changes
+                 * you are in the middle of implementing the cost of still having a job and being anxious about money.
+                 * you just wrote the RecordFunAndAnxiety method in the Simulation class. you need to build a method to
+                 * use it here
+                 * 
+                 *
+                 * don't sell tax-deferred during rebalance pre-retirement. rather, if you're rebalancing from long to mid, then don't count it as income. it's only income when you turn it into cash
                  *
                  * you probably need to adjust your fudge factor in the RNG tests that fail in the model mating
                  *
-                 * you want to implement the cost of still having a job and being anxious about money
                  *
                  * you want to implement a "how much have we already earned and had withheld" ability to make the first
                  * year's tax payment more realistic
@@ -149,6 +152,7 @@ public class LifeSimulator
                     }
                     
                     InvestExcessCash();
+                    RecordFunAndAnxiety();
                 }
 
                 var measurement = Account.CreateNetWorthMeasurement(_sim);
@@ -484,6 +488,28 @@ public class LifeSimulator
         _reconciliationLedger.AddFullReconLine(_sim, "Rebalanced portfolio");
     }
 
+    private void RecordFunAndAnxiety()
+    {
+#if PERFORMANCEPROFILING
+        Stopwatch stopwatch = new();
+        stopwatch.Start();
+#endif 
+        if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayDay && _isReconcilingTime)
+            _reconciliationLedger.AddFullReconLine(_sim, "Recording fun and anxiety");
+
+        var results = Simulation.RecordFunAndAnxiety(_sim.SimParameters, _sim.PgPerson, 
+            _sim.CurrentDateInSim, _sim.RecessionStats, _sim.LifetimeSpend);
+        _sim.LifetimeSpend = results.spend;
+        
+#if PERFORMANCEPROFILING
+        stopwatch.Stop();
+        _sim.Log.Debug($"Processing fun and anxiety took {stopwatch.ElapsedMilliseconds} ms");
+#endif
+        
+        if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcilePayDay || !_isReconcilingTime) return;
+        _reconciliationLedger.AddMessages(results.messages);
+        _reconciliationLedger.AddFullReconLine(_sim, "Done recording fund and anxiety");
+    }
     private void SetGrowthAndPrices()
     {
 #if PERFORMANCEPROFILING

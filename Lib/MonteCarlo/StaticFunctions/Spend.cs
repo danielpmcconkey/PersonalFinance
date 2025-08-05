@@ -224,7 +224,7 @@ public static class Spend
         result.spend.TotalDebtAccrualLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Debt accrual recorded: {amount}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Debt accrual recorded: {amount}"));
         }
         return result;
     }
@@ -237,7 +237,7 @@ public static class Spend
         if (MonteCarloConfig.DebugMode)
         {
             
-            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Debt payment recorded: {amount}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Debt payment recorded: {amount}"));
         }
         return result;
     }
@@ -248,7 +248,7 @@ public static class Spend
         result.spend.TotalFunPointsLifetime += funPoints;
         if (MonteCarloConfig.DebugMode)
         {
-            result.messages.Add(new ReconciliationMessage(currentDate,0, $"Fun points recorded: {funPoints}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Fun points recorded: {funPoints}"));
         }
         return result;
     }
@@ -259,7 +259,7 @@ public static class Spend
         result.spend.TotalInvestmentAccrualLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            result.messages.Add(new ReconciliationMessage(currentDate,amount, $"Investment accrual recorded: {amount}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Investment accrual recorded: {amount}"));
         }
         return result;
     }
@@ -270,7 +270,7 @@ public static class Spend
         result.spend.TotalSocialSecurityWageLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            result.messages.Add(new ReconciliationMessage(currentDate,amount, $"Social security wage recorded: {amount}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Social security wage recorded: {amount}"));
         }
         return result;
     }
@@ -281,7 +281,7 @@ public static class Spend
         result.spend.TotalSpendLifetime += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Spend recorded: {amount}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Spend recorded: {amount}"));
         }
         return result;
     }
@@ -292,7 +292,7 @@ public static class Spend
         result.spend.TotalLifetimeHealthCareSpend += amount;
         if (MonteCarloConfig.DebugMode)
         {
-            result.messages.Add(new ReconciliationMessage(currentDate,amount * -1, $"Healthcare spend recorded: {amount}"));
+            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Healthcare spend recorded: {amount}"));
         }
         return result;
     }
