@@ -49,6 +49,8 @@ public static class AccountCashManagement
     public static (bool isSuccessful, BookOfAccounts newAccounts, List<ReconciliationMessage> messages) TryWithdrawCash(
         BookOfAccounts accounts, decimal amount, LocalDateTime currentDate)
     {
+        if (amount < 0) throw new ArgumentException("Withdrawal amount must not be negative");
+        if (amount == 0) return (true, accounts, []);
         var totalCashOnHand = AccountCalculation.CalculateCashBalance(accounts);
         if (totalCashOnHand < amount) return (false, accounts, []); // they hasn't gots it, precious
         

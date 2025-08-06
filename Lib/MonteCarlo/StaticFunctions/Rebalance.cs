@@ -65,6 +65,7 @@ public static class Rebalance
         SellInOrder(decimal cashNeeded, McInvestmentPositionType[] pullOrder, BookOfAccounts bookOfAccounts,
             TaxLedger taxLedger, LocalDateTime currentDate)
     {
+        if(cashNeeded <= 0) return (0m, bookOfAccounts, taxLedger, []);
         // set up return tuple
         (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
             results = (0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []); 
@@ -81,6 +82,52 @@ public static class Rebalance
             results.newAccounts = localResults.newBookOfAccounts;
             results.newLedger = localResults.newLedger;
             results.messages.AddRange(localResults.messages);
+        }
+        return results;
+    }
+    
+    public static (decimal amountMoved, BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+        MoveLongToMidWithoutTaxeConsequences(decimal amountToMove, BookOfAccounts bookOfAccounts, TaxLedger taxLedger, 
+            LocalDateTime currentDate, CurrentPrices prices)
+    {
+        /*
+         * with either tax deferred or tax free accounts, you can sell and buy inside the account without tax
+         * consequences. during rebalance from long to mid, this is ideal as it doesn't create any income
+         */
+        // set up return tuple
+        (decimal amountMoved, BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+            results = (0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []); 
+        
+        // pull all eligible positions
+        var query = from account in results.newAccounts.InvestmentAccounts
+                where (account.AccountType is McInvestmentAccountType.TRADITIONAL_401_K || 
+                       account.AccountType is McInvestmentAccountType.TRADITIONAL_IRA) 
+                from position in account.Positions
+                where (position.IsOpen &&
+                       position.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
+                orderby (position.Entry)
+                select (account, position)
+            ;
+        
+        // loop over the pull types until we have the bucks
+        
+        foreach (var (account, position) in query)
+        {
+            if (results.amountMoved >= amountToMove) break;
+            results.amountMoved += position.CurrentValue;
+            
+            // set it to mid-term
+            position.InvestmentPositionType = McInvestmentPositionType.MID_TERM;
+            
+            // change its price
+            var oldValue = position.CurrentValue;
+            var newPrice = prices.CurrentMidTermInvestmentPrice;
+            var newQuantity = oldValue / newPrice;
+            position.Price = newPrice;
+            position.Quantity = newQuantity;
+            var newValue = position.CurrentValue;
+            if(Math.Round(oldValue, 4) != Math.Round(newValue, 4))
+                throw new InvalidDataException("Failed to set price of long-term investment to mid-term");
         }
         return results;
     }
@@ -190,36 +237,55 @@ public static class Rebalance
             return (bookOfAccounts, taxLedger, messages);
         }
         
-        // not in a recession. sell from long and buy mid
+        // not in a recession and we still need to move funds.
         
         // Set up the return tuple
         (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) results = (
             AccountCopy.CopyBookOfAccounts(bookOfAccounts),Tax.CopyTaxLedger(taxLedger), messages);
         
+        // try to move without tax consequences
+        var moveResult = MoveLongToMidWithoutTaxeConsequences(
+            amountNeededToMove, results.newBookOfAccounts, results.newLedger, currentDate, currentPrices);
+        var amountMoved = moveResult.amountMoved;
+        results.newBookOfAccounts = moveResult.newAccounts;
+        results.newLedger = moveResult.newLedger;
+        if(MonteCarloConfig.DebugMode) results.messages.AddRange(moveResult.messages);
+        
+        var amountToSell = Math.Max(0, amountNeededToMove - amountMoved);
+        
         // first sell the long-term investments
-        var salesResults = SellInOrder(amountNeededToMove, [McInvestmentPositionType.LONG_TERM], results.newBookOfAccounts,
-            results.newLedger, currentDate);
-        var amountSold = salesResults.amountSold;
-        results.newBookOfAccounts = salesResults.newAccounts;
-        results.newLedger = salesResults.newLedger;
-        
-        // now buy the mid-term investments, but you gotta first take out the cash
-        var withdrawalResult = AccountCashManagement.TryWithdrawCash(
-            results.newBookOfAccounts, amountSold, currentDate);
-        if (withdrawalResult.isSuccessful == false) throw new InvalidDataException("Failed to withdraw cash to buy mid-term investment"); // shouldn't be here
-        results.newBookOfAccounts = withdrawalResult.newAccounts;
-        // now we can buy
-        var buyResult = Investment.InvestFunds(results.newBookOfAccounts, currentDate, amountSold,
-            McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
-        results.newBookOfAccounts = buyResult.accounts;
-        
-        
+        if (amountToSell > 0m)
+        {
+            var salesResults = SellInOrder(amountToSell, [McInvestmentPositionType.LONG_TERM],
+                results.newBookOfAccounts,
+                results.newLedger, currentDate);
+            var amountSold = salesResults.amountSold;
+            results.newBookOfAccounts = salesResults.newAccounts;
+            results.newLedger = salesResults.newLedger;
+
+            // now buy the mid-term investments, but you gotta first take out the cash
+            var withdrawalResult = AccountCashManagement.TryWithdrawCash(
+                results.newBookOfAccounts, amountSold, currentDate);
+            if (withdrawalResult.isSuccessful == false)
+                throw new InvalidDataException(
+                    "Failed to withdraw cash to buy mid-term investment"); // shouldn't be here
+            results.newBookOfAccounts = withdrawalResult.newAccounts;
+            // now we can buy
+            var buyResult = Investment.InvestFunds(results.newBookOfAccounts, currentDate, amountSold,
+                McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
+            results.newBookOfAccounts = buyResult.accounts;
+            
+            if(MonteCarloConfig.DebugMode)
+            {
+                results.messages.AddRange(salesResults.messages);
+                results.messages.AddRange(withdrawalResult.messages);
+                results.messages.AddRange(buyResult.messages);
+            }
+        }
+
         if(!MonteCarloConfig.DebugMode) return results;
-        results.messages.AddRange(salesResults.messages);
-        results.messages.AddRange(withdrawalResult.messages);
-        results.messages.AddRange(buyResult.messages);
         results.messages.Add(new ReconciliationMessage(
-            currentDate, amountSold, "Rebalance: done moving long to mid"));
+            currentDate, null, "Rebalance: done moving long to mid"));
         return results;
     }
     

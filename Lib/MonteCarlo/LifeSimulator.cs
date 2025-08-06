@@ -102,12 +102,10 @@ public class LifeSimulator
                  *
                  * you are here 
                  *
-                 * you are in the middle of implementing the cost of still having a job and being anxious about money.
-                 * you just wrote the RecordFunAndAnxiety method in the Simulation class. you need to build a method to
-                 * use it here
-                 * 
+                 *  
                  *
-                 * don't sell tax-deferred during rebalance pre-retirement. rather, if you're rebalancing from long to mid, then don't count it as income. it's only income when you turn it into cash
+                 * don't sell tax-deferred during rebalance pre-retirement. rather, if you're rebalancing from long to
+                 * mid, then don't count it as income. it's only income when you turn it into cash
                  *
                  * you probably need to adjust your fudge factor in the RNG tests that fail in the model mating
                  *

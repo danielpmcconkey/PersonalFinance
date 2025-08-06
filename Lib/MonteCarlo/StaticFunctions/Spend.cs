@@ -19,8 +19,11 @@ public static class Spend
         for (var i = 0; i < nMonths; i++)
         {
             var futureDate = currentDate.PlusMonths(i);
-            cashNeeded += CalculateMonthlyFunSpend(simParams, person, futureDate) +
-                          CalculateMonthlyRequiredSpend(simParams, person, futureDate, accounts);
+            var fun = CalculateMonthlyFunSpend(simParams, person, futureDate);
+            var required = CalculateMonthlyRequiredSpend(simParams, person, futureDate, accounts);
+            var totalThisMonth = fun + required;
+            cashNeeded += totalThisMonth;
+                          
         }
         return cashNeeded;
     }
