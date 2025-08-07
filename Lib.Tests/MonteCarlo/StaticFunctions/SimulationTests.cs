@@ -909,4 +909,49 @@ public class SimulationTests
         Assert.Equal(expectedFun, recordedFun);
         
     }
+
+    [Theory]
+    [InlineData(0.05, 517)]
+    [InlineData(0.1, 1034)]
+    [InlineData(0.15, 1551)]
+    [InlineData(0.2, 2068)]
+    [InlineData(0.25, 2585)]
+    [InlineData(0.3, 3102)]
+    [InlineData(0.35, 3619)]
+    [InlineData(0.4, 4136)]
+    [InlineData(0.45, 4653)]
+    [InlineData(0.5, 5170)]
+    [InlineData(0.55, 5687)]
+    [InlineData(0.6, 6204)]
+    [InlineData(0.65, 6721)]
+    [InlineData(0.7, 7238)]
+    [InlineData(0.75, 7755)]
+    [InlineData(0.8, 8272)]
+    [InlineData(0.85, 8789)]
+    [InlineData(0.9, 9306)]
+    [InlineData(0.95, 9823)]
+    [InlineData(1, 10340)]
+    internal void CalculatePercentileValue_CalculatesCorrectly(decimal percentile, decimal expectedValue)
+    {
+        // Arrange
+        List<decimal> values = [];
+        
+        // create an out-of-order array. first do all the odd numbers, then all the even
+        for (var i = 1; i <= 100m; i += 2)
+        {
+            values.Add(Math.Round(i * 103.4m, 2));
+        }
+        for (var i = 100; i > 0m; i -= 2)
+        {
+            values.Add(Math.Round(i * 103.4m, 2));
+        }
+
+        var sequence = values.ToArray();
+        
+        // Act
+        var result = Simulation.CalculatePercentileValue(sequence, percentile);
+        
+        // Assert
+        Assert.Equal(expectedValue, result);
+    }
 }

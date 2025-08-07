@@ -24,7 +24,7 @@ public class LifeSimulator
     /// <summary>
     /// our month-over-month net worth measurements 
     /// </summary>
-    private List<NetWorthMeasurement> _measurements;
+    private List<SimSnapshot> _snapshots;
 
     /// <summary>
     /// this houses all of our simulation data: history and current state
@@ -33,10 +33,15 @@ public class LifeSimulator
 
     private ReconciliationLedger _reconciliationLedger = new();
     private bool _isReconcilingTime = false;
+    
+    /// <summary>
+    /// which run within the grander model run this is
+    /// </summary>
+    private int _lifeNum;
 
     public LifeSimulator(
         Logger logger, McModel simParams, PgPerson person, List<McInvestmentAccount> investmentAccounts,
-        List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices)
+        List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices, int lifeNum)
     {
 #if PERFORMANCEPROFILING
         // set up a run that will last
@@ -69,6 +74,8 @@ public class LifeSimulator
         var ledger = new TaxLedger();
         ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
         ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
+        
+        _lifeNum = lifeNum;
 
         // set up the sim struct to be used to keep track of all the sim data
         _sim = new MonteCarloSim()
@@ -84,14 +91,17 @@ public class LifeSimulator
             LifetimeSpend = new LifetimeSpend(),
         };
         _hypotheticalPrices = hypotheticalPrices;
-        _measurements = [];
+        _snapshots = [];
     }
 
-    public List<NetWorthMeasurement> Run()
+    public List<SimSnapshot> Run()
     {
         try
         {
-            _sim.Log.Debug("Beginning this lifetime.");
+            NormalizeDates(_sim.PgPerson, _sim.SimParameters);
+            
+            _sim.Log.Debug($"Beginning lifetime {_lifeNum}.");
+            
             while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
             {
                 SetReconClutch();
@@ -103,9 +113,6 @@ public class LifeSimulator
                  * you are here 
                  *
                  *  
-                 *
-                 * don't sell tax-deferred during rebalance pre-retirement. rather, if you're rebalancing from long to
-                 * mid, then don't count it as income. it's only income when you turn it into cash
                  *
                  * you probably need to adjust your fudge factor in the RNG tests that fail in the model mating
                  *
@@ -153,27 +160,18 @@ public class LifeSimulator
                     RecordFunAndAnxiety();
                 }
 
-                var measurement = Account.CreateNetWorthMeasurement(_sim);
-                if (measurement.NetWorth <= 0 || _sim.PgPerson.IsBankrupt)
-                {
-                    // zero it out to make reporting cleaner
-                    // and don't bother calculating anything further
-                    measurement.TotalAssets = 0;
-                    measurement.TotalLiabilities = 0;
-                    _sim.PgPerson.IsBankrupt = true;
-                }
-
-                _measurements.Add(measurement);
+                CreateMonthEndReport();
+                
                 _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
             }
 
             _sim.Log.Debug("Done with this lifetime.");
-            if (!MonteCarloConfig.DebugMode) return _measurements;
+            if (!MonteCarloConfig.DebugMode) return _snapshots;
             
             _sim.Log.Debug("Writing reconciliation data to spreadsheet");
             _reconciliationLedger.ExportToSpreadsheet();
             _sim.Log.Debug(_sim.Log.FormatHeading("End of simulated lifetime"));
-            return _measurements;
+            return _snapshots;
         }
         catch (Exception e)
         {
@@ -183,6 +181,8 @@ public class LifeSimulator
             throw;
         }
     }
+
+    
 
     #region Private methods
 
@@ -268,6 +268,18 @@ public class LifeSimulator
         _reconciliationLedger.AddFullReconLine(_sim, "Cleaned up accounts");
     }
 
+    private void CreateMonthEndReport()
+    {
+        var snapshot = Simulation.CreateSimSnapshot(_sim);
+        if (snapshot.NetWorth <= 0 || _sim.PgPerson.IsBankrupt)
+        {
+            // zero it out everything to make reporting cleaner
+            snapshot.NetWorth = 0;
+        }
+
+        _snapshots.Add(snapshot);
+    }
+
     private void DeclareBankruptcy()
     {
 #if PERFORMANCEPROFILING
@@ -275,6 +287,10 @@ public class LifeSimulator
         stopwatch.Start();
 #endif 
         _sim.PgPerson.IsBankrupt = true;
+        // zero out everything to make reporting easier
+        List<McInvestmentAccount> emptyInvestAccounts = [];
+        List<McDebtAccount> emptyDebtAccounts = [];
+        _sim.BookOfAccounts = Account.CreateBookOfAccounts(emptyInvestAccounts, emptyDebtAccounts);
         if (MonteCarloConfig.DebugMode)
         {
             _reconciliationLedger.AddFullReconLine(_sim, "Bankruptcy declared");
@@ -337,6 +353,13 @@ public class LifeSimulator
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRmd || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(result.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "RMD requirements met");
+    }
+    
+    private void NormalizeDates(PgPerson simPgPerson, McModel simSimParameters)
+    {
+        var (newPerson, newModel) = Simulation.NormalizeDates(_sim.PgPerson, _sim.SimParameters);
+        _sim.PgPerson = newPerson;
+        _sim.SimParameters = newModel;
     }
 
     private void PayDownLoans()

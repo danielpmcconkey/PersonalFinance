@@ -95,8 +95,8 @@ public class Model
         return new McModel
         {
             Id = Guid.NewGuid(),
-            ParentAId = Guid.NewGuid(),
-            ParentBId = Guid.NewGuid(),
+            ParentAId = Guid.Empty,
+            ParentBId = Guid.Empty,
             PersonId = Guid.NewGuid(),
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = LocalDateTime.FromDateTime(DateTime.Now),

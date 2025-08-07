@@ -8,13 +8,192 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Simulation
 {
+    public static decimal CalculatePercentileValue(decimal[] sequence, decimal percentile)
+    {
+        /*
+         * see https://support.google.com/docs/answer/3094093?hl=en to see how google sheets calculates percentiles
+         *
+         *      The value returned by PERCENTILE is not necessarily a member of data as this function interpolates
+         *      between values to calculate the alpha percentile.
+         *
+         *      The 50th percentile, that is setting percentile to 0.5 is equivalent to using MEDIAN with the same
+         *      dataset.
+         * */
+        
+        var sorted = sequence.OrderBy(x => x).ToArray();
+        int numRows = sorted.Length;
+        int targetRowFloor = (int)Math.Floor(numRows * percentile) - 1; // - 1 for zero-indexing
+        int targetRowCeiling = (int)Math.Ceiling(numRows * percentile) - 1;
+        decimal targetRowDecimal = numRows * percentile;
+        decimal percentAboveFloor = targetRowDecimal - targetRowFloor;
+        var valueAtFloor = sorted[targetRowFloor];
+        var valueAtCeiling = sorted[targetRowCeiling];
+        var differenceBetween = valueAtCeiling - valueAtFloor;
+        var interpolation = valueAtFloor + (differenceBetween * percentAboveFloor);
+        
+        return interpolation;
+    }
+    public static SimSnapshot CreateSimSnapshot(MonteCarloSim sim)
+    {
+        return new SimSnapshot()
+        {
+            AreWeInARecession = sim.RecessionStats.AreWeInARecession,
+            AreWeInExtremeAusterityMeasures = sim.RecessionStats.AreWeInExtremeAusterityMeasures,
+            CurrentDateWithinSim = sim.CurrentDateInSim,
+            IsBankrupt = sim.PgPerson.IsBankrupt,
+            IsRetired = sim.PgPerson.IsRetired,
+            NetWorth = AccountCalculation.CalculateNetWorth(sim.BookOfAccounts),
+            TotalFunPointsSoFar = sim.LifetimeSpend.TotalFunPointsLifetime,
+            TotalSpendSoFar = sim.LifetimeSpend.TotalSpendLifetime,
+            TotalTaxSoFar = sim.TaxLedger.TotalTaxPaidLifetime
+        };
+    }
+
+    // todo: UT SingleModelRunResultStatLineAtTime
+    public static SingleModelRunResultStatLineAtTime CreateSingleModelRunResultStatLineAtTime(LocalDateTime date,
+        decimal[] values)
+    {
+        var percentile10 = CalculatePercentileValue(values, 0.1m);
+        var percentile25 = CalculatePercentileValue(values, 0.25m);
+        var percentile50 = CalculatePercentileValue(values, 0.5m);
+        var percentile75 = CalculatePercentileValue(values, 0.75m);
+        var percentile90 = CalculatePercentileValue(values, 0.9m);
+        return new SingleModelRunResultStatLineAtTime
+        (
+            date,
+            percentile10,
+            percentile25,
+            percentile50,
+            percentile75,
+            percentile90
+        );
+    }
+
+    public static decimal GetLastValueFromSingleModelRunResultBankruptcyRateAtTime(SingleModelRunResultBankruptcyRateAtTime[] statsArray)
+    {
+        if (statsArray.Length == 0) throw new ArgumentException("Stats array cannot be empty");
+
+        // Get the last entry in the time series
+        var lastEntry = statsArray.MaxBy(x => x.Date);
+        if (lastEntry == null) throw new ArgumentException("Last entry cannot be null");
+        return lastEntry.BankruptcyRate;
+    }
+    public static decimal GetLastValueFromSingleModelRunResultsOverTime(SingleModelRunResultStatLineAtTime[] statsArray, int percentile)
+    {
+        if (statsArray.Length == 0) throw new ArgumentException("Stats array cannot be empty");
+
+        // Get the last entry in the time series
+        var lastEntry = statsArray.MaxBy(x => x.Date);
+        
+        var type = typeof(SingleModelRunResult);
+        var properties = type.GetProperties();
+        
+        // Dictionary to map percentile numbers to their corresponding property names in SingleModelRunResultStatLineAtTime
+        var percentileMap = new Dictionary<int, string>
+        {
+            { 10, nameof(SingleModelRunResultStatLineAtTime.Percentile10) },
+            { 25, nameof(SingleModelRunResultStatLineAtTime.Percentile25) },
+            { 50, nameof(SingleModelRunResultStatLineAtTime.Percentile50) },
+            { 75, nameof(SingleModelRunResultStatLineAtTime.Percentile75) },
+            { 90, nameof(SingleModelRunResultStatLineAtTime.Percentile90) }
+        };
+        
+        var percentileValue = (decimal)typeof(SingleModelRunResultStatLineAtTime)
+            .GetProperty(percentileMap[percentile])!
+            .GetValue(lastEntry)!;
+        
+        return percentileValue;
+    }
     
+
+    /// <summary>
+    /// reads the output from running all lives on a single model and creates statistical views
+    /// </summary>
+    public static SingleModelRunResult InterpretSimulationResults(McModel model, List<SimSnapshot>[] allSnapshots)
+    {
+        // todo: unit test InterpretSimulationResults
+        
+        var minDate = MonteCarloConfig.ReconciliationSimStartDate;
+        var maxDate = MonteCarloConfig.ReconciliationSimEndDate;
+        var span = maxDate - minDate;
+        var monthsCount = (span.Years * 12) + span.Months + 1;
+        var netWorthStatsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
+        var totalFunPointsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
+        var totalSpendOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
+        var totalTaxOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
+        var bankruptcyRateOverTime = new SingleModelRunResultBankruptcyRateAtTime[monthsCount]; 
+        var cursorDate = minDate;
+        int i = 0;
+        while (cursorDate <= maxDate)
+        {
+            var allSimSnapshotsThatDay = allSnapshots
+                .SelectMany(x => x)
+                .Where(y => y.CurrentDateWithinSim == cursorDate)
+                .ToList();
+            var allNetWorths = allSimSnapshotsThatDay.Select(x => x.NetWorth).ToArray();
+            var allFun = allSimSnapshotsThatDay.Select(x => x.TotalFunPointsSoFar).ToArray();
+            var allSpend = allSimSnapshotsThatDay.Select(x => x.TotalSpendSoFar).ToArray();
+            var allTax = allSimSnapshotsThatDay.Select(x => x.TotalTaxSoFar).ToArray();
+            var allBankruptcies = allSimSnapshotsThatDay.Select(x => x.IsBankrupt).ToArray();
+            
+            netWorthStatsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allNetWorths);
+            totalFunPointsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allFun);
+            totalSpendOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allSpend);
+            totalTaxOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allTax);
+            var bankruptcyRate = allBankruptcies.Count(x => x) / (decimal)allBankruptcies.Length;
+            bankruptcyRateOverTime[i] = new SingleModelRunResultBankruptcyRateAtTime(cursorDate, bankruptcyRate);
+            
+            cursorDate = cursorDate.PlusMonths(1);
+            i++;
+        }
+
+        var result= new SingleModelRunResult()
+        {
+            ModelId = model.Id,
+            RunDate = LocalDateTime.FromDateTime(DateTime.Now),
+            AllSnapshots = allSnapshots,
+            NetWorthStatsOverTime = netWorthStatsOverTime,
+            TotalFunPointsOverTime = totalFunPointsOverTime,
+            TotalSpendOverTime = totalSpendOverTime,
+            TotalTaxOverTime = totalTaxOverTime,
+            BankruptcyRateOverTime = bankruptcyRateOverTime,
+            NetWorthAtEndOfSim10 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 10),
+            NetWorthAtEndOfSim25 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 25),
+            NetWorthAtEndOfSim50 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 50),
+            NetWorthAtEndOfSim75 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 75),
+            NetWorthAtEndOfSim90 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 90),
+            FunPointsAtEndOfSim10 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalFunPointsOverTime, 10),
+            FunPointsAtEndOfSim25 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalFunPointsOverTime, 25),
+            FunPointsAtEndOfSim50 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalFunPointsOverTime, 50),
+            FunPointsAtEndOfSim75 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalFunPointsOverTime, 75),
+            FunPointsAtEndOfSim90 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalFunPointsOverTime, 90),
+            SpendAtEndOfSim10 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalSpendOverTime, 10),
+            SpendAtEndOfSim25 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalSpendOverTime, 25),
+            SpendAtEndOfSim50 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalSpendOverTime, 50),
+            SpendAtEndOfSim75 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalSpendOverTime, 75),
+            SpendAtEndOfSim90 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalSpendOverTime, 90),
+            TaxAtEndOfSim10 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 10),
+            TaxAtEndOfSim25 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 25),
+            TaxAtEndOfSim50 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 50),
+            TaxAtEndOfSim75 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 75),
+            TaxAtEndOfSim90 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 90),
+            BankruptcyRateAtEndOfSim = GetLastValueFromSingleModelRunResultBankruptcyRateAtTime(bankruptcyRateOverTime)
+        };
+        return result;
+    }
+    public static bool IsReconciliationPeriod(LocalDateTime currentDate)
+    {
+        if (!MonteCarloConfig.DebugMode) return false;
+        if (currentDate < MonteCarloConfig.ReconciliationSimStartDate) return false;
+        if (currentDate > MonteCarloConfig.ReconciliationSimEndDate) return false;
+        return true;
+    }
+
     /// <summary>
     /// reads any LocalDateTime and returns the first of the month closest to it
     /// </summary>
-    private static LocalDateTime NormalizeDate(LocalDateTime providedDate)
+    public static LocalDateTime NormalizeDate(LocalDateTime providedDate)
     {
-        // todo: figure out why we're not using NormalizeDate any more
         var firstOfThisMonth = new LocalDateTime(providedDate.Year, providedDate.Month, 1, 0, 0);
         var firstOfNextMonth = firstOfThisMonth.PlusMonths(1);
         var timeSpanToThisFirst = providedDate - firstOfThisMonth;
@@ -24,12 +203,16 @@ public static class Simulation
             firstOfNextMonth; // t1 is longer than t2, return next first
     }
 
-    public static bool IsReconciliationPeriod(LocalDateTime currentDate)
+    public static (PgPerson person, McModel model) NormalizeDates(PgPerson person, McModel model)
     {
-        if (!MonteCarloConfig.DebugMode) return false;
-        if (currentDate < MonteCarloConfig.ReconciliationSimStartDate) return false;
-        if (currentDate > MonteCarloConfig.ReconciliationSimEndDate) return false;
-        return true;
+        // set up the return tuple
+        (PgPerson newPerson, McModel newModel) result = (Person.CopyPerson(person, true), model);
+        result.newPerson.BirthDate = NormalizeDate(person.BirthDate);
+        result.newModel.RetirementDate = NormalizeDate(model.RetirementDate);
+        result.newModel.SocialSecurityStart = NormalizeDate(model.SocialSecurityStart);
+        result.newModel.SimEndDate = NormalizeDate(model.SimEndDate);
+        result.newModel.SimStartDate = NormalizeDate(model.SimStartDate);
+        return result;
     }
 
     public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
@@ -132,6 +315,7 @@ public static class Simulation
         return results;
     }
     
+    // todo: unit test ProcessPaycheck
     public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
         ProcessPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
             LifetimeSpend spend, McModel simParams, CurrentPrices prices)
@@ -141,6 +325,7 @@ public static class Simulation
         return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
 
+    // todo: unit test ProcessSocialSecurityCheck
     public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
         ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts,
             TaxLedger ledger, LifetimeSpend spend, McModel simParams)
@@ -295,9 +480,4 @@ public static class Simulation
         results.isSuccessful = true;
         return results;
     }
-
-  
-
-
-
 }

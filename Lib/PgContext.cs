@@ -25,6 +25,7 @@ namespace Lib
         public DbSet<PgTaxBucket> PgTaxBuckets { get; set; }
         public DbSet<PgTransaction> PgTransactions { get; set; }
         public DbSet<DataTypes.MonteCarlo.McModel> McModels { get; set; }
+        public DbSet<SingleModelRunResult> SingleModelRunResults { get; set; }
         
         
         

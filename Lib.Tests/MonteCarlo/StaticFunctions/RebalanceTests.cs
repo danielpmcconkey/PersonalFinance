@@ -288,21 +288,105 @@ public class RebalanceTests
     [Fact]
     public void RebalanceLongToMid_DuringRecession_DoesNotRebalance()
     {
-        // todo: this ut RebalanceLongToMid_DuringRecession_DoesNotRebalance sucks
-        
-        // Arrange
+        var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var person = CreateTestPerson();
+        person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        simParams.NumMonthsCashOnHand = 8;
+        simParams.NumMonthsMidBucketOnHand = 6;
+        simParams.DesiredMonthlySpendPostRetirement = 1000;
+        person.RequiredMonthlySpend = 1000;
+        person.RequiredMonthlySpendHealthCare = 500;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var simParams = CreateTestModel();
-        var recessionStats = new RecessionStats { AreWeInARecession = true };
-        var ledger = new TaxLedger();
+        var currentDate = simParams.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement, pre-medicare
+        var recessionStats = new RecessionStats();
+        recessionStats.AreWeInARecession = true;
+        
+        var totalMidAmountNeeded = Spend.CalculateCashNeedForNMonths(simParams, person, accounts,
+            currentDate, simParams.NumMonthsMidBucketOnHand);
+        
+        var desiredTraditional = 5000m; // well under our total mid needed line; trad should move first
+        var desiredRoth = 2000m; // still under our total mid needed line; roth shouldn't get touched
+        var desiredBrokerage = 25000m; // well over our total mid needed line; brokerage should move second 
+        var totalTraditionalSoFar = 0m;
+        var totalRothSoFar = 0m;
+        var totalBrokerageSoFar = 0m;
+        var priceEach = 10m;
+        var quantityEach = 100;
+        while (totalTraditionalSoFar < desiredTraditional)
+        {
+            var position1 = TestDataManager.CreateTestInvestmentPosition(
+                priceEach, quantityEach, McInvestmentPositionType.LONG_TERM);
+            position1.InitialCost = priceEach * quantityEach;
+            position1.Entry = new LocalDateTime(2020, 1, 1, 0, 0);
+            accounts.Traditional401K.Positions.Add(position1);
+            totalTraditionalSoFar += priceEach * quantityEach;
+        }
+        while (totalRothSoFar < desiredRoth)
+        {
+            var position1 = TestDataManager.CreateTestInvestmentPosition(
+                priceEach, quantityEach, McInvestmentPositionType.LONG_TERM);
+            position1.InitialCost = priceEach * quantityEach;
+            position1.Entry = new LocalDateTime(2020, 1, 1, 0, 0);
+            accounts.Roth401K.Positions.Add(position1);
+            totalRothSoFar += priceEach * quantityEach;
+        }
+        while (totalBrokerageSoFar < desiredBrokerage)
+        {
+            var position1 = TestDataManager.CreateTestInvestmentPosition(
+                priceEach, quantityEach, McInvestmentPositionType.LONG_TERM);
+            position1.InitialCost = priceEach * quantityEach * 0.5m; // $500 profit
+            position1.Entry = new LocalDateTime(2020, 1, 1, 0, 0);
+            accounts.Brokerage.Positions.Add(position1);
+            totalBrokerageSoFar += priceEach * quantityEach;
+        }
+        
+        var expectedTradMidBalance = 0m;
+        var expectedTradLongBalance = desiredTraditional;
+        var expectedRothMidBalance = 0m;
+        var expectedRothLongBalance = desiredRoth;
+        var expectedBrokerageMidBalance = 0m;
+        var expectedBrokerageLongBalance = desiredBrokerage;
+        var expectedIraDistributions = 0m;
+        var expectedCapitalGains = 0m;
+        
 
         // Act
         var result = Rebalance.RebalanceLongToMid(
-            _baseDate, accounts, recessionStats, new CurrentPrices(), simParams, ledger, CreateTestPerson());
+            currentDate, accounts, recessionStats, new CurrentPrices(), simParams, new TaxLedger(), person);
+
+        var actualTradMidBalance = result.newBookOfAccounts.Traditional401K.Positions
+            .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
+            .Sum(x => x.CurrentValue);
+        var actualTradLongBalance = result.newBookOfAccounts.Traditional401K.Positions
+            .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
+            .Sum(x => x.CurrentValue);
+        var actualRothMidBalance = result.newBookOfAccounts.Roth401K.Positions
+            .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
+            .Sum(x => x.CurrentValue);
+        var actualRothLongBalance = result.newBookOfAccounts.Roth401K.Positions
+            .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
+            .Sum(x => x.CurrentValue);
+        var actualBrokerageMidBalance = result.newBookOfAccounts.Brokerage.Positions
+            .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
+            .Sum(x => x.CurrentValue);
+        var actualBrokerageLongBalance = result.newBookOfAccounts.Brokerage.Positions
+            .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
+            .Sum(x => x.CurrentValue);
+        var actualIraDistributions = result.newLedger.TaxableIraDistribution
+            .Sum(x => x.amount);;
+        var actualCapitalGains = result.newLedger.LongTermCapitalGains
+            .Sum(x => x.amount);;
 
         // Assert
-        Assert.Equal(accounts, result.newBookOfAccounts); // Should not modify accounts during recession
-        Assert.Equal(ledger, result.newLedger); // Should not modify ledger during recession
+        Assert.Equal(Math.Round(expectedTradMidBalance, 2),  Math.Round(actualTradMidBalance, 2));
+        Assert.Equal(Math.Round(expectedTradLongBalance, 2),  Math.Round(actualTradLongBalance, 2));
+        Assert.Equal(Math.Round(expectedRothMidBalance, 2),  Math.Round(actualRothMidBalance, 2));
+        Assert.Equal(Math.Round(expectedRothLongBalance, 2),  Math.Round(actualRothLongBalance, 2));
+        Assert.Equal(Math.Round(expectedBrokerageMidBalance, 2),  Math.Round(actualBrokerageMidBalance, 2));
+        Assert.Equal(Math.Round(expectedBrokerageLongBalance, 2),  Math.Round(actualBrokerageLongBalance, 2));
+        Assert.Equal(Math.Round(expectedIraDistributions, 2),  Math.Round(actualIraDistributions, 2));
+        Assert.Equal(Math.Round(expectedCapitalGains, 2),  Math.Round(actualCapitalGains, 2));
     }
 
     [Fact]

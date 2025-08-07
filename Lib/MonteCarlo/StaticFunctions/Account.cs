@@ -44,51 +44,7 @@ public static class Account
         return book;
     }
 
-    // todo: change the way net worth measurement works
-    public static NetWorthMeasurement CreateNetWorthMeasurement(MonteCarloSim sim)
-    {
-        if (sim.BookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
-        if (sim.BookOfAccounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
-
-        var totalAssets = 0M;
-        var totalLiabilities = 0M;
-        foreach (var account in sim.BookOfAccounts.InvestmentAccounts)
-        {
-            if (account.AccountType is not McInvestmentAccountType.PRIMARY_RESIDENCE)
-            {
-                totalAssets += account.Positions.Where(x => x.IsOpen).Sum(x =>
-                {
-                    McInvestmentPosition ip = (McInvestmentPosition)x;
-                    return ip.CurrentValue;
-                });
-            }
-        }
-
-        foreach (var account in sim.BookOfAccounts.DebtAccounts)
-        {
-            totalLiabilities += account.Positions.Where(x => x.IsOpen).Sum(x =>
-            {
-                McDebtPosition dp = (McDebtPosition)x;
-                return dp.CurrentBalance;
-            });
-        }
-
-        NetWorthMeasurement measurement = new NetWorthMeasurement()
-        {
-            MeasuredDate = sim.CurrentDateInSim,
-            TotalAssets = totalAssets,
-            TotalLiabilities = totalLiabilities,
-            TotalCash = AccountCalculation.CalculateCashBalance(sim.BookOfAccounts),
-            TotalMidTermInvestments = AccountCalculation.CalculateMidBucketTotalBalance(sim.BookOfAccounts),
-            TotalLongTermInvestments = AccountCalculation.CalculateLongBucketTotalBalance(sim.BookOfAccounts),
-            TotalSpend = sim.LifetimeSpend.TotalSpendLifetime,
-            TotalTax = sim.TaxLedger.TotalTaxPaidLifetime,
-        };
-
-        
-
-        return measurement;
-    }
+    
   
     public static McInvestmentAccountType GetAccountType(int taxBucket, int accountGroup)
     {

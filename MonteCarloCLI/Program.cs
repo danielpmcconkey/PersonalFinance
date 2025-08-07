@@ -41,12 +41,14 @@ else
     
     logger.Info("Pulling model champion from the database");
     McModel champion =DataStage.GetModelChampion(dan);
+    // todo: remove the save model function here once we've pulled one from the DB
+    SimulationTrigger.SaveModelToDb(champion);
     // over-write the start and end dates from the DB champion model to use what's in the app config
     champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
     champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
     
     logger.Info(logger.FormatBarSeparator('*'));
-    logger.Info(logger.FormatHeading("Beginning Monte Carlo run"));
+    logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
     logger.Info(logger.FormatBarSeparator('*'));
     var results = SimulationTrigger.RunSingleModelSession(
         logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
