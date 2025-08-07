@@ -22,7 +22,7 @@ public static class Simulation
         
         var sorted = sequence.OrderBy(x => x).ToArray();
         int numRows = sorted.Length;
-        int targetRowFloor = (int)Math.Floor(numRows * percentile) - 1; // - 1 for zero-indexing
+        int targetRowFloor = (int)(Math.Max(0, Math.Floor(numRows * percentile) - 1)); // - 1 for zero-indexing
         int targetRowCeiling = (int)Math.Ceiling(numRows * percentile) - 1;
         decimal targetRowDecimal = numRows * percentile;
         decimal percentAboveFloor = targetRowDecimal - targetRowFloor;
@@ -113,8 +113,8 @@ public static class Simulation
     {
         // todo: unit test InterpretSimulationResults
         
-        var minDate = MonteCarloConfig.ReconciliationSimStartDate;
-        var maxDate = MonteCarloConfig.ReconciliationSimEndDate;
+        var minDate = MonteCarloConfig.MonteCarloSimStartDate;
+        var maxDate = MonteCarloConfig.MonteCarloSimEndDate;
         var span = maxDate - minDate;
         var monthsCount = (span.Years * 12) + span.Months + 1;
         var netWorthStatsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];

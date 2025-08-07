@@ -954,4 +954,61 @@ public class SimulationTests
         // Assert
         Assert.Equal(expectedValue, result);
     }
+    
+    [Fact]
+    internal void InterpretSimulationResults_WithBankruptcies_HasANonZeroBankruptcyRate()
+    {
+        // Assemble
+        var simParams = TestDataManager.CreateTestModel();
+        var person = TestDataManager.CreateTestPerson();
+        person.BirthDate = new LocalDateTime(1975, 3, 1, 0, 0);
+        // set model params to guarantee bankruptcy
+        simParams.RetirementDate = person.BirthDate.PlusYears(55);
+        simParams.DesiredMonthlySpendPostRetirement = 10000m;
+        simParams.DesiredMonthlySpendPreRetirement = 10000m;
+        simParams.SocialSecurityStart = person.BirthDate.PlusYears(63);
+        simParams.RecessionCheckLookBackMonths = 10;
+        simParams.NumMonthsCashOnHand = 1;
+        simParams.NumMonthsMidBucketOnHand = 1;
+        simParams.AusterityRatio = 1m;
+        simParams.ExtremeAusterityNetWorthTrigger = 100000000m;
+        simParams.ExtremeAusterityRatio = 1m;
+        simParams.NumMonthsPriorToRetirementToBeginRebalance = 1;
+        simParams.Percent401KTraditional = 0.05m;
+        simParams.RebalanceFrequency = RebalanceFrequency.YEARLY;
+        simParams.RecessionRecoveryPointModifier = 1m;
+        person.RequiredMonthlySpend = 10000m;
+        person.RequiredMonthlySpendHealthCare = 1000m;
+        person.Annual401KContribution = 0m;
+        person.AnnualSalary = 100000m;
+        person.AnnualBonus = 0;
+        person.AnnualHsaContribution = 0;
+        person.AnnualHsaEmployerContribution = 0;
+        person.Annual401KMatchPercent = 0;
+        person.MonthlyFullSocialSecurityBenefit = 2500m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, 100000m, _testDate).accounts;
+        
+        
+        var hypotheticalPrices = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
+        
+        // gotta set up the logger for this
+        string logDir = ConfigManager.ReadStringSetting("LogDir");
+        string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
+        string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
+        var logger = new Logger(
+            Lib.StaticConfig.MonteCarloConfig.LogLevel,
+            logFilePath
+        );
+        
+        // Act
+        var allLivesRuns = SimulationTrigger.ExecuteSingleModelAllLives(
+            logger, simParams, person, accounts.InvestmentAccounts, accounts.DebtAccounts, hypotheticalPrices);
+        
+        var results = Simulation.InterpretSimulationResults(simParams, allLivesRuns);
+        var bankruptcyRate = results.BankruptcyRateAtEndOfSim;
+        
+        // Assert
+        Assert.True(bankruptcyRate > 0);
+    }
 }
