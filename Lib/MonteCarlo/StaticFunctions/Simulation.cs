@@ -181,6 +181,10 @@ public static class Simulation
         {
             ModelId = model.Id,
             RunDate = LocalDateTime.FromDateTime(DateTime.Now),
+            MajorVersion = ModelConstants.MajorVersion,
+            MinorVersion = ModelConstants.MinorVersion,
+            PatchVersion = ModelConstants.PatchVersion,
+            NumLivesRun = MonteCarloConfig.NumLivesPerModelRun,
             AllSnapshots = allSnapshots,
             NetWorthStatsOverTime = netWorthStatsOverTime,
             TotalFunPointsOverTime = totalFunPointsOverTime,

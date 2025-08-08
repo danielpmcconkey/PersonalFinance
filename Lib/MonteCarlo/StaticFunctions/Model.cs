@@ -99,8 +99,8 @@ public class Model
             ParentBId = Guid.Empty,
             PersonId = Guid.NewGuid(),
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
-            SimStartDate = LocalDateTime.FromDateTime(DateTime.Now),
-            SimEndDate = LocalDateTime.FromDateTime(DateTime.Now.AddYears(30)),
+            SimStartDate = MonteCarloConfig.MonteCarloSimStartDate,
+            SimEndDate = MonteCarloConfig.MonteCarloSimEndDate,
             RetirementDate = Model.GetUnSeededRandomDate(
                 birthdate
                     .PlusYears(ModelConstants.RetirementAgeMin.years)

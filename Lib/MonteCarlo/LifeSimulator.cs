@@ -157,8 +157,9 @@ public class LifeSimulator
                     }
                     
                     InvestExcessCash();
-                    RecordFunAndAnxiety();
                 }
+                
+                RecordFunAndAnxiety();
 
                 CreateMonthEndReport();
                 

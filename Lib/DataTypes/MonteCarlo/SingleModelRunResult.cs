@@ -10,10 +10,23 @@ namespace Lib.DataTypes.MonteCarlo;
 public record SingleModelRunResult
 {
     [Column("modelid")]
-    public required Guid ModelId { get; set; }
+    public required Guid ModelId { get; init; }
     
     [Column("rundate")]
-    public required LocalDateTime RunDate {  get; set; }
+    public required LocalDateTime RunDate {  get; init; }
+    
+    [Column("majorversion")]
+    public required int MajorVersion { get; init; }
+
+    [Column("minorversion")]
+    public required int MinorVersion { get; init; }
+
+    [Column("patchversion")]
+    public required int PatchVersion { get; init; }
+    
+    [Column("numlivesrun")]
+    public required int NumLivesRun { get; init; }
+
     
     [NotMapped]
     public required SingleModelRunResultStatLineAtTime[] NetWorthStatsOverTime { get; init; }
@@ -43,8 +56,6 @@ public record SingleModelRunResult
     [Column("networthatendofsim90", TypeName = "numeric(18,4)")]
     public required decimal NetWorthAtEndOfSim90 { get; init; }
     
-    
-    
     [Column("funpointsatendofsim10", TypeName = "numeric(18,4)")]
     public required decimal FunPointsAtEndOfSim10 { get; init; }
     
@@ -59,7 +70,6 @@ public record SingleModelRunResult
     
     [Column("funpointsatendofsim90", TypeName = "numeric(18,4)")]
     public required decimal FunPointsAtEndOfSim90 { get; init; }
-    
     
     [Column("spendatendofsim10", TypeName = "numeric(18,4)")]
     public required decimal SpendAtEndOfSim10 { get; init; }
@@ -76,7 +86,6 @@ public record SingleModelRunResult
     [Column("spendatendofsim90", TypeName = "numeric(18,4)")]
     public required decimal SpendAtEndOfSim90 { get; init; }
     
-    
     [Column("taxatendofsim10", TypeName = "numeric(18,4)")]
     public required decimal TaxAtEndOfSim10 { get; init; }
     [Column("taxatendofsim25", TypeName = "numeric(18,4)")]
@@ -87,8 +96,6 @@ public record SingleModelRunResult
     public required decimal TaxAtEndOfSim75 { get; init; }
     [Column("taxatendofsim90", TypeName = "numeric(18,4)")]
     public required decimal TaxAtEndOfSim90 { get; init; }
-    
-    
     
     [Column("bankruptcyrateatendofsim", TypeName = "numeric(6,4)")]
     public required decimal BankruptcyRateAtEndOfSim { get; init; }
