@@ -8,31 +8,61 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Simulation
 {
+    
+    /// <summary>
+    /// This method was written by Claude. Matches Google Sheets' PERCENTILE (inclusive / PERCENTILE.INC) behavior
+    /// </summary>
+    /// <param name="sequence">values to compute percentile from (unsorted)</param>
+    /// <param name="percentile">k in [0, 1], e.g. 0.10m, 0.25m, 0.50m, 0.75m, 0.90m</param>
+    /// <returns></returns>
+    /// <exception cref="ArgumentNullException"></exception>
+    /// <exception cref="ArgumentException"></exception>
+    /// <exception cref="ArgumentOutOfRangeException"></exception>
     public static decimal CalculatePercentileValue(decimal[] sequence, decimal percentile)
     {
         /*
-         * see https://support.google.com/docs/answer/3094093?hl=en to see how google sheets calculates percentiles
-         *
-         *      The value returned by PERCENTILE is not necessarily a member of data as this function interpolates
-         *      between values to calculate the alpha percentile.
-         *
-         *      The 50th percentile, that is setting percentile to 0.5 is equivalent to using MEDIAN with the same
-         *      dataset.
-         * */
-        
-        var sorted = sequence.OrderBy(x => x).ToArray();
-        int numRows = sorted.Length;
-        int targetRowFloor = (int)(Math.Max(0, Math.Floor(numRows * percentile) - 1)); // - 1 for zero-indexing
-        int targetRowCeiling = (int)Math.Ceiling(numRows * percentile) - 1;
-        decimal targetRowDecimal = numRows * percentile;
-        decimal percentAboveFloor = targetRowDecimal - targetRowFloor;
-        var valueAtFloor = sorted[targetRowFloor];
-        var valueAtCeiling = sorted[targetRowCeiling];
-        var differenceBetween = valueAtCeiling - valueAtFloor;
-        var interpolation = valueAtFloor + (differenceBetween * percentAboveFloor);
-        
-        return interpolation;
+         * Claude prompt:
+         * #file:Simulation.cs
+         * help me re-write the `CalculatePercentileValue`. It currently does not produce the same result that Google
+         * Sheets' PERCENTILE function does and I would like it to. The current `CalculatePercentileValue` function
+         * produces very similar results, but not quite
+         */
+        if (sequence is null) throw new ArgumentNullException(nameof(sequence));
+        if (sequence.Length == 0) throw new ArgumentException("Sequence must contain at least one value.", nameof(sequence));
+        if (percentile < 0m || percentile > 1m)
+            throw new ArgumentOutOfRangeException(nameof(percentile), "Percentile must be between 0 and 1 inclusive.");
+
+        if (sequence.Length == 1) return sequence[0];
+
+        // Work on a sorted copy (ascending)
+        var values = new decimal[sequence.Length];
+        Array.Copy(sequence, values, sequence.Length);
+        Array.Sort(values);
+
+        // Endpoints
+        if (percentile == 0m) return values[0];
+        if (percentile == 1m) return values[^1];
+
+        // r = 1 + (n - 1) * k  (1-based rank)
+        int n = values.Length;
+        decimal r = 1m + (n - 1) * percentile;
+
+        decimal floorR = decimal.Floor(r);
+        int i = (int)floorR;              // 1-based lower index
+        decimal frac = r - floorR;        // fractional part in [0, 1)
+
+        int lower = i - 1;                // 0-based
+        int upper = Math.Min(lower + 1, n - 1);
+
+        // If rank is an integer, return that exact value
+        if (frac == 0m) return values[lower];
+
+        // Linear interpolation between the two surrounding ranks
+        decimal a = values[lower];
+        decimal b = values[upper];
+        return a + (b - a) * frac;
     }
+    
     public static SimSnapshot CreateSimSnapshot(MonteCarloSim sim)
     {
         return new SimSnapshot()
