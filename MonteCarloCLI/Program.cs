@@ -30,10 +30,12 @@ decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
 if (MonteCarloConfig.ModelTrainingMode)
 {
     logger.Info("Running in model training mode");
-    throw new NotImplementedException();
+    
     logger.Info(logger.FormatBarSeparator('*'));
     logger.Info(logger.FormatHeading("Beginning Monte Carlo training session"));
     logger.Info(logger.FormatBarSeparator('*'));
+    SimulationTrigger.RunModelTrainingSession(
+        logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
 }
 else
 {
@@ -41,8 +43,7 @@ else
     
     logger.Info("Pulling model champion from the database");
     McModel champion =DataStage.GetModelChampion(dan);
-    // todo: remove the save model function here once we've pulled one from the DB
-    SimulationTrigger.SaveModelToDb(champion);
+    
     // over-write the start and end dates from the DB champion model to use what's in the app config
     champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
     champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;

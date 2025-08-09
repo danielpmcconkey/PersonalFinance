@@ -108,7 +108,7 @@ public static class Investment
     /// <summary>
     /// Initially, we pull positions from the database using real-world pries. But that causes issues with rounding and
     /// such every time we accrue interest. Too many little positions and rounding adds up over time. So, with this
-    /// function, we set all postions to the decimal-term, mid-term, or short-term costs and recalculate the quantity
+    /// function, we set all postions to the long-term, mid-term, or short-term costs and recalculate the quantity
     /// accordingly, such that the value of the position is the same, but it's now in simpler terms  
     /// </summary>
     public static BookOfAccounts NormalizeInvestmentPositions(BookOfAccounts bookOfAccounts, CurrentPrices prices)

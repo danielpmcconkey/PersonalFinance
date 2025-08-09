@@ -1,4 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
+using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
 
@@ -41,6 +42,37 @@ public static class AccountCalculation
     public static decimal CalculateShortBucketTotalBalance(BookOfAccounts accounts)
     {
         return CalculateTotalBalanceByBucketType(accounts, McInvestmentPositionType.SHORT_TERM);
+    }
+
+    public static decimal CalculateTotalBalanceByMultipleFactors(
+        BookOfAccounts accounts, McInvestmentAccountType[]? accountTypes = null,
+        McInvestmentPositionType[]? positionTypes = null,
+        LocalDateTime? minDateExclusive = null, LocalDateTime? maxDateInclusive = null)
+    {
+        return accounts.InvestmentAccounts
+            .Where(a => accountTypes is null || accountTypes.Contains(a.AccountType))
+            .Sum(x => x.Positions
+                .Where(y => y.IsOpen && 
+                    (positionTypes is null || positionTypes.Contains(y.InvestmentPositionType)) &&
+                    (minDateExclusive is null || y.Entry > minDateExclusive) &&
+                    (maxDateInclusive is null || y.Entry <= maxDateInclusive)
+                )
+                .Sum(y => y.CurrentValue));
+    }
+
+    public static decimal CalculateAverageCostsOfBrokeragePositionsByMultipleFactors(
+        BookOfAccounts accounts, McInvestmentPositionType[]? positionTypes = null,
+        LocalDateTime? minDateExclusive = null, LocalDateTime? maxDateInclusive = null)
+    {
+        return accounts.InvestmentAccounts
+            .Where(a => a.AccountType == McInvestmentAccountType.TAXABLE_BROKERAGE)
+            .Sum(x => x.Positions
+                .Where(y => y.IsOpen && 
+                            (positionTypes is null || positionTypes.Contains(y.InvestmentPositionType)) &&
+                            (minDateExclusive is null || y.Entry > minDateExclusive) &&
+                            (maxDateInclusive is null || y.Entry <= maxDateInclusive)
+                )
+                .Sum(y => y.InitialCost));
     }
 
     public static decimal CalculateNetWorth(BookOfAccounts accounts)

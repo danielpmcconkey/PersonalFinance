@@ -138,35 +138,54 @@ public class SimulationTrigger
         /*
          * pull the current champs from the DB
          */
-        throw new NotImplementedException();
+        
         var startDate = MonteCarloConfig.MonteCarloSimStartDate;
         var endDate = MonteCarloConfig.MonteCarloSimEndDate;
-        McModel[] currentChamps = [
-                // todo: pull model champs from the database
-                            ];
         
+        var allModels = FetchOrCreateModelsForTraining(person);
         
         /*
          * breed and run
          */
-        List<(McModel simParams, SingleModelRunResult result)> results = [];
-        for(int i1 = 0; i1 < currentChamps.Length; i1++)
+        //List<(McModel simParams, SingleModelRunResult result)> results = [];
+        for(int i1 = 0; i1 < allModels.Count; i1++)
         {
-            for (int i2 = 0; i2 < currentChamps.Length; i2++)
+            for (int i2 = 0; i2 < allModels.Count; i2++)
             {
                 logger.Info($"running {i1} bred with {i2}");
-                var offspring = Model.MateModels(currentChamps[i1], currentChamps[i2], person.BirthDate);
+                var offspring = Model.MateModels(allModels[i1], allModels[i2], person.BirthDate);
+                offspring.SimStartDate = startDate;
+                offspring.SimEndDate = endDate;
+                SaveModelToDb(offspring);
                 var allLivesRuns2 = ExecuteSingleModelAllLives(
                     logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
                 var modelResults = Simulation.InterpretSimulationResults(offspring, allLivesRuns2);
-                
-                results.Add((offspring, modelResults));
+                SaveSingleModelRunResultsToDb(modelResults);
+                modelResults = null; // trying to ensure that we clear up the memory
             }
         }
-        
-        /*
-         * write results back to the db
-         */
-        throw new NotImplementedException();
+    }
+
+    public static List<McModel> FetchOrCreateModelsForTraining(PgPerson person)
+    {
+        using var context = new PgContext();
+        var currentChamps = (
+            from m in context.McModels
+            join r in context.SingleModelRunResults on m.Id equals r.ModelId
+            where (r.MajorVersion == ModelConstants.MajorVersion && r.MinorVersion == ModelConstants.MinorVersion)
+            orderby r.FunPointsAtEndOfSim50 descending 
+            select  m).Distinct();
+        var dbCount = currentChamps.Count();
+        const int numChamps = 5; // todo: parameterize numChamps in the app.config
+        var numNew = Math.Max(0, numChamps - dbCount);
+        List<McModel> allModels = currentChamps.ToList();
+        for (int i = 0; i < numNew; i++)
+        {
+            var newModel = Model.CreateRandomModel(person.BirthDate);
+            allModels.Add(newModel);
+            context.McModels.Add(newModel);
+        }
+        context.SaveChanges();
+        return allModels;
     }
 }

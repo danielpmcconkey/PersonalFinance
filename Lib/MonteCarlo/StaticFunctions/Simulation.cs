@@ -143,8 +143,8 @@ public static class Simulation
     {
         // todo: unit test InterpretSimulationResults
         
-        var minDate = MonteCarloConfig.MonteCarloSimStartDate;
         var maxDate = MonteCarloConfig.MonteCarloSimEndDate;
+        var minDate = (MonteCarloConfig.ModelTrainingMode == true)? maxDate : MonteCarloConfig.MonteCarloSimStartDate;
         var span = maxDate - minDate;
         var monthsCount = (span.Years * 12) + span.Months + 1;
         var netWorthStatsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];

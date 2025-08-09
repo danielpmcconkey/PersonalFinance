@@ -10,201 +10,496 @@ namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
 public class AccountCleanupTests
 {
-    private readonly LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 12, 0);
-    private readonly CurrentPrices _testPrices = new();
+    private readonly LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 0, 0);
+    private readonly CurrentPrices _testPrices = TestDataManager.CreateTestCurrentPrices(
+        0.02M, 2.0M, 1.5M, 1.25M);
 
-    private BookOfAccounts CreateTestAccounts()
+    
+
+    private static (LocalDateTime OneYearAgo, BookOfAccounts Accounts) CreateBookForCleanUpTests(
+        int roth401KMidCount, int roth401KLongCount, 
+        int rothIraMidCount, int rothIraLongCount, 
+        int traditional401KMidCount, int traditional401KLongCount, 
+        int traditionalIraMidCount, int traditionalIraLongCount,
+        int hsaMidCount, int hsaLongCount,
+        int brokerageMidLongCount, int brokerageLongLongCount,
+        int brokerageMidShortCount, int brokerageLongShortCount)
     {
-        return new BookOfAccounts
-        {
-            InvestmentAccounts = new List<McInvestmentAccount>(),
-            DebtAccounts = new List<McDebtAccount>()
-        };
+        return TestDataManager.CreateBookForCleanUpTests(roth401KMidCount, roth401KLongCount, rothIraMidCount,
+            rothIraLongCount, traditional401KMidCount, traditional401KLongCount, traditionalIraMidCount,
+            traditionalIraLongCount, hsaMidCount, hsaLongCount, brokerageMidLongCount, brokerageLongLongCount,
+            brokerageMidShortCount, brokerageLongShortCount);
     }
-
+    
+    
+    
     [Fact]
-    public void RemoveClosedPositions_WithMixedPositions_RemovesClosedOnes()
+    public void RemoveClosedDebtPositions_RemovesClosedDebtPositions()
     {
         // Arrange
-        var accounts = CreateTestAccounts();
-        var investmentAccount = new McInvestmentAccount
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Account",
-            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
-            Positions = new List<McInvestmentPosition>
-            {
-                TestDataManager.CreateTestInvestmentPosition(
-                    10, 100, McInvestmentPositionType.LONG_TERM, true),
-                TestDataManager.CreateTestInvestmentPosition(
-                    10, 200, McInvestmentPositionType.LONG_TERM, false),
-                TestDataManager.CreateTestInvestmentPosition(
-                    10, 300, McInvestmentPositionType.LONG_TERM, true),
-            }
-        };
-        accounts.InvestmentAccounts.Add(investmentAccount);
-
-        // Act
-        var result = AccountCleanup.RemoveClosedPositions(accounts);
-
-        // Assert
-        Assert.Single(result.InvestmentAccounts);
-        Assert.Equal(2, result.InvestmentAccounts[0].Positions.Count);
-        Assert.All(result.InvestmentAccounts[0].Positions, position => Assert.True(position.IsOpen));
-    }
-
-    [Fact]
-    public void RemoveClosedPositions_WithNullInvestmentAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var accounts = new BookOfAccounts { InvestmentAccounts = null };
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => AccountCleanup.RemoveClosedPositions(accounts));
-    }
-
-    [Fact]
-    public void RemoveClosedPositions_WithNullDebtAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var accounts = new BookOfAccounts 
-        { 
-            InvestmentAccounts = new List<McInvestmentAccount>(),
-            DebtAccounts = null
-        };
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => AccountCleanup.RemoveClosedPositions(accounts));
-    }
-
-    [Fact]
-    public void SplitLargePositions_WithOversizedPosition_SplitsIntoSmallerOnes()
-    {
-        // Arrange
-        var accounts = CreateTestAccounts();
-        var maxValue = StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue;
-        var largePosition = TestDataManager.CreateTestInvestmentPosition(
-            1m,
-            maxValue * 2, // Ensure position is larger than max,
-            McInvestmentPositionType.LONG_TERM,
-            true);
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 0;
         
-        var investmentAccount = new McInvestmentAccount
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Account",
-            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
-            Positions = new List<McInvestmentPosition> { largePosition }
-        };
-        accounts.InvestmentAccounts.Add(investmentAccount);
-
         // Act
-        var result = AccountCleanup.SplitLargePositions(accounts, _testPrices);
-
-        // Assert
-        Assert.Single(result.InvestmentAccounts);
-        Assert.Equal(2, result.InvestmentAccounts[0].Positions.Count);
-        Assert.All(result.InvestmentAccounts[0].Positions, 
-            position => Assert.True(position.CurrentValue <= maxValue));
-    }
-
-    [Fact]
-    public void SplitLargePositions_WithPrimaryResidence_DoesNotSplit()
-    {
-        // Arrange
-        var accounts = CreateTestAccounts();
-        var maxValue = StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue;
-        var largePosition = TestDataManager.CreateTestInvestmentPosition(
-            1m,
-            maxValue * 2, // Ensure position is larger than max,
-            McInvestmentPositionType.LONG_TERM,
-            true);
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = newAccounts.DebtAccounts
+            .SelectMany(x => x.Positions
+                .Where(y => !y.IsOpen))
+            .Count();
         
-        var investmentAccount = new McInvestmentAccount
-        {
-            Id = Guid.NewGuid(),
-            Name = "Home",
-            AccountType = McInvestmentAccountType.PRIMARY_RESIDENCE,
-            Positions = new List<McInvestmentPosition> { largePosition }
-        };
-        accounts.InvestmentAccounts.Add(investmentAccount);
-
-        // Act
-        var result = AccountCleanup.SplitLargePositions(accounts, _testPrices);
-
         // Assert
-        Assert.Single(result.InvestmentAccounts);
-        Assert.Single(result.InvestmentAccounts[0].Positions);
+        Assert.Equal(expected, actual);
     }
 
     [Fact]
-    public void SplitPositionInHalf_SplitsPositionEvenly()
+    internal void RemoveClosedDebtPositions_KeepsOpenDebtPositions()
     {
         // Arrange
-        var originalPosition = new McInvestmentPosition
-        {
-            Id = Guid.NewGuid(),
-            Entry = _testDate,
-            InitialCost = 1000m,
-            InvestmentPositionType = McInvestmentPositionType.LONG_TERM,
-            IsOpen = true,
-            Name = "Test Position",
-            Price = 10m,
-            Quantity = 100m
-        };
-
-        // Act
-        var result = AccountCleanup.SplitPositionInHalf(originalPosition);
-
-        // Assert
-        Assert.Equal(2, result.Count);
-        Assert.Equal(50m, result[0].Quantity);
-        Assert.Equal(50m, result[1].Quantity);
-        Assert.Equal(500m, result[0].InitialCost);
-        Assert.Equal(500m, result[1].InitialCost);
-        Assert.NotEqual(result[0].Id, result[1].Id);
-        Assert.All(result, position =>
-        {
-            Assert.Equal(originalPosition.Entry, position.Entry);
-            Assert.Equal(originalPosition.Price, position.Price);
-            Assert.Equal(originalPosition.InvestmentPositionType, position.InvestmentPositionType);
-            Assert.Equal(originalPosition.IsOpen, position.IsOpen);
-        });
-    }
-
-    [Fact]
-    public void CleanUpAccounts_PerformsCompleteCleanup()
-    {
-        // Arrange
-        var accounts = CreateTestAccounts();
-        var maxValue = StaticConfig.InvestmentConfig.MonteCarloSimMaxPositionValue;
-        var positions = new List<McInvestmentPosition>
-        {
-            TestDataManager.CreateTestInvestmentPosition(
-                1m, maxValue * 2, McInvestmentPositionType.LONG_TERM, true),
-            TestDataManager.CreateTestInvestmentPosition(
-                1m, 100m, McInvestmentPositionType.LONG_TERM, false),
-        };
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = accounts.DebtAccounts
+            .SelectMany(x => x.Positions
+                .Where(y => y.IsOpen))
+            .Count();
         
-        var investmentAccount = new McInvestmentAccount
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Account",
-            AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
-            Positions = positions
-        };
-        accounts.InvestmentAccounts.Add(investmentAccount);
-
         // Act
-        var result = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
-
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = newAccounts.DebtAccounts
+            .SelectMany(x => x.Positions
+                .Where(y => y.IsOpen))
+            .Count();
+        
         // Assert
-        Assert.Single(result.InvestmentAccounts);
-        Assert.Equal(2, result.InvestmentAccounts[0].Positions.Count);
-        Assert.All(result.InvestmentAccounts[0].Positions, position => 
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_ThereIsOnlyOnePositionForEachType()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        
+        var newBrokerageLongLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TAXABLE_BROKERAGE)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM &&
+                    y.Entry < oneYearAgo)).Count();
+        var newBrokerageMidLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TAXABLE_BROKERAGE)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM &&
+                    y.Entry < oneYearAgo)).Count();
+        var newRoth401KLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.ROTH_401_K)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM))
+                .Count();
+        var newRoth401KMidPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.ROTH_401_K)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM))
+                .Count();
+        var newRothIraLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.ROTH_IRA)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM))
+                .Count();
+        var newRothIraMidPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.ROTH_IRA)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM))
+                .Count();
+        var newTradIraLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TRADITIONAL_IRA)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM))
+                .Count();
+        var newTradIraMidPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TRADITIONAL_IRA)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM))
+                .Count();
+        var newTrad401KLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TRADITIONAL_401_K)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM))
+                .Count();
+        var newTrad401KMidPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TRADITIONAL_401_K)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM))
+                .Count();
+        
+        var newHsaLongPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.HSA)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM))
+                .Count();
+        var newHsaMidPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.HSA)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM))
+                .Count();
+        // Assert
+        Assert.Equal(1, newBrokerageLongLongPositionsCount);
+        Assert.Equal(1, newBrokerageMidLongPositionsCount);
+        Assert.Equal(0, newRoth401KLongPositionsCount); // these should all "move" to Roth IRA
+        Assert.Equal(0, newRoth401KMidPositionsCount); // these should all "move" to Roth IRA
+        Assert.Equal(1, newRothIraLongPositionsCount);
+        Assert.Equal(1, newRothIraMidPositionsCount);
+        Assert.Equal(1, newTradIraLongPositionsCount); 
+        Assert.Equal(1, newTradIraMidPositionsCount);
+        Assert.Equal(0, newTrad401KLongPositionsCount); // these should all "move" to Trad IRA
+        Assert.Equal(0, newTrad401KMidPositionsCount); // these should all "move" to Trad IRA
+        Assert.Equal(0, newHsaLongPositionsCount); // these should all "move" to Roth IRA
+        Assert.Equal(0, newHsaMidPositionsCount); // these should all "move" to Roth IRA
+    }
+    
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_ShortlyHeldBrokeragePositionCountIsTheSame()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var newBrokerageMidShortPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TAXABLE_BROKERAGE)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.MID_TERM &&
+                    y.Entry >= oneYearAgo)).Count();
+        var newBrokerageLongShortPositionsCount =
+            newAccounts.InvestmentAccounts.Where(x => x.AccountType == McInvestmentAccountType.TAXABLE_BROKERAGE)
+                .SelectMany(x => x.Positions.Where(y =>
+                    y.IsOpen &&
+                    y.InvestmentPositionType == McInvestmentPositionType.LONG_TERM &&
+                    y.Entry >= oneYearAgo)).Count();
+        
+        // Assert
+        Assert.Equal(13, newBrokerageMidShortPositionsCount);
+        Assert.Equal(14, newBrokerageLongShortPositionsCount);
+    }
+    
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_NetWorthIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = Math.Round(AccountCalculation.CalculateNetWorth(accounts), 4);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = Math.Round(AccountCalculation.CalculateNetWorth(newAccounts), 4);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalLongTermIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateLongBucketTotalBalance(accounts);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateLongBucketTotalBalance(newAccounts);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalMidTermIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateMidBucketTotalBalance(accounts);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateMidBucketTotalBalance(newAccounts);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalCashIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateCashBalance(accounts);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateCashBalance(newAccounts);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalDebtIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateDebtTotal(accounts);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateDebtTotal(newAccounts);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalPrimaryResidenceIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateTotalBalanceByMultipleFactors(accounts, 
+            [McInvestmentAccountType.PRIMARY_RESIDENCE]);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(newAccounts,
+            [McInvestmentAccountType.PRIMARY_RESIDENCE]);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalTaxableIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateTotalBalanceByMultipleFactors(accounts, 
+            [McInvestmentAccountType.TAXABLE_BROKERAGE]);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(newAccounts,
+            [McInvestmentAccountType.TAXABLE_BROKERAGE]);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalTaxFreeIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var accountTypes = new McInvestmentAccountType[]
         {
-            Assert.True(position.IsOpen);
-            Assert.True(position.CurrentValue <= maxValue);
-        });
+            McInvestmentAccountType.ROTH_401_K,
+            McInvestmentAccountType.ROTH_IRA,
+            McInvestmentAccountType.HSA,
+        };
+        var expected = AccountCalculation.CalculateTotalBalanceByMultipleFactors(accounts, accountTypes);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(newAccounts, accountTypes);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalTaxDeferredIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var accountTypes = new McInvestmentAccountType[]
+        {
+            McInvestmentAccountType.TRADITIONAL_401_K,
+            McInvestmentAccountType.TRADITIONAL_IRA,
+        };
+        var expected = AccountCalculation.CalculateTotalBalanceByMultipleFactors(accounts, accountTypes);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(newAccounts, accountTypes);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalLongHeldIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            accounts, [McInvestmentAccountType.TAXABLE_BROKERAGE], 
+            null, null, oneYearAgo);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            newAccounts, [McInvestmentAccountType.TAXABLE_BROKERAGE],
+            null, null, oneYearAgo);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    internal void CleanUpAccounts_AfterCleanup_TotalShortHeldIsTheSameAsBeforeCleanup()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            accounts, [McInvestmentAccountType.TAXABLE_BROKERAGE], 
+            null, oneYearAgo, null);
+        
+        // Act
+        var newAccounts = AccountCleanup.CleanUpAccounts(_testDate, accounts, _testPrices);
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            newAccounts, [McInvestmentAccountType.TAXABLE_BROKERAGE],
+            null, oneYearAgo, null);
+        
+        // Assert
+        Assert.Equal(expected, actual);
     }
 }

@@ -1,4 +1,4 @@
-﻿//#define PERFORMANCEPROFILING
+﻿#define PERFORMANCEPROFILING
 using System.Text;
 using Lib.DataTypes.MonteCarlo;
 using NodaTime;
@@ -43,16 +43,16 @@ public class LifeSimulator
         Logger logger, McModel simParams, PgPerson person, List<McInvestmentAccount> investmentAccounts,
         List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices, int lifeNum)
     {
-#if PERFORMANCEPROFILING
-        // set up a run that will last
-        simParams.DesiredMonthlySpendPostRetirement = 500m;
-        simParams.DesiredMonthlySpendPreRetirement = 500m;
-        simParams.NumMonthsCashOnHand = 12;
-        simParams.NumMonthsMidBucketOnHand = 12;
-        simParams.AusterityRatio = 0.5m;
-        simParams.ExtremeAusterityRatio = 0.5m;
-        simParams.ExtremeAusterityNetWorthTrigger = 1000000m;
-#endif 
+// #if PERFORMANCEPROFILING
+//         // set up a run that will last
+//         simParams.DesiredMonthlySpendPostRetirement = 500m;
+//         simParams.DesiredMonthlySpendPreRetirement = 500m;
+//         simParams.NumMonthsCashOnHand = 12;
+//         simParams.NumMonthsMidBucketOnHand = 12;
+//         simParams.AusterityRatio = 0.5m;
+//         simParams.ExtremeAusterityRatio = 0.5m;
+//         simParams.ExtremeAusterityNetWorthTrigger = 1000000m;
+// #endif 
         // need to create a book of accounts before you can normalize positions
         var accounts = Account.CreateBookOfAccounts(
             AccountCopy.CopyInvestmentAccounts(investmentAccounts), AccountCopy.CopyDebtAccounts(debtAccounts));
@@ -98,9 +98,11 @@ public class LifeSimulator
     {
         try
         {
+            _sim.Log.Info($"Beginning lifetime {_lifeNum}.");
+            Stopwatch stopwatch = new();
+            stopwatch.Start();
             NormalizeDates(_sim.PgPerson, _sim.SimParameters);
             
-            _sim.Log.Debug($"Beginning lifetime {_lifeNum}.");
             
             while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
             {
@@ -108,21 +110,10 @@ public class LifeSimulator
                     
                      
                 /*
+                 
                  *
-                 *
-                 * you are here 
-                 *
-                 *  
-                 *
-                 * you probably need to adjust your fudge factor in the RNG tests that fail in the model mating
-                 *
-                 *
-                 * you want to implement a "how much have we already earned and had withheld" ability to make the first
+                 * todo: you want to implement a "how much have we already earned and had withheld" ability to make the first
                  * year's tax payment more realistic
-                 *
-                 * you want to figure out the "end of a life sim" output (replacement NetWorthMeasurement) and, once you
-                 * do, you want to re-implement the percentile functions, the model training, etc. 
-                 *
                  * 
                  */
                 
@@ -166,7 +157,8 @@ public class LifeSimulator
                 _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
             }
 
-            _sim.Log.Debug("Done with this lifetime.");
+            stopwatch.Stop();
+            _sim.Log.Info($"Done with lifetime {_lifeNum}. Elapsed seconds: {stopwatch.Elapsed.TotalSeconds}");
             if (!MonteCarloConfig.DebugMode) return _snapshots;
             
             _sim.Log.Debug("Writing reconciliation data to spreadsheet");
@@ -271,6 +263,10 @@ public class LifeSimulator
 
     private void CreateMonthEndReport()
     {
+        if (MonteCarloConfig.ModelTrainingMode && 
+            _sim.CurrentDateInSim < StaticConfig.MonteCarloConfig.MonteCarloSimEndDate) 
+            return; // only log the intra-sim metrics when in single run mode
+        
         var snapshot = Simulation.CreateSimSnapshot(_sim);
         if (snapshot.NetWorth <= 0 || _sim.PgPerson.IsBankrupt)
         {

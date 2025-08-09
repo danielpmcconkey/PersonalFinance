@@ -60,18 +60,19 @@ internal static class TestDataManager
     }
     
     internal static McInvestmentPosition CreateTestInvestmentPosition(
-        decimal price, decimal quantity, McInvestmentPositionType positionType, bool isOpen = true)
+        decimal price, decimal quantity, McInvestmentPositionType positionType, bool isOpen = true, 
+        decimal costModifier = 1, LocalDateTime? entry = null)
     {
         return new McInvestmentPosition
         {
             Id = Guid.NewGuid(),
             IsOpen = isOpen,
             Name = $"Test Position {positionType}",
-            Entry = new LocalDateTime(2023, 1, 1, 0, 0),
+            Entry = entry ?? new LocalDateTime(2023, 1, 1, 0, 0),
             InvestmentPositionType = positionType,
             Price = price,
             Quantity = quantity,
-            InitialCost = price * quantity
+            InitialCost = price * quantity * costModifier,
         };
     }
 
@@ -199,4 +200,92 @@ internal static class TestDataManager
     {
         return new TaxLedger();
     }
+    
+    
+    internal static (LocalDateTime OneYearAgo, BookOfAccounts Accounts) CreateBookForCleanUpTests(
+        int roth401KMidCount, int roth401KLongCount, 
+        int rothIraMidCount, int rothIraLongCount, 
+        int traditional401KMidCount, int traditional401KLongCount, 
+        int traditionalIraMidCount, int traditionalIraLongCount,
+        int hsaMidCount, int hsaLongCount,
+        int brokerageMidLongCount, int brokerageLongLongCount,
+        int brokerageMidShortCount, int brokerageLongShortCount)
+    {
+        var currentDate = new LocalDateTime(2025, 1, 1, 0, 0);
+        var oneYearAgo = currentDate.PlusYears(-1);
+        var fiveYearsAgo = currentDate.PlusYears(-5);
+        const decimal positionValue = 1000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        
+        // create the debt
+        var debtPositions = new List<McDebtPosition>
+        {
+            TestDataManager.CreateTestDebtPosition(true, 0.05m, 100.0m, 1000.0m),
+            TestDataManager.CreateTestDebtPosition(false, 0.05m, 120.0m, 11000.0m),
+            TestDataManager.CreateTestDebtPosition(true, 0.05m, 150.0m, 12000.0m),
+            TestDataManager.CreateTestDebtPosition(false, 0.05m, 170.0m, 10300.0m),
+        };
+        var account = TestDataManager.CreateTestDebtAccount(debtPositions);
+        accounts.DebtAccounts = [account];
+        
+        // add cash
+        accounts = AccountCashManagement.DepositCash(accounts, 13579.0m, currentDate).accounts;
+        
+        // add investments
+        for(int i = 0; i < roth401KMidCount; i++) accounts.Roth401K.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true));
+        for(int i = 0; i < roth401KLongCount; i++) accounts.Roth401K.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true));
+        
+        for(int i = 0; i < rothIraMidCount; i++) accounts.RothIra.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true));
+        for(int i = 0; i < rothIraLongCount; i++) accounts.RothIra.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true));
+
+        for(int i = 0; i < traditional401KMidCount; i++) accounts.Traditional401K.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true));
+        for(int i = 0; i < traditional401KLongCount; i++) accounts.Traditional401K.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true));
+
+        for(int i = 0; i < traditionalIraMidCount; i++) accounts.TraditionalIra.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true));
+        for(int i = 0; i < traditionalIraLongCount; i++) accounts.TraditionalIra.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true));
+
+        for(int i = 0; i < hsaMidCount; i++) accounts.Hsa.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true));
+        for(int i = 0; i < hsaLongCount; i++) accounts.Hsa.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true));
+
+        for(int i = 0; i < brokerageMidLongCount; i++) accounts.Brokerage.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true, 0.5m,
+                fiveYearsAgo));
+        for(int i = 0; i < brokerageLongLongCount; i++) accounts.Brokerage.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true, 0.5m,
+                fiveYearsAgo));
+        
+        for(int i = 0; i < brokerageMidShortCount; i++) accounts.Brokerage.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.MID_TERM, true, 0.5m,
+                currentDate));
+        for(int i = 0; i < brokerageLongShortCount; i++) accounts.Brokerage.Positions.Add(
+            TestDataManager.CreateTestInvestmentPosition(
+                positionValue, 1m, McInvestmentPositionType.LONG_TERM, true, 0.5m,
+                currentDate));
+
+        return (oneYearAgo, accounts);
+    }
+    
 }

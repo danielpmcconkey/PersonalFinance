@@ -774,7 +774,239 @@ public class AccountCalculationTests
         // Assert
         Assert.Equal(200m, result); // Only the open position
     }
+    
+    [Fact]
+    internal void CalculateTotalBalanceByMultipleFactors_WithMinDateOnly_OnlyAddsRecentPositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 27000m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(accounts,
+            [McInvestmentAccountType.TAXABLE_BROKERAGE], null, oneYearAgo);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    internal void CalculateTotalBalanceByMultipleFactors_WithMaxDateOnly_OnlyAddsOlderPositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 23000m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            accounts, [McInvestmentAccountType.TAXABLE_BROKERAGE], null,
+            null, oneYearAgo);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    internal void CalculateTotalBalanceByMultipleFactors_WithMindAndMaxDate_OnlyAddsPositionsInRange()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        accounts.Brokerage.Positions = [];
+        for (var i = 0; i < 10; i++)
+        {
+            accounts.Brokerage.Positions.Add(
+                TestDataManager.CreateTestInvestmentPosition(
+                    1000m, 1m, McInvestmentPositionType.LONG_TERM, true, .5m,
+                    oneYearAgo.PlusYears(-i)));
+        }
 
+        var expected = 5000m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            accounts, [McInvestmentAccountType.TAXABLE_BROKERAGE], null,
+            oneYearAgo.PlusYears(-9), oneYearAgo.PlusYears(-4));
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    internal void CalculateTotalBalanceByMultipleFactors_WithAccountType_OnlyAddsThosePositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 70000m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            accounts, [McInvestmentAccountType.TRADITIONAL_401_K, McInvestmentAccountType.HSA]);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    internal void CalculateTotalBalanceByMultipleFactors_WithPositionType_OnlyAddsThosePositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 17000m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
+            accounts, [McInvestmentAccountType.TRADITIONAL_IRA],
+            [McInvestmentPositionType.MID_TERM]);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    
+    [Fact]
+    internal void CalculateAverageCostsOfBrokeragePositionsByMultipleFactors_WithMinDateOnly_OnlyAddsRecentPositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 27000m * 0.5m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateAverageCostsOfBrokeragePositionsByMultipleFactors(accounts,
+            null, oneYearAgo);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    internal void CalculateAverageCostsOfBrokeragePositionsByMultipleFactors_WithMaxDateOnly_OnlyAddsOlderPositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 23000m * 0.5m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateAverageCostsOfBrokeragePositionsByMultipleFactors(accounts,
+            null, null, oneYearAgo);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    internal void CalculateAverageCostsOfBrokeragePositionsByMultipleFactors_WithMindAndMaxDate_OnlyAddsPositionsInRange()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var costModifier = 0.2m;
+        accounts.Brokerage.Positions = [];
+        for (var i = 0; i < 10; i++)
+        {
+            accounts.Brokerage.Positions.Add(
+                TestDataManager.CreateTestInvestmentPosition(
+                    1000m, 1m, McInvestmentPositionType.LONG_TERM, true, costModifier,
+                    oneYearAgo.PlusYears(-i)));
+        }
+
+        var expected = 5000m * costModifier;
+        
+        // Act
+        var actual = AccountCalculation.CalculateAverageCostsOfBrokeragePositionsByMultipleFactors(
+            accounts, null,
+            oneYearAgo.PlusYears(-9), oneYearAgo.PlusYears(-4));
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    
+    
+    [Fact]
+    internal void CalculateAverageCostsOfBrokeragePositionsByMultipleFactors_WithPositionType_OnlyAddsThosePositions()
+    {
+        // Arrange
+        var (oneYearAgo, accounts) = TestDataManager.CreateBookForCleanUpTests(
+            10,20,
+            13,14,
+            15,16,
+            17,18,
+            19,20,
+            11,12,
+            13,14
+        );
+        var expected = 24000m * 0.5m;
+        
+        // Act
+        var actual = AccountCalculation.CalculateAverageCostsOfBrokeragePositionsByMultipleFactors(
+            accounts, [McInvestmentPositionType.MID_TERM]);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
 
     
 }
