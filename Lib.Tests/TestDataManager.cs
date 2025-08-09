@@ -52,7 +52,7 @@ internal static class TestDataManager
 
             new McInvestmentAccount()
             {
-                Id = Guid.Empty, AccountType = McInvestmentAccountType.HSA, Name = "test taxable brokerage",
+                Id = Guid.Empty, AccountType = McInvestmentAccountType.HSA, Name = "test HSA",
                 Positions = []
             }
         ];

@@ -110,8 +110,13 @@ public class LifeSimulator
                     
                      
                 /*
-                 
                  *
+                 *
+                 * you are here
+                 *
+                 * you just changed the way that positions are stored for memory's sake. you need to change the way
+                 * they're sold now
+                 * 
                  * todo: you want to implement a "how much have we already earned and had withheld" ability to make the first
                  * year's tax payment more realistic
                  * 

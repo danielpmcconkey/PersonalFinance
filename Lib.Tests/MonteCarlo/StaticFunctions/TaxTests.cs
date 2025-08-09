@@ -345,18 +345,18 @@ public class TaxTests
             );
         }
 
-        var howManyPositionsShouldBeSold = Math.Ceiling(expectatedRmdAmount / 1000m);
-        var expectedSale = howManyPositionsShouldBeSold * 1000m;
+        var expectedSale = expectatedRmdAmount;
         
         var prices = new CurrentPrices();
         var currentDate = new LocalDateTime(year, 12, 1, 0, 0);
-        var expectedAmountLeft = 500000m - expectedSale;
+        var expectedAmountLeft = Math.Round(500000m - expectedSale, 2);
 
         int age = year - 1975;
 
         // Act
         var result = Tax.MeetRmdRequirements(ledger, currentDate, accounts, age);
-        var amountLeft = AccountCalculation.CalculateLongBucketTotalBalance(result.newBookOfAccounts);
+        var amountLeft = Math.Round(
+            AccountCalculation.CalculateLongBucketTotalBalance(result.newBookOfAccounts), 2);
         
         // Assert
         Assert.Equal(expectedAmountLeft, amountLeft);

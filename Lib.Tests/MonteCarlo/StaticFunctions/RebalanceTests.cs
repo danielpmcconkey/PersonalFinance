@@ -109,7 +109,7 @@ public class RebalanceTests
             McInvestmentAccountType.TAXABLE_BROKERAGE));
         var taxLedger = new TaxLedger();
 
-        var expectedSale = 100m; // we sell whole positions
+        var expectedSale = 50m;
 
         // Act
         var result = Rebalance.MoveFromInvestmentToCash(
@@ -499,56 +499,44 @@ public class RebalanceTests
          * spend will change, and, therefore, your amount of cash needed isn't linear. So you need to use the same
          * method to calculate that here as you do in the rebalance. Don't worry, we'll UT that on its own separately.
          *
-         * Once you know your cash and mid amounts that you want on-hand, you have to sell enough whole positions until
-         * you at or over that amount. Each sale will log a capital gain and each sale will update your cash balance.
+         * Once you know your cash and mid amounts that you want on-hand, you have to sell enough [strike]whole positions until
+         * you at or over that amount[/strike]. Each sale will log a capital gain and each sale will update your cash balance.
          * When rebalancing to top up your mid bucket, you'll need to sell, then withdraw cash, then buy.
          *
-         * Finally, when you're done reballancing, it'll check if you have excess cash on hand and re-invest that back
-         * into long-term. 
-         * 
          * This checks whether all that works.
          */
         // Arrange
+        
         var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
         var person = CreateTestPerson();
+        person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
+        simParams.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        var currentDate = simParams.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement
+        var fiveYearsAgo = currentDate.PlusYears(-5);
         simParams.NumMonthsCashOnHand = 18;
         simParams.NumMonthsMidBucketOnHand = 24;
         simParams.DesiredMonthlySpendPostRetirement = 1000;
         person.RequiredMonthlySpend = 1000;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        // we'll need 36k in cash and 48k in mid
-        var numPositionsWanted = 100;
-        var priceEach = 10m;
-        var quantityEach = 100;
-        for (int i = 0; i < numPositionsWanted; i++)
-        {
-            var position = TestDataManager.CreateTestInvestmentPosition(
-                priceEach, quantityEach, McInvestmentPositionType.LONG_TERM);
-            position.InitialCost = priceEach * quantityEach * 0.5m; // 100% growth
-            position.Entry = new LocalDateTime(2020, 1, 1, 0, 0);
-            accounts.Brokerage.Positions.Add(position);
-        }
-        var currentDate = _retirementDate.PlusMonths(12); // Within rebalance window, post retirement
-        
-        person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
-        
+        // we'll need 36k in cash and 48k in mid. start out with 100k in long and see where that takes you
+        var longtermTotalWanted = 100000m;
+        var position = TestDataManager.CreateTestInvestmentPosition(
+            1m, longtermTotalWanted, McInvestmentPositionType.LONG_TERM, 
+            true, 0.5m, fiveYearsAgo );
+        accounts.Brokerage.Positions.Add(position);
         
         var cashNeededTotal = Spend.CalculateCashNeedForNMonths(
             simParams, person, accounts, currentDate, simParams.NumMonthsCashOnHand);
         var midNeededTotal = Spend.CalculateCashNeedForNMonths(
             simParams, person, accounts, currentDate, simParams.NumMonthsMidBucketOnHand);
         
-        // we'll be selling in blocks of priceEach * quantityEach
-        var valuePerPosition = priceEach * quantityEach;
-        var numPositionsSoldForCash = Math.Ceiling(cashNeededTotal / valuePerPosition);
-        var expectedCashBalance = numPositionsSoldForCash * valuePerPosition;
         
-        var numPositionsSoldForMid = Math.Ceiling(midNeededTotal / valuePerPosition);
-        var expectedMidBalance = numPositionsSoldForMid * valuePerPosition;
+        var expectedCashBalance = cashNeededTotal;
+        var expectedMidBalance = midNeededTotal;
         
-        var numPositionsSoldFromLong = numPositionsSoldForCash + numPositionsSoldForMid;
-        var expectedLongBalance = (numPositionsWanted - numPositionsSoldFromLong) * valuePerPosition;
-        var expectedCapitalGains = numPositionsSoldFromLong * valuePerPosition * .5m;
+        var amountSoldFromLong = cashNeededTotal + midNeededTotal;
+        var expectedLongBalance = longtermTotalWanted - amountSoldFromLong;
+        var expectedCapitalGains = amountSoldFromLong * .5m;
         
         
 

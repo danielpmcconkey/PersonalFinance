@@ -320,7 +320,8 @@ public static class Rebalance
             
             // pull what we can from the mid-term bucket, then from long bucket
             McInvestmentPositionType[] pullOrder = [ McInvestmentPositionType.MID_TERM, McInvestmentPositionType.LONG_TERM ];
-            var localResults = SellInOrder(cashNeededToBeMoved, pullOrder, bookOfAccounts, taxLedger, currentDate);
+            var localResults = 
+                SellInOrder(cashNeededToBeMoved, pullOrder, bookOfAccounts, taxLedger, currentDate);
             results.newBookOfAccounts = localResults.newAccounts;
             results.newLedger = localResults.newLedger;
             if (MonteCarloConfig.DebugMode)
