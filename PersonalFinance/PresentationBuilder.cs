@@ -4,6 +4,10 @@ using System.Linq;
 using System.Text;
 using Lib;
 using Lib.DataTypes;
+using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo;
+using Lib.MonteCarlo.StaticFunctions;
+using Lib.StaticConfig;
 
 namespace PersonalFinance
 {
@@ -29,6 +33,8 @@ namespace PersonalFinance
         List<string?>? _symbols;
 
         List<AreaChart>? _areaCharts;
+        List<MonteCarloResultsChart> _monteCarloResultsCharts = [];
+        SingleModelRunResult _singleModelRunResult;
 
         private DateTime? _effectiveDate;
 
@@ -38,6 +44,7 @@ namespace PersonalFinance
         {
             PullAndPopulateData();
             DefineAreaCharts();
+            DefineMonteCarloCharts();
 
             PresentationHtml pHtml = new PresentationHtml(this);
             
@@ -73,10 +80,20 @@ namespace PersonalFinance
             {
                 output.AppendLine($"google.charts.setOnLoadCallback({c.JavascriptFunctionName});");
             }
+            foreach (var c in _monteCarloResultsCharts.OrderBy(x => x.Ordinal))
+            {
+                output.AppendLine($"google.charts.setOnLoadCallback({c.JavascriptFunctionName});");
+            }
+            
             // populate the chart data
             foreach (var c in _areaCharts.OrderBy(x => x.Ordinal))
             {
                 output.AppendLine(GetAreaChartFunction(c));
+            }
+
+            foreach (var c in _monteCarloResultsCharts.OrderBy(x => x.Ordinal))
+            {
+                output.AppendLine(GetMonteCarloResultChartFunction(c));
             }
             output.AppendLine("    </script>");
             return output.ToString();
@@ -367,6 +384,13 @@ namespace PersonalFinance
                 output.AppendLine($"    <p class=\"chartDescription\">{c.Description}</p>");
                 output.AppendLine("    </div>");
             }
+            foreach (var c in _monteCarloResultsCharts.OrderBy(x => x.Ordinal))
+            {
+                output.AppendLine("    <div class=\"chartSpace\">");
+                output.AppendLine($"    <div id=\"{c.JavascriptId}\" class=\"gchart\" ></div>");
+                output.AppendLine($"    <p class=\"chartDescription\">{c.Description}</p>");
+                output.AppendLine("    </div>");
+            }
             return output.ToString();
         }
         private void PullAndPopulateData()
@@ -427,7 +451,49 @@ namespace PersonalFinance
             _stockTypeIndividualVsIndex = new List<string?>();
             _stockTypeIndividualVsIndex.Add("Individual stock");
             _stockTypeIndividualVsIndex.Add("Index");
+
+            _singleModelRunResult = PopulateMonteCarloData();
         }
+
+        private SingleModelRunResult PopulateMonteCarloData()
+        {
+            string logDir = ConfigManager.ReadStringSetting("LogDir");
+            string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
+            string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
+            var logger = new Logger(
+                Lib.StaticConfig.MonteCarloConfig.LogLevel,
+                logFilePath
+            );
+
+            logger.Info("Pulling person from the database");
+            var danId = ConfigManager.ReadStringSetting("DanId");
+            Guid danIdGuid = Guid.Parse(danId);
+            var dan = Person.GetPersonById(danIdGuid);
+            var investmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(danIdGuid);
+            var debtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(danIdGuid);
+
+
+            logger.Info("Pulling historical pricing data");
+            decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
+            
+            logger.Info("Running in single model mode");
+    
+            logger.Info("Pulling model champion from the database");
+            McModel champion = DataStage.GetModelChampion(dan);
+    
+            // over-write the start and end dates from the DB champion model to use what's in the app config
+            champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
+            champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
+    
+            logger.Info(logger.FormatBarSeparator('*'));
+            logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
+            logger.Info(logger.FormatBarSeparator('*'));
+            var results = SimulationTrigger.RunSingleModelSession(
+                logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
+            logger.Info("Single model simulation of all lives completed");
+            return results;
+        }
+
         private void DefineAreaCharts()
         {
             Func<Position, string, bool> taxBucketCatMatch = (p, cat) =>
@@ -519,7 +585,88 @@ namespace PersonalFinance
                 Func_CatMatch = symbolCatMatch,
                 Categories = _symbols
             });
-        }        
+            
+            
+            // _areaCharts.Add(new AreaChart()
+            // {
+            //     Ordinal = 40,
+            //     JavascriptId = "mc_fun_points_chart_div",
+            //     JavascriptFunctionName = "drawMcFunPointsChart",
+            //     Title = "Monte Carlo Fun Points",
+            //     VAxisTitle = "Fun Points!",
+            //     Description = "It's the funzies, y'all. Get funzies when you spend money you don't have to spend." +
+            //                   " Lose funzies when you are anxious about your money or when you have to work to " +
+            //                   "support your lifestyle.",
+            //     Func_CatMatch = symbolCatMatch,
+            //     Categories = _symbols
+            // });
+        } 
+        private void DefineMonteCarloCharts()
+        {
+            _monteCarloResultsCharts = new List<MonteCarloResultsChart>();
+            
+            
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 10,
+                JavascriptId = "mc_fun_points_chart_div",
+                JavascriptFunctionName = "drawMcFunPointsChart",
+                Title = "Monte Carlo Fun Points",
+                VAxisTitle = "Fun Points!",
+                Description = "It's the funzies, y'all. Get funzies when you spend money you don't have to spend." +
+                              " Lose funzies when you are anxious about your money or when you have to work to " +
+                              "support your lifestyle.",
+                StatLinesAtTime = _singleModelRunResult.TotalFunPointsOverTime,
+                BankruptcyRatesOverTime = null
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 20,
+                JavascriptId = "mc_net_worth_chart_div",
+                JavascriptFunctionName = "drawMcNetWorthChart",
+                Title = "Monte Carlo Net Worth",
+                VAxisTitle = "Total net worth (USD)",
+                Description = "Measures your projected total net worth over time",
+                StatLinesAtTime = _singleModelRunResult.NetWorthStatsOverTime,
+                BankruptcyRatesOverTime = null
+            });
+            
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 30,
+                JavascriptId = "mc_spend_chart_div",
+                JavascriptFunctionName = "drawMcSpendChart",
+                Title = "Monte Carlo Spend",
+                VAxisTitle = "Total spend (USD)",
+                Description = "Measures your projected total spend over time. Spend includes money you had to " +
+                              "spend, like groceries, mortgages, etc. It also includes any fun spending." +
+                              " It does not include money you spent to buy investment positions.",
+                StatLinesAtTime = _singleModelRunResult.TotalSpendOverTime,
+                BankruptcyRatesOverTime = null
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 40,
+                JavascriptId = "mc_tax_chart_div",
+                JavascriptFunctionName = "drawMcTaxChart",
+                Title = "Monte Carlo Tax",
+                VAxisTitle = "Total tax payment (USD)",
+                Description = "Measures your total lifetime tax payment (starting at $0 at the simulation start date)",
+                StatLinesAtTime = _singleModelRunResult.TotalTaxOverTime,
+                BankruptcyRatesOverTime = null
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 50,
+                JavascriptId = "mc_bankruptcy_chart_div",
+                JavascriptFunctionName = "drawMcBankruptcyChart",
+                Title = "Monte Carlo Bankruptcy Rates",
+                VAxisTitle = "Bankruptcy percentage",
+                Description = "The percentage of simulated lives in bankruptcy at each point in time in the simulator",
+                StatLinesAtTime = null,
+                BankruptcyRatesOverTime = _singleModelRunResult.BankruptcyRateOverTime
+            });
+        } 
         private string GetInvestmentAssestsSummary(decimal totalWealthPositions)
         {
             var wealthGroups = from p in _currentWealthPositions.Where(x => x.AccountGroup != "Home Equity")
@@ -672,6 +819,68 @@ namespace PersonalFinance
             output.AppendLine("                       };");
             output.AppendLine("");
             output.AppendLine($"        var chart = new google.visualization.AreaChart(document.getElementById('{c.JavascriptId}'));");
+            output.AppendLine("        chart.draw(data, options);");
+            output.AppendLine("      }");
+
+
+            return output.ToString();
+        }
+        private string GetMonteCarloResultChartFunction(MonteCarloResultsChart c)
+        {
+            StringBuilder output = new StringBuilder();
+            output.AppendLine($"      function {c.JavascriptFunctionName}() {"{"}");
+            output.AppendLine("        var data = new google.visualization.DataTable();");
+            output.AppendLine("        data.addColumn('string', 'Month');");
+            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '10 percentile');");
+            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '25 percentile');");
+            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '50 percentile');");
+            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '75 percentile');");
+            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '90 percentile');");
+            if(c.BankruptcyRatesOverTime is not null) output.AppendLine($"        data.addColumn('number', 'All');");
+            output.AppendLine("        data.addRows([");
+
+
+
+            // iterate through months and calculate the total wealth by category
+            if (c.StatLinesAtTime is not null)
+            {
+                foreach (var statLine in c.StatLinesAtTime)
+                {
+                    var dateText = statLine.Date.ToDateTimeUnspecified().ToString("MMM-yyyy");
+                    var percentile10 = Math.Round(statLine.Percentile10, 0).ToString();
+                    var percentile25 = Math.Round(statLine.Percentile25, 0).ToString();
+                    var percentile50 = Math.Round(statLine.Percentile50, 0).ToString();
+                    var percentile75 = Math.Round(statLine.Percentile75, 0).ToString();
+                    var percentile90 = Math.Round(statLine.Percentile90, 0).ToString();
+                    output.AppendLine($"          ['{dateText}', {percentile10}, {percentile25}," +
+                                      $" {percentile50}, {percentile75}, {percentile90}],");
+
+                }
+            }
+            if (c.BankruptcyRatesOverTime is not null)
+            {
+                foreach (var statLine in c.BankruptcyRatesOverTime)
+                {
+                    var dateText = statLine.Date.ToDateTimeUnspecified().ToString("MMM-yyyy");
+                    var rate = (100 * Math.Round(statLine.BankruptcyRate, 0)).ToString();
+                    output.AppendLine($"          ['{dateText}', {rate}],");
+
+                }
+            }
+
+            output.AppendLine("        ]);");
+            output.AppendLine("");
+            output.AppendLine($"        var options = {"{"}title:'{c.Title}',");
+            output.AppendLine("                       hAxis:{title: 'Month',  titleTextStyle: {color: '#333'}},");
+            output.AppendLine($"                       vAxis: {"{"}title: '{c.VAxisTitle}', minValue: 0{"}"}, ");
+            output.AppendLine("                       isStacked:false,");
+            output.AppendLine("                       width:1500,");
+            output.AppendLine("                       height:500,");
+            output.AppendLine("                       explorer: { actions: ['dragToZoom', 'rightClickToReset']	},");
+            output.AppendLine("                       focusTarget: 'category'");
+            output.AppendLine("                       };");
+            output.AppendLine("");
+            output.AppendLine($"        var chart = new google.visualization.LineChart(document.getElementById('{c.JavascriptId}'));");
             output.AppendLine("        chart.draw(data, options);");
             output.AppendLine("      }");
 

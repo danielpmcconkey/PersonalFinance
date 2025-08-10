@@ -46,6 +46,10 @@ public static class MonteCarloConfig
     /// be randomly generated 
     /// </summary>
     public static int NumberOfModelsToPull;
+    /// <summary>
+    /// whether to start another training session immediately when one ends
+    /// </summary>
+    public static bool RunTrainingInLoop;
     public static bool ShouldReconcileInterestAccrual;
     public static bool ShouldReconcileTaxCalcs;
     public static bool ShouldReconcileAccountCleanUp;
@@ -82,6 +86,8 @@ public static class MonteCarloConfig
         ReconciliationSimEndDate = ConfigManager.ReadDateSetting("ReconciliationSimEndDate");
         NumberOfModelsToBreed = ConfigManager.ReadIntSetting("NumberOfModelsToBreed");
         NumberOfModelsToPull = ConfigManager.ReadIntSetting("NumberOfModelsToPull");
+        RunTrainingInLoop = ConfigManager.ReadBoolSetting("RunTrainingInLoop");
+        
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
 }

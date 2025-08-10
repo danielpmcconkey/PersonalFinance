@@ -99,8 +99,6 @@ public class LifeSimulator
         try
         {
             _sim.Log.Debug($"Beginning lifetime {_lifeNum}.");
-            //Stopwatch stopwatch = new();
-            //stopwatch.Start();
             NormalizeDates(_sim.PgPerson, _sim.SimParameters);
             
             
@@ -109,18 +107,9 @@ public class LifeSimulator
                 SetReconClutch();
                     
                      
-                /*
-                 *
-                 *
-                 * you are here
-                 *
-                 * you just changed the way that positions are stored for memory's sake. you need to change the way
-                 * they're sold now
-                 * 
-                 * todo: you want to implement a "how much have we already earned and had withheld" ability to make the first
-                 * year's tax payment more realistic
-                 * 
-                 */
+                
+                 // todo: you want to implement a "how much have we already earned and had withheld" ability to make the first
+                 // year's tax payment more realistic
                 
                 if (MonteCarloConfig.DebugMode)
                 {
@@ -162,8 +151,6 @@ public class LifeSimulator
                 _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
             }
 
-            //stopwatch.Stop();
-            //_sim.Log.Info($"Done with lifetime {_lifeNum}. Elapsed seconds: {stopwatch.Elapsed.TotalSeconds}");
             _sim.Log.Debug($"Done with lifetime {_lifeNum}.");
             if (!MonteCarloConfig.DebugMode) return _snapshots;
             

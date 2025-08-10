@@ -14,7 +14,7 @@ public static class DataStage
         
         using var context = new PgContext();
         var champ = context.McModels
-                        .Where(x => x.Id == Guid.Parse("eee991c1-04dc-4fa7-870f-60ddb4840501"))
+                        .Where(x => x.Id == Guid.Parse("148b2aca-826b-4267-9592-ba3ca3bcd2ec"))
                         .FirstOrDefault() ??
                     throw new InvalidDataException();
         return champ;

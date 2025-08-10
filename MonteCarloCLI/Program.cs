@@ -34,12 +34,21 @@ if (MonteCarloConfig.ModelTrainingMode)
     logger.Info(logger.FormatBarSeparator('*'));
     logger.Info(logger.FormatHeading("Beginning Monte Carlo training session"));
     logger.Info(logger.FormatBarSeparator('*'));
-    while(true)
-
+    var keepRunning = true;
+    while(keepRunning)
     {
         SimulationTrigger.RunModelTrainingSession(
         logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
-        logger.Info("Training session completed. Starting another");
+        logger.Info("Training session completed.");
+        if (MonteCarloConfig.RunTrainingInLoop)
+        {
+            logger.Info("Starting another");
+        }
+        else
+        {
+            logger.Info("Not looping.");
+            keepRunning = false;
+        }
     }
 }
 else
