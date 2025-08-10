@@ -929,6 +929,7 @@ public class SimulationTests
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
+        simParams.RetirementDate = person.BirthDate.PlusYears(62);
         var currentDate = person.BirthDate.PlusYears(63);
         var spend = TestDataManager.CreateEmptySpend();
         var recessionStats = new RecessionStats
@@ -955,7 +956,7 @@ public class SimulationTests
         var recordedFunWithoutDebt = newSpendWithoutDebt.TotalFunPointsLifetime;
         var (newSpendWithDebt, messagesWithDebt) = Simulation.RecordFunAndAnxiety(
             simParams, person, currentDate, recessionStats, spend, accountsWithDebt);
-        var recordedFunWithDebt = newSpendWithoutDebt.TotalFunPointsLifetime;
+        var recordedFunWithDebt = newSpendWithDebt.TotalFunPointsLifetime;
         
         // Assert
         Assert.Equal(expectedFunWithoutDebt, recordedFunWithoutDebt);

@@ -1,3 +1,4 @@
+/*
 select 
 	m.id
 	, personid
@@ -50,7 +51,6 @@ group by
 order by max(r.funpointsatendofsim50) desc
 limit 10
 
-/*
 
 "31512df8-5c46-4f05-a216-35fbfe37e308"
 "681160b4-608d-48f4-8f6f-17705f029b09"
@@ -88,5 +88,5 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 2
+and minorversion = 3
 order by r.funpointsatendofsim50 desc
