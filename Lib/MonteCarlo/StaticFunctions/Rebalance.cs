@@ -8,7 +8,7 @@ namespace Lib.MonteCarlo.StaticFunctions;
 public static class Rebalance
 {
     #region Calculation functions
-    // todo: figure out why the UTs for CalculateWhetherItsBucketRebalanceTime were passing before
+    
     public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, McModel simParams)
     {
         // check whether our frequency aligns to the calendar

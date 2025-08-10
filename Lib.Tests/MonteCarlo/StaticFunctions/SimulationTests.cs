@@ -919,33 +919,47 @@ public class SimulationTests
     }
     
     [Fact]
-    internal void RecordFunAndAnxiety_WithDebt_PunishesHarderThanWithoutDebt()
+    internal void RecordFunAndAnxiety_WithDebtDuringRecession_PunishesHarderThanWithoutDebt()
     {
-        throw new NotImplementedException();
         // Assemble
         var simParams = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
-        person.IsBankrupt = true;
+        person.IsBankrupt = false;
         person.IsRetired = true;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        var currentDate = person.BirthDate.PlusYears(66);
+        person.RequiredMonthlySpend = 1300m;
+        person.RequiredMonthlySpendHealthCare = 900m;
+        var currentDate = person.BirthDate.PlusYears(63);
         var spend = TestDataManager.CreateEmptySpend();
         var recessionStats = new RecessionStats
         {
             AreWeInARecession = true,
-            AreWeInExtremeAusterityMeasures = true,
+            AreWeInExtremeAusterityMeasures = false,
         };
-        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var expectedFun = ModelConstants.FunPenaltyBankruptcy;
+        var accountsWithoutDebt = TestDataManager.CreateEmptyBookOfAccounts();
+        var accountsWithDebt = TestDataManager.CreateEmptyBookOfAccounts();
+        var monthlyDebtPayment = 500m;
+        var debtPosition = TestDataManager.CreateTestDebtPosition(
+            true, 0.03m, monthlyDebtPayment, 10001m);
+        accountsWithDebt.DebtAccounts.Add(TestDataManager.CreateTestDebtAccount([debtPosition]));
+        var requiredSpendWithoutDebt = person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare;
+        var requiredSpendWithDebt = requiredSpendWithoutDebt + monthlyDebtPayment;
+        var expectedFunWithoutDebt = ModelConstants.FunBonusRetirement
+            - (requiredSpendWithoutDebt * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend);
+        var expectedFunWithDebt = ModelConstants.FunBonusRetirement 
+            - (requiredSpendWithDebt * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend);
 
         // Act
-        var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
-        var recordedFun = newSpend.TotalFunPointsLifetime;
+        var (newSpendWithoutDebt, messagesWithoutDebt) = Simulation.RecordFunAndAnxiety(
+            simParams, person, currentDate, recessionStats, spend, accountsWithoutDebt);
+        var recordedFunWithoutDebt = newSpendWithoutDebt.TotalFunPointsLifetime;
+        var (newSpendWithDebt, messagesWithDebt) = Simulation.RecordFunAndAnxiety(
+            simParams, person, currentDate, recessionStats, spend, accountsWithDebt);
+        var recordedFunWithDebt = newSpendWithoutDebt.TotalFunPointsLifetime;
         
         // Assert
-        Assert.Equal(expectedFun, recordedFun);
-        
+        Assert.Equal(expectedFunWithoutDebt, recordedFunWithoutDebt);
+        Assert.Equal(expectedFunWithDebt, recordedFunWithDebt);
     }
 
     [Theory]
