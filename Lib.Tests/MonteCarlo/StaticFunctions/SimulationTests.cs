@@ -673,12 +673,13 @@ public class SimulationTests
             AreWeInARecession = false,
             AreWeInExtremeAusterityMeasures = false,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -704,12 +705,13 @@ public class SimulationTests
             AreWeInARecession = false,
             AreWeInExtremeAusterityMeasures = false,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = ModelConstants.FunBonusRetirement;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -734,12 +736,13 @@ public class SimulationTests
             AreWeInARecession = true,
             AreWeInExtremeAusterityMeasures = false,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -766,12 +769,13 @@ public class SimulationTests
             AreWeInARecession = false,
             AreWeInExtremeAusterityMeasures = true,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -797,6 +801,7 @@ public class SimulationTests
             AreWeInARecession = true,
             AreWeInExtremeAusterityMeasures = false,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = 
             ModelConstants.FunBonusRetirement + // you still get retirement freedom
@@ -805,7 +810,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -831,6 +836,7 @@ public class SimulationTests
             AreWeInARecession = false,
             AreWeInExtremeAusterityMeasures = true,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = 
                 ModelConstants.FunBonusRetirement + // you still get retirement freedom
@@ -839,7 +845,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -865,6 +871,7 @@ public class SimulationTests
             AreWeInARecession = true,
             AreWeInExtremeAusterityMeasures = true,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         var expectedFun = 
                 ModelConstants.FunBonusRetirement + // you still get retirement freedom
@@ -874,7 +881,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -898,11 +905,42 @@ public class SimulationTests
             AreWeInARecession = true,
             AreWeInExtremeAusterityMeasures = true,
         };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var expectedFun = ModelConstants.FunPenaltyBankruptcy;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend);
+            simParams, person, currentDate, recessionStats, spend, accounts);
+        var recordedFun = newSpend.TotalFunPointsLifetime;
+        
+        // Assert
+        Assert.Equal(expectedFun, recordedFun);
+        
+    }
+    
+    [Fact]
+    internal void RecordFunAndAnxiety_WithDebt_PunishesHarderThanWithoutDebt()
+    {
+        throw new NotImplementedException();
+        // Assemble
+        var simParams = TestDataManager.CreateTestModel();
+        var person = TestDataManager.CreateTestPerson();
+        person.IsBankrupt = true;
+        person.IsRetired = true;
+        person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
+        var currentDate = person.BirthDate.PlusYears(66);
+        var spend = TestDataManager.CreateEmptySpend();
+        var recessionStats = new RecessionStats
+        {
+            AreWeInARecession = true,
+            AreWeInExtremeAusterityMeasures = true,
+        };
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var expectedFun = ModelConstants.FunPenaltyBankruptcy;
+
+        // Act
+        var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
+            simParams, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert

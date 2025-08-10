@@ -409,7 +409,7 @@ public static class Simulation
     
     public static  (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunAndAnxiety(
         McModel simParams, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats,
-        LifetimeSpend spend)
+        LifetimeSpend spend, BookOfAccounts accounts)
     {
         // set up the return tuple
         (LifetimeSpend spend, List<ReconciliationMessage> messages) results = (
@@ -418,7 +418,7 @@ public static class Simulation
             );
         
         var extraFun = 0.0m;
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpend(simParams, person, currentDate, accounts);
         
         if (person.IsBankrupt) extraFun += ModelConstants.FunPenaltyBankruptcy;
         else

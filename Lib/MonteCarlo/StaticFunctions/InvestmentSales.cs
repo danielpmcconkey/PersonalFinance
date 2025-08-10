@@ -42,12 +42,13 @@ public static class InvestmentSales
         
         // query the positions in exactly the order you want them
         var query = from account in results.accounts.InvestmentAccounts
-                where account.AccountType != McInvestmentAccountType.CASH &&
-                    account.AccountType != McInvestmentAccountType.PRIMARY_RESIDENCE &&
-                    (typeOrder is null || acceptableAccountTypes.Contains(account.AccountType))
-                from position in account.Positions
-                where (
-                    position.IsOpen && 
+            where account.AccountType != McInvestmentAccountType.CASH &&
+                  account.AccountType != McInvestmentAccountType.PRIMARY_RESIDENCE &&
+                  (typeOrder is null || acceptableAccountTypes.Contains(account.AccountType))
+            from position in account.Positions
+            where (
+                    position.IsOpen &&
+                    position.CurrentValue > 0m &&
                     (minDateExclusive is null || position.Entry > minDateExclusive) && 
                     (maxDateInclusive is null || position.Entry <= maxDateInclusive)
                     && (typeOrder is null || acceptablePositionTypes.Contains(position.InvestmentPositionType)))
@@ -337,6 +338,9 @@ public static class InvestmentSales
         results.newLedger = salesResult.ledger;
         results.messages.AddRange(salesResult.messages);
         if (results.amountSold >= amountNeeded) return results;
+        if (Math.Abs(results.amountSold - amountNeeded) < 1m) return results; // call it a wash due to floating point math
+        
+        
         
         // nothing's left to try. not sure how we got here
         throw new InvalidDataException("RMD: Nothing left to try. Not sure how we got here");

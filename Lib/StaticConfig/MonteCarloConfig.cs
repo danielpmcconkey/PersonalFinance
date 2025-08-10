@@ -36,6 +36,16 @@ public static class MonteCarloConfig
     /// </summary>
     public static int MaxLivesPerBatch;
 
+    /// <summary>
+    /// the number of models to pull / create in a training session. Each training session will run
+    /// NumberOfModelsToBreed * NumberOfModelsToBreed number of ExecuteSingleModelAllLives runs
+    /// </summary>
+    public static int NumberOfModelsToBreed;
+    /// <summary>
+    /// How many of the NumberOfModelsToBreed should come from the pool of existing model champions. The remainder will
+    /// be randomly generated 
+    /// </summary>
+    public static int NumberOfModelsToPull;
     public static bool ShouldReconcileInterestAccrual;
     public static bool ShouldReconcileTaxCalcs;
     public static bool ShouldReconcileAccountCleanUp;
@@ -70,6 +80,8 @@ public static class MonteCarloConfig
         ShouldReconcilePricingGrowth = ConfigManager.ReadBoolSetting("ShouldReconcilePricingGrowth");
         ReconciliationSimStartDate = ConfigManager.ReadDateSetting("ReconciliationSimStartDate");
         ReconciliationSimEndDate = ConfigManager.ReadDateSetting("ReconciliationSimEndDate");
+        NumberOfModelsToBreed = ConfigManager.ReadIntSetting("NumberOfModelsToBreed");
+        NumberOfModelsToPull = ConfigManager.ReadIntSetting("NumberOfModelsToPull");
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
 }

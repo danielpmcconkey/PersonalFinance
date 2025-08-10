@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.StaticConfig;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -132,7 +133,7 @@ public class SimulationTrigger
         
         stopwatch.Stop();
         var duration = stopwatch.Elapsed;
-        logger.Debug(logger.FormatTimespanDisplay("Created simulation pricing", duration));
+        logger.Info(logger.FormatTimespanDisplay("Created simulation pricing", duration));
         
         
         /*
@@ -142,6 +143,7 @@ public class SimulationTrigger
         var startDate = MonteCarloConfig.MonteCarloSimStartDate;
         var endDate = MonteCarloConfig.MonteCarloSimEndDate;
         
+        logger.Info(logger.FormatTimespanDisplay("Pulling model champions from DB", duration));
         var allModels = FetchOrCreateModelsForTraining(person);
         
         /*
@@ -168,16 +170,34 @@ public class SimulationTrigger
 
     public static List<McModel> FetchOrCreateModelsForTraining(PgPerson person)
     {
+        var maxFromDb = MonteCarloConfig.NumberOfModelsToPull; 
         using var context = new PgContext();
-        var currentChamps = (
-            from m in context.McModels
-            join r in context.SingleModelRunResults on m.Id equals r.ModelId
-            where (r.MajorVersion == ModelConstants.MajorVersion && r.MinorVersion == ModelConstants.MinorVersion)
-            orderby r.FunPointsAtEndOfSim50 descending 
-            select  m).Distinct();
+
+        var query = " select m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate," +
+                    " retirementdate, socialsecuritystart, austerityratio, extremeausterityratio," +
+                    " extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand," +
+                    " nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance," +
+                    " recessionchecklookbackmonths, recessionrecoverypointmodifier, desiredmonthlyspendpreretirement" +
+                    ", desiredmonthlyspendpostretirement, percent401ktraditional " +
+                    "from personalfinance.singlemodelrunresult r " +
+                    "left join personalfinance.montecarlomodel m on r.modelid = m.id" +
+                    " where m.id is not null " +
+                    $"and majorversion = {ModelConstants.MajorVersion} " +
+                    $" and minorversion = {ModelConstants.MinorVersion} " +
+                    "group by m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate" +
+                    ", retirementdate, socialsecuritystart, austerityratio, extremeausterityratio" +
+                    ", extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand" +
+                    ", nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance" +
+                    ", recessionchecklookbackmonths, recessionrecoverypointmodifier" +
+                    ", desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, percent401ktraditional " +
+                    "order by max(r.funpointsatendofsim50) desc " +
+                    $"limit {maxFromDb}";
+        var currentChamps = context.McModels.FromSqlRaw(query).ToList();
+        
+        
         var dbCount = currentChamps.Count();
-        const int numChamps = 5; // todo: parameterize numChamps in the app.config
-        var numNew = Math.Max(0, numChamps - dbCount);
+        
+        var numNew = Math.Max(0, MonteCarloConfig.NumberOfModelsToBreed - dbCount);
         List<McModel> allModels = currentChamps.ToList();
         for (int i = 0; i < numNew; i++)
         {
