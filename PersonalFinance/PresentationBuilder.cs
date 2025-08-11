@@ -862,7 +862,7 @@ namespace PersonalFinance
                 foreach (var statLine in c.BankruptcyRatesOverTime)
                 {
                     var dateText = statLine.Date.ToDateTimeUnspecified().ToString("MMM-yyyy");
-                    var rate = (100 * Math.Round(statLine.BankruptcyRate, 0)).ToString();
+                    var rate = Math.Round(100 * statLine.BankruptcyRate, 0).ToString();
                     output.AppendLine($"          ['{dateText}', {rate}],");
 
                 }

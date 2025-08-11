@@ -10,7 +10,7 @@ public static class ModelConstants
     /// MinorVersion is your general version increment. If two model runs have differing major and minor numbers then
     /// you should consider them as apples-to-oranges comparisons  
     /// </summary>
-    public static int MinorVersion = 3; // changing fun calcs to favor early retirement
+    public static int MinorVersion = 4; // changing fun calcs to make bankruptcy more painful
     /// <summary>
     /// PatchVersion can be used when a change doesn't affect the LifeSimulator.Run outcome. If two model runs have the
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples
@@ -18,7 +18,7 @@ public static class ModelConstants
     /// </summary>
     public static int PatchVersion = 0;
     
-    public static decimal FunPenaltyBankruptcy = -25000m;
+    public static decimal FunPenaltyBankruptcy = -35000m;
     public static decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
     public static decimal FunPenaltyNotRetiredPercentOfRequiredSpend = 3m;
     public static decimal FunPenaltyRetiredInRecessionPercentOfRequiredSpend = 0.5m;
