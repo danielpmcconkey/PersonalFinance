@@ -50,12 +50,12 @@ public class Model
     
     public static HereditarySource GetHereditarySource()
     {
+        // todo: update UTs on random checks
         var diceRoll = GetUnSeededRandomInt(1, 10);
         return diceRoll switch
         {
-            1 or 2 or 3 or 4 => HereditarySource.ParentA,
-            5 or 6 or 7 or 8 => HereditarySource.ParentB,
-            9 or 10 => HereditarySource.Random,
+            1 or 2 or 3  => HereditarySource.ParentA,
+            4 or 5 or 6 => HereditarySource.ParentB,
             _ => HereditarySource.Random
         };
     }
