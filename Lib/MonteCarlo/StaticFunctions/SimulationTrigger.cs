@@ -184,6 +184,7 @@ public class SimulationTrigger
                     " where m.id is not null " +
                     $"and majorversion = {ModelConstants.MajorVersion} " +
                     $" and minorversion = {ModelConstants.MinorVersion} " +
+                    $"and r.bankruptcyrateatendofsim <= 0.1 " +
                     "group by m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate" +
                     ", retirementdate, socialsecuritystart, austerityratio, extremeausterityratio" +
                     ", extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand" +
