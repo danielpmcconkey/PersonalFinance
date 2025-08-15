@@ -81,10 +81,10 @@ public static class Recession
             var numMonthsOfHistory = currentPrices.LongRangeInvestmentCostHistory.Count;
             // if we don't have 13 months of history, we can't check last
             // year's price and won't know if we need to do any rebalancing yet
-            if (numMonthsOfHistory < simParams.RecessionCheckLookBackMonths) return result; // not enough data yet
+            if (numMonthsOfHistory <= simParams.RecessionCheckLookBackMonths) return result; // not enough data yet
             
             var lookbackPrice = currentPrices.LongRangeInvestmentCostHistory[
-                numMonthsOfHistory - simParams.RecessionCheckLookBackMonths];
+                numMonthsOfHistory - simParams.RecessionCheckLookBackMonths - 1]; // the minus 1 is because the array is zero-indexed
             if (lookbackPrice > currentPrices.CurrentLongTermInvestmentPrice)
             {
                 // prices are down year over year. Set the recovery point
@@ -110,7 +110,6 @@ public static class Recession
     {
         var result = CopyRecessionStats(currentStats);
         
-        // check to see if we're in a recession
         var recessionResults = CalculateAreWeInARecession(
             currentStats, currentPrices, simParams);
         result.AreWeInARecession = recessionResults.areWeInARecession;

@@ -146,25 +146,102 @@ public class RecessionTests
 
     [Fact]
     public void CalculateAreWeInARecession_NotEnoughHistory_ReturnsCurrentState()
+    {
+        // Arrange
+        var currentStats = new RecessionStats();
+        var currentPrices = new CurrentPrices
         {
-            // Arrange
-            var currentStats = new RecessionStats();
-            var currentPrices = new CurrentPrices
-            {
-                LongRangeInvestmentCostHistory = new List<decimal> { 100m, 95m } // Less than required history
+            LongRangeInvestmentCostHistory = new List<decimal> { 100m, 95m } // Less than required history
+        };
+        var simParams = CreateTestModel();
+        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
+        simParams.RecessionRecoveryPointModifier = 1.1m;
+        simParams.RecessionCheckLookBackMonths = 13;
+
+        // Act
+        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+
+        // Assert
+        Assert.False(result.areWeInARecession);
+        Assert.Equal(0m, result.recessionDurationCounter);
+    }
+    
+    [Theory]
+    [InlineData(0, false)]
+    [InlineData(1, false)]
+    [InlineData(2, false)]
+    [InlineData(3, false)]
+    [InlineData(4, false)]
+    [InlineData(5, false)]
+    [InlineData(6, false)]
+    [InlineData(7, false)]
+    [InlineData(8, false)]
+    [InlineData(9, false)]
+    [InlineData(10, false)]
+    [InlineData(11, false)]
+    [InlineData(12, false)]
+    [InlineData(13, true)]
+    [InlineData(14, true)]
+    [InlineData(15, true)]
+    [InlineData(16, true)]
+    [InlineData(17, true)]
+    [InlineData(18, true)]
+    [InlineData(19, true)]
+    [InlineData(20, true)]
+    [InlineData(21, false)]
+    [InlineData(22, false)]
+    [InlineData(23, false)]
+    [InlineData(24, false)]
+    [InlineData(25, false)]
+
+    public void CalculateAreWeInARecession_WithMultipleMonthsHistory_UsesCorrectPricePointInTheArray(int position, bool expected)
+    {
+        // Arrange
+        var currentStats = new RecessionStats();
+        var fullHistory = new decimal[]{
+                93.0m,
+                94.0m,
+                95.0m,
+                96.0m,
+                97.0m,
+                98.0m,
+                99.0m,
+                100.0m,
+                99.0m,
+                98.0m,
+                97.0m,
+                96.0m,
+                95.0m,
+                94.0m,
+                93.0m,
+                92.0m,
+                91.0m,
+                90.0m,
+                89.0m,
+                88.0m,
+                87.0m,
+                96.0m,
+                95.0m,
+                94.0m,
+                93.0m,
+                92.0m
             };
-            var simParams = CreateTestModel();
-            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-            simParams.RecessionRecoveryPointModifier = 1.1m;
-            simParams.RecessionCheckLookBackMonths = 13;
+        var currentPrices = new CurrentPrices
+        {
+            LongRangeInvestmentCostHistory = fullHistory[0..(position + 1)].ToList(),
+            CurrentLongTermInvestmentPrice = fullHistory[position ]
+            
+        };
+        var simParams = CreateTestModel();
+        simParams.RecessionRecoveryPointModifier = 1.0m;
+        simParams.RecessionCheckLookBackMonths = 10;
 
-            // Act
-            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+        // Act
+        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
 
-            // Assert
-            Assert.False(result.areWeInARecession);
-            Assert.Equal(0m, result.recessionDurationCounter);
-        }
+        // Assert
+        Assert.Equal(expected, result.areWeInARecession);
+    }
 
     [Fact]
     public void CalculateAreWeInARecession_PriceDropYearOverYear_EntersRecession()

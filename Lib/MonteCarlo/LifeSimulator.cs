@@ -148,6 +148,9 @@ public class LifeSimulator
 
                 CreateMonthEndReport();
                 
+                if (MonteCarloConfig.DebugMode && _sim.CurrentDateInSim.Month == 12)
+                    ReconcileEoy();
+                
                 _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
             }
 
@@ -171,6 +174,7 @@ public class LifeSimulator
     }
 
     
+
 
     #region Private methods
 
@@ -499,6 +503,13 @@ public class LifeSimulator
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRebalancing || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(results.messages);
         _reconciliationLedger.AddFullReconLine(_sim, "Rebalanced portfolio");
+    }
+    
+    private void ReconcileEoy()
+    {
+        if (!MonteCarloConfig.DebugMode) return;
+        if (!MonteCarloConfig.ShouldReconcileEOYRecap) return;
+        _reconciliationLedger.AddFullReconLine(_sim, "EOY recap");
     }
 
     private void RecordFunAndAnxiety()

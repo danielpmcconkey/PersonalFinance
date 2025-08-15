@@ -26,6 +26,7 @@ left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
 and minorversion = 2
+and r.bankruptcyrateatendofsim <= 0.1
 group by 
 	m.id
 	, personid
@@ -71,6 +72,7 @@ r.modelId
 , r.numlivesrun
 , r.majorversion
 , r.minorversion
+, r.patchversion
 , r.networthatendofsim50
 , round(r.funpointsatendofsim50,2) as funpointsatendofsim50
 , r.spendatendofsim50
@@ -88,5 +90,14 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 3
+and minorversion = 4
+--and patchversion = 2
+and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc
+limit 100
+
+/*
+select * from personalfinance.singlemodelrunresult
+order by rundate desc
+limit 20;
+*/
