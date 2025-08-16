@@ -168,9 +168,9 @@ public class SimulationTrigger
         }
     }
 
-    public static List<McModel> FetchOrCreateModelsForTraining(PgPerson person)
+    public static List<McModel> FetchModelsForTrainingByVersion(PgPerson person, int majorVersion, int minorVersion)
     {
-        var maxFromDb = MonteCarloConfig.NumberOfModelsToPull; 
+        var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
         using var context = new PgContext();
 
         var query = " select m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate," +
@@ -182,8 +182,8 @@ public class SimulationTrigger
                     "from personalfinance.singlemodelrunresult r " +
                     "left join personalfinance.montecarlomodel m on r.modelid = m.id" +
                     " where m.id is not null " +
-                    $"and majorversion = {ModelConstants.MajorVersion} " +
-                    $" and minorversion = {ModelConstants.MinorVersion} " +
+                    $"and majorversion = {majorVersion} " +
+                    $" and minorversion = {minorVersion} " +
                     $"and r.bankruptcyrateatendofsim <= 0.1 " +
                     "group by m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate" +
                     ", retirementdate, socialsecuritystart, austerityratio, extremeausterityratio" +
@@ -193,13 +193,42 @@ public class SimulationTrigger
                     ", desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, percent401ktraditional " +
                     "order by max(r.funpointsatendofsim50) desc " +
                     $"limit {maxFromDb}";
-        var currentChamps = context.McModels.FromSqlRaw(query).ToList();
+        return context.McModels.FromSqlRaw(query).ToList();
+    }
+    public static (int majorVersion, int minorVersion) FetchLatestVersionOfTrainingRuns()
+    {
+        var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
+        using var context = new PgContext();
+
+        var latestResult =
+            context.SingleModelRunResults
+                .OrderByDescending(x => x.MajorVersion)
+                .ThenByDescending(x => x.MinorVersion)
+                .FirstOrDefault();
+        return latestResult is null ? 
+            (ModelConstants.MajorVersion, ModelConstants.MinorVersion) :
+            (latestResult.MajorVersion, latestResult.MinorVersion);
+    }
+
+    public static List<McModel> FetchOrCreateModelsForTraining(PgPerson person)
+    {
         
-        
+        var currentChamps = FetchModelsForTrainingByVersion(
+            person, ModelConstants.MajorVersion, ModelConstants.MinorVersion);
         var dbCount = currentChamps.Count();
+        if (dbCount == 0)
+        {
+            // we might've just changed the version. Try to pull models from the prior version
+            var latestVersion = FetchLatestVersionOfTrainingRuns();
+            currentChamps = FetchModelsForTrainingByVersion(
+                person, latestVersion.majorVersion, latestVersion.minorVersion);
+            dbCount = currentChamps.Count();
+        }
         
+        // now create the new random models
+        using var context = new PgContext();
         var numNew = Math.Max(0, MonteCarloConfig.NumberOfModelsToBreed - dbCount);
-        List<McModel> allModels = currentChamps.ToList();
+        var allModels = currentChamps.ToList();
         for (int i = 0; i < numNew; i++)
         {
             var newModel = Model.CreateRandomModel(person.BirthDate);
