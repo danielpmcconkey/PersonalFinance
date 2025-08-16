@@ -254,7 +254,7 @@ public class RecessionTests
                 LongRangeInvestmentCostHistory = new List<decimal>()
             };
             // Add 13 months of history
-            for (int i = 0; i < 13; i++)
+            for (int i = 0; i < 14; i++)
             {
                 currentPrices.LongRangeInvestmentCostHistory.Add(100m);
             }
@@ -344,7 +344,7 @@ public class RecessionTests
             LongRangeInvestmentCostHistory = new List<decimal>()
         };
         // Add 13 months of history with increasing prices
-        for (int i = 0; i < 13; i++)
+        for (int i = 0; i < 14; i++)
         {
             currentPrices.LongRangeInvestmentCostHistory.Add(90m + i);
         }
@@ -582,6 +582,7 @@ public class RecessionTests
         }
         var currentPrices = CreateTestPrices(80m, history);
         var simParams = CreateTestModel();
+        simParams.RecessionCheckLookBackMonths = 10;
 
         // Act
         var result = Recession.CalculateRecessionStats(
@@ -608,6 +609,7 @@ public class RecessionTests
         }
         var currentPrices = CreateTestPrices(110m, history);
         var simParams = CreateTestModel();
+        simParams.RecessionCheckLookBackMonths = 10;
 
         // Act
         var result = Recession.CalculateRecessionStats(

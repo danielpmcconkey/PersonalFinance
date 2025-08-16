@@ -16,7 +16,7 @@ public static class ModelConstants
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples
     /// comparisons
     /// </summary>
-    public static int PatchVersion = 1; // added ability to pull prior version's models when none of this version are there
+    public static int PatchVersion = 2; // made it less likely to have random hereditary source; fixed some UTs after the bug fix to how recession look-back is calculated
     
     public static decimal FunPenaltyBankruptcy = -35000m;
     public static decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
