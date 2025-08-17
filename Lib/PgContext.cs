@@ -29,33 +29,27 @@ namespace Lib
         
         
         
-        
-        
-        
-        
-        
         // public DbSet<InvestmentAccount> InvestmentAccounts { get; set; }
         // public DbSet<DebtAccount> DebtAccounts { get; set; }
         // public DbSet<InvestmentPosition> InvestmentPositions { get; set; }
         // public DbSet<DebtPosition> DebtPositions { get; set; }
         public DbSet<PgCategory> Categories { get; set; }
 
-        private readonly string _connectionstring;
-        private static NpgsqlDataSource dataSource;
-        private static bool hasDataSourceBeenBuilt = false;
+        private static NpgsqlDataSource? _dataSource;
+        private static bool _hasDataSourceBeenBuilt = false;
 
 
         #endregion
 
         public PgContext()
         {
-            _connectionstring = GetConnectionString();
-            if (hasDataSourceBeenBuilt) return;
+            var connectionString = GetConnectionString();
+            if (_hasDataSourceBeenBuilt) return;
             
-            var dataSourceBuilder = new NpgsqlDataSourceBuilder(_connectionstring);
+            var dataSourceBuilder = new NpgsqlDataSourceBuilder(connectionString);
             dataSourceBuilder.UseNodaTime();
-            dataSource = dataSourceBuilder.Build();
-            hasDataSourceBeenBuilt = true;
+            _dataSource = dataSourceBuilder.Build();
+            _hasDataSourceBeenBuilt = true;
 
         }
 
@@ -72,9 +66,9 @@ namespace Lib
         }
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            
+            if (_dataSource is null) throw new InvalidOperationException("DataSource is null.");
 
-            options.UseNpgsql(dataSource, o => o
+            options.UseNpgsql(_dataSource, o => o
                 .SetPostgresVersion(17, 4)
                 .UseNodaTime()
                     );

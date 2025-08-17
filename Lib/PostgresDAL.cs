@@ -32,7 +32,7 @@ namespace Lib
                 else throw;
             }
         }
-        public static object executeScalar(NpgsqlCommand cmd, int retries = 0)
+        public static object? ExecuteScalar(NpgsqlCommand cmd, int retries = 0)
         {
             try
             {
@@ -44,7 +44,7 @@ namespace Lib
                 {
                     Console.WriteLine($"Exception in execute scalar. Retrying. Total retries so far {++retries}", ex);
                     System.Threading.Thread.Sleep(dbRetrySleepMilliseconds);
-                    return executeScalar(cmd, retries);
+                    return ExecuteScalar(cmd, retries);
                 }
                 else throw;
             }

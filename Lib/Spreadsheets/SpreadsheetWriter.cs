@@ -2,85 +2,74 @@ using DocumentFormat.OpenXml;
 using DocumentFormat.OpenXml.Packaging;
 using DocumentFormat.OpenXml.Spreadsheet;
 using NodaTime;
-using System.Reflection;
 
 namespace Lib.Spreadsheets;
-public class SpreadsheetWriter
+public class SpreadsheetWriter(string filePath, string sheetName, List<SpreadsheetColumn> columns)
 {
-    private string _filePath;
-    private string _sheetName;
-    private List<SpreadsheetColumn> _columns;
-    public SpreadsheetWriter(string filePath, string sheetName, List<SpreadsheetColumn> columns)
-    {
-        _filePath = filePath;
-        _sheetName = sheetName;
-        _columns = columns;
-    }
-
     public void CreateSpreadsheet(IEnumerable<object> data)
     {
-        if (data.Count() > 5000)
+        var enumerable = data.ToList();
+        if (enumerable.Count > 5000)
         {
             // truncate the data set
-            CreateSpreadsheet( data.Take(5000));
+            CreateSpreadsheet( enumerable.Take(5000));
             return;
         }
         
-        using var spreadsheet = SpreadsheetDocument.Create(_filePath, SpreadsheetDocumentType.Workbook);
+        using var spreadsheet = SpreadsheetDocument.Create(filePath, SpreadsheetDocumentType.Workbook);
     
         // Add workbook part
         var workbookPart = spreadsheet.AddWorkbookPart();
         workbookPart.Workbook = new Workbook();
     
-        // Add worksheet part
+        // Add the worksheet part
         var worksheetPart = workbookPart.AddNewPart<WorksheetPart>();
         worksheetPart.Worksheet = new Worksheet(new SheetData());
     
-        // Add sheet to workbook
-        var sheets = spreadsheet.WorkbookPart.Workbook.AppendChild(new Sheets());
+        // Add the sheet to the workbook
+        var sheets = spreadsheet.WorkbookPart?.Workbook.AppendChild(new Sheets());
         var sheet = new Sheet() 
         { 
-            Id = spreadsheet.WorkbookPart.GetIdOfPart(worksheetPart),
+            Id = spreadsheet.WorkbookPart?.GetIdOfPart(worksheetPart),
             SheetId = 1,
-            Name = _sheetName
+            Name = sheetName
         };
-        sheets.AppendChild(sheet);
+        sheets?.AppendChild(sheet);
         
         // get sheet data
         var sheetData = worksheetPart.Worksheet.GetFirstChild<SheetData>();
         
-        // Add header row
+        // Add the header row
         var headerRow = new Row();
-        foreach (var column in _columns.OrderBy(x => x.Ordinal))
+        foreach (var column in columns.OrderBy(x => x.Ordinal))
         {
             headerRow.AppendChild(CreateHeaderCell(column.Header));
         }
-        sheetData.AppendChild(headerRow);
+        sheetData?.AppendChild(headerRow);
         
         // Add data rows
-        foreach (var item in data)
+        foreach (var item in enumerable)
         {
             var dataRow = new Row();
-            foreach (var column in _columns.OrderBy(x => x.Ordinal))
+            foreach (var column in columns.OrderBy(x => x.Ordinal))
             {
                 var propertyValue = GetPropertyValue(item, column.PropertyName);
                 var cell = CreateCellBasedOnType(propertyValue, column.ColumnType);
                 dataRow.AppendChild(cell);
             }
-            sheetData.AppendChild(dataRow);
+            sheetData?.AppendChild(dataRow);
         }
         workbookPart.Workbook.Save();
     }
     
 
-    private object GetPropertyValue(object item, string propertyName)
+    private static object? GetPropertyValue(object item, string propertyName)
     {
         
         var itemType = item.GetType();
         var props = itemType.GetProperties();
-        var property =  itemType.GetProperty(propertyName);//?.GetValue(item);
-        if (property is null) return null;
-        var value = property.GetValue(item);
+        var property =  itemType.GetProperty(propertyName);
+        var value = property?.GetValue(item);
         return value;
     }
     private Cell CreateCellBasedOnType(object? value, SpreadsheetColumnType columnType)
@@ -106,12 +95,12 @@ public class SpreadsheetWriter
             CellValue = new CellValue(text)
         };
     }
-    private Cell CreateCell(string text)
+    private Cell CreateCell(string? text)
     {
         return new Cell 
         { 
             DataType = CellValues.String,
-            CellValue = new CellValue(text)
+            CellValue = new CellValue(text ?? string.Empty)
         };
     }
     private Cell CreateCell(decimal value)

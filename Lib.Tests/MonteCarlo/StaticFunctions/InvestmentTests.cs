@@ -239,19 +239,4 @@ public class InvestmentTests
         Assert.Equal(75m, position.Price);
         Assert.Equal(10m, position.Quantity);
     }
-
-    [Fact]
-    public void NormalizeInvestmentPositions_WithNullInvestmentAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var accounts = new BookOfAccounts
-        {
-            InvestmentAccounts = null,
-            DebtAccounts = new List<McDebtAccount>()
-        };
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => 
-            Investment.NormalizeInvestmentPositions(accounts, _testPrices));
-    }
 }

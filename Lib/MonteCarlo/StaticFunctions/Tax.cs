@@ -77,16 +77,13 @@ public static class Tax
             case McInvestmentAccountType.HSA:
                 // these are completely tax free
                 return (ledger, []);
-                break; 
             case McInvestmentAccountType.TAXABLE_BROKERAGE:
                 // taxed on growth only
                 return RecordLongTermCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost);
-                break;
             case McInvestmentAccountType.TRADITIONAL_401_K:
             case McInvestmentAccountType.TRADITIONAL_IRA:
                 // tax deferred. everything is counted as income
                 return RecordIraDistribution(ledger, saleDate, position.CurrentValue);
-                break;
             case McInvestmentAccountType.PRIMARY_RESIDENCE:
             case McInvestmentAccountType.CASH:
                 // these should not be "sold"

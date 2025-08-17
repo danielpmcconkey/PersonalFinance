@@ -63,9 +63,9 @@ public class ScheduleD
             return;
         }
 
-        const decimal line18 = 0m; // 28% rate gain worksheet
-        const decimal line19 = 0m; // unrecaptured something
-        const bool line20 = true;
+        // const decimal line18 = 0m; // 28% rate gain worksheet
+        // const decimal line19 = 0m; // unrecaptured something
+        // const bool line20 = true;
         _isRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet = true;
         return;
     }

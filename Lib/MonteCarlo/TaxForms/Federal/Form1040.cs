@@ -84,7 +84,7 @@ public class Form1040
         var line27 = 0m; // no EIC
         var line28 = 0m; // no add'l child tax credit
         var line29 = 0m; 
-        var line30 = 0m; 
+        // var line30 = 0m; 
         var line31 = 0m; 
         var line32 = line27 + line28 + line29 + line31;
         var line33TotalPayments = line25FederalWithholding + line26 + line32;
