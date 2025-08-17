@@ -10,9 +10,9 @@ public class Model
 
     
     /// <summary>
-    /// A generic mating function for properties of all types. This is here for DRY compliance
+    /// A generic mating function for properties of all types.
     /// </summary>
-    private static T MateProperty<T>(
+    public static T MateProperty<T>(
         McModel parentA,
         McModel parentB,
         Func<McModel, T> propertySelector,
@@ -28,7 +28,28 @@ public class Model
         };
     }
     /// <summary>
-    /// This is used to generially provide a random value between min and max by detecting whether the property is an
+    /// This is used to generically provide a random value between min and max by detecting whether the property is an
+    /// int or a decimal. Uses the MateProperty function above to increase DRY compliance
+    /// </summary>
+    // private static T MateNumericProperty<T>(
+    //     McModel parentA,
+    //     McModel parentB,
+    //     Func<McModel, T> propertySelector,
+    //     T minValue,
+    //     T maxValue) where T : struct
+    // {
+    //     return MateProperty(
+    //         parentA,
+    //         parentB,
+    //         propertySelector,
+    //         () => typeof(T) == typeof(decimal) 
+    //             ? (T)(object)GetUnSeededRandomDecimal((decimal)(object)minValue, (decimal)(object)maxValue)
+    //             : (T)(object)GetUnSeededRandomInt((int)(object)minValue, (int)(object)maxValue)
+    //     );
+    // }
+    
+    /// <summary>
+    /// This is used to generically provide a random value between min and max by detecting whether the property is an
     /// int or a decimal. Uses the MateProperty function above to increase DRY compliance
     /// </summary>
     private static T MateNumericProperty<T>(
@@ -36,21 +57,84 @@ public class Model
         McModel parentB,
         Func<McModel, T> propertySelector,
         T minValue,
-        T maxValue) where T : struct
+        T maxValue) where T : IComparable<T>
     {
-        return MateProperty(
-            parentA,
-            parentB,
-            propertySelector,
-            () => typeof(T) == typeof(decimal) 
-                ? (T)(object)GetUnSeededRandomDecimal((decimal)(object)minValue, (decimal)(object)maxValue)
-                : (T)(object)GetUnSeededRandomInt((int)(object)minValue, (int)(object)maxValue)
-        );
+        // Normalize bounds if they were provided in reverse order.
+        if (Comparer<T>.Default.Compare(minValue, maxValue) > 0)
+        {
+            (minValue, maxValue) = (maxValue, minValue);
+        }
+
+        T candidate;
+        switch (GetHereditarySource())
+        {
+            case HereditarySource.ParentA:
+                candidate = propertySelector(parentA);
+                break;
+            case HereditarySource.ParentB:
+                candidate = propertySelector(parentB);
+                break;
+            default:
+                candidate = GenerateRandomBetween(minValue, maxValue);
+                break;
+        }
+
+        // Ensure the resulting value always falls within [minValue, maxValue]. This is because we sometimes change the
+        // min and max between training sessions and what was previously allowed might not be anymore.
+        return ClampInclusive(candidate, minValue, maxValue);
     }
+    
+    /// <summary>
+    /// Helper for generating a random value in [minValue, maxValue] for supported types.
+    /// </summary>
+    private static T GenerateRandomBetween<T>(T minValue, T maxValue) where T : IComparable<T>
+    {
+        // Normalize bounds if they were provided in reverse order.
+        if (Comparer<T>.Default.Compare(minValue, maxValue) > 0)
+        {
+            (minValue, maxValue) = (maxValue, minValue);
+        }
+
+        if (typeof(T) == typeof(int))
+        {
+            var result = GetUnSeededRandomInt((int)(object)minValue, (int)(object)maxValue);
+            return (T)(object)result;
+        }
+
+        if (typeof(T) == typeof(decimal))
+        {
+            var result = GetUnSeededRandomDecimal((decimal)(object)minValue, (decimal)(object)maxValue);
+            return (T)(object)result;
+        }
+
+        if (typeof(T).FullName == "NodaTime.LocalDateTime")
+        {
+            var result = GetUnSeededRandomDate((NodaTime.LocalDateTime)(object)minValue, (NodaTime.LocalDateTime)(object)maxValue);
+            return (T)(object)result;
+        }
+
+        throw new NotSupportedException($"Type {typeof(T)} is not supported for random generation in MateNumericProperty.");
+    }
+    /// <summary>
+    ///  Generic inclusive clamp used for ints, decimals, and LocalDateTime (and any IComparable<T>).
+    /// </summary>
+    private static T ClampInclusive<T>(T value, T minValue, T maxValue) where T : IComparable<T>
+    {
+        // Normalize bounds if they were provided in reverse order.
+        if (Comparer<T>.Default.Compare(minValue, maxValue) > 0)
+        {
+            (minValue, maxValue) = (maxValue, minValue);
+        }
+
+        if (Comparer<T>.Default.Compare(value, minValue) < 0) return minValue;
+        if (Comparer<T>.Default.Compare(value, maxValue) > 0) return maxValue;
+        return value;
+    }
+
+
     
     public static HereditarySource GetHereditarySource()
     {
-        // todo: update UTs on random checks
         var diceRoll = GetUnSeededRandomInt(1, 10);
         return diceRoll switch
         {
@@ -274,34 +358,30 @@ public class Model
             ModelConstants.RecessionRecoveryPointModifierMax);
     
     public static LocalDateTime MateRetirementDate(McModel a, McModel b, LocalDateTime birthDate) =>
-        MateProperty(
+        MateNumericProperty(
             a, b,
             model => model.RetirementDate,
-            () =>
-            {
-                var min = birthDate
+            birthDate
                     .PlusYears(ModelConstants.RetirementAgeMin.years)
-                    .PlusMonths(ModelConstants.RetirementAgeMin.months);
-                var max = birthDate
+                    .PlusMonths(ModelConstants.RetirementAgeMin.months),
+            birthDate
                     .PlusYears(ModelConstants.RetirementAgeMax.years)
-                    .PlusMonths(ModelConstants.RetirementAgeMax.months);
-                return GetUnSeededRandomDate(min, max);
-            });
+                    .PlusMonths(ModelConstants.RetirementAgeMax.months)
+            );
+    
     
     public static LocalDateTime MateSocialSecurityStartDate(McModel a, McModel b, LocalDateTime birthDate) =>
-        MateProperty(
+        MateNumericProperty(
             a, b,
             model => model.SocialSecurityStart,
-            () =>
-            {
-                var min = birthDate
-                    .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
-                    .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months);
-                var max = birthDate
-                    .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
-                    .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months);
-                return GetUnSeededRandomDate(min, max);
-            });
+            birthDate
+                .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
+                .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months),
+            birthDate
+                .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
+                .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months)
+            );
+        
 
     #endregion
     

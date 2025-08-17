@@ -321,6 +321,42 @@ public class ModelTests
         // Assert
         Assert.InRange(result, minDate, maxDate);
     }
+    
+
+    [Fact]
+    public void MateProperty_WhenParentsHaveAnOutOfBoundsProperty_ReturnsClampedResult()
+    {
+        // we're gonna loop over this and perform the same test multiple times because the MateProperty acts randomly
+        // whether it's gonna take mom's value, dad's value, or a random value. And we want to ensure that, if mom's or
+        // dad's is out of bounds, then the value gets clamped
+        for (int i = 0; i < 100; i++)
+        {
+            // Arrange
+            var minDate = _birthdate
+                .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
+                .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months);
+            var maxDate = _birthdate
+                .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
+                .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months);
+            var minSpend = ModelConstants.DesiredMonthlySpendPostRetirementMin;
+            var maxSpend = ModelConstants.DesiredMonthlySpendPostRetirementMax;
+            
+            var modelA = Model.CreateRandomModel(_birthdate);
+            var modelB = Model.CreateRandomModel(_birthdate);
+            modelA.SocialSecurityStart = minDate.PlusMonths(-1);
+            modelB.SocialSecurityStart = maxDate.PlusMonths(1);
+            modelA.DesiredMonthlySpendPostRetirement = minSpend - 1;
+            modelB.DesiredMonthlySpendPostRetirement = maxSpend + 1;
+
+            // Act
+            var dateResult = Model.MateSocialSecurityStartDate(modelA, modelB, _birthdate);
+            var spendResult = Model.MateDesiredMonthlySpendPostRetirement(modelA, modelB);
+
+            // Assert
+            Assert.InRange(dateResult, minDate, maxDate);
+            Assert.InRange(spendResult, minSpend, maxSpend);
+        }
+    }
 
     #endregion
 }

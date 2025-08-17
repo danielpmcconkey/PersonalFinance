@@ -90,7 +90,7 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 5
+and minorversion = 6
 --and patchversion = 2
 and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc
