@@ -7,7 +7,7 @@ namespace Lib.DataTypes;
 public record PgCategory()
 {
     [Column("id",  TypeName = "varchar(100)")]
-    public string? Id { get; set; }
+    public required string Id { get; init; }
     
     
     [Column("parent_id", TypeName = "varchar(100)")]

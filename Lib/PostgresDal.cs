@@ -10,12 +10,12 @@ using Lib.DataTypes;
 
 namespace Lib
 {
-    public static class PostgresDAL
+    public static class PostgresDal
     {
         #region CoreFunctions
-        private static int dbMaxRetries = 3;
-        private static int dbRetrySleepMilliseconds = 1000;
-        public static NpgsqlDataReader executeReader(NpgsqlCommand cmd, int retries = 0)
+        private const int DbMaxRetries = 3;
+        private const int DbRetrySleepMilliseconds = 1000;
+        public static NpgsqlDataReader ExecuteReader(NpgsqlCommand cmd, int retries = 0)
         {
             try
             {
@@ -23,11 +23,11 @@ namespace Lib
             }
             catch (Exception ex)
             {
-                if (retries < dbMaxRetries)
+                if (retries < DbMaxRetries)
                 {
                     Console.WriteLine($"Exception in executeReader_async. Retrying. Total retries so far {++retries}", ex);
-                    System.Threading.Thread.Sleep(dbRetrySleepMilliseconds);
-                    return executeReader(cmd, retries);
+                    System.Threading.Thread.Sleep(DbRetrySleepMilliseconds);
+                    return ExecuteReader(cmd, retries);
                 }
                 else throw;
             }
@@ -40,10 +40,10 @@ namespace Lib
             }
             catch (Exception ex)
             {
-                if (retries < dbMaxRetries)
+                if (retries < DbMaxRetries)
                 {
                     Console.WriteLine($"Exception in execute scalar. Retrying. Total retries so far {++retries}", ex);
-                    System.Threading.Thread.Sleep(dbRetrySleepMilliseconds);
+                    System.Threading.Thread.Sleep(DbRetrySleepMilliseconds);
                     return ExecuteScalar(cmd, retries);
                 }
                 else throw;
@@ -61,14 +61,14 @@ namespace Lib
                                    "Timeout=15;Command Timeout=300;";
             return connectionString;
         }
-        public static NpgsqlConnection getConnection()
+        public static NpgsqlConnection GetConnection()
         {
 
             string connectionString = GetConnectionString();
             NpgsqlConnection conn = new NpgsqlConnection(connectionString);
             return conn;
         }
-        public static void openConnection(NpgsqlConnection conn, int retries = 0)
+        public static void OpenConnection(NpgsqlConnection conn, int retries = 0)
         {
             try
             {
@@ -78,7 +78,7 @@ namespace Lib
             {
                 if (ex.SqlState == "53300") // too_many_connections
                 {
-                    if (retries >= dbMaxRetries)
+                    if (retries >= DbMaxRetries)
                     {
                         Console.WriteLine("PostgresException: Too many retries exceeded. Throwing.");
                         throw;
@@ -86,28 +86,28 @@ namespace Lib
                     else
                     {
                         Console.WriteLine("PostgresException: Too many DB connections. Retrying after sleep period");
-                        System.Threading.Thread.Sleep(dbRetrySleepMilliseconds);
-                        openConnection(conn, ++retries);
+                        System.Threading.Thread.Sleep(DbRetrySleepMilliseconds);
+                        OpenConnection(conn, ++retries);
                     }
                 }
                 else
                 {
-                    if (retries < dbMaxRetries)
+                    if (retries < DbMaxRetries)
                     {
                         Console.WriteLine("PostgresException exception on query. Retrying.");
-                        System.Threading.Thread.Sleep(dbRetrySleepMilliseconds);
-                        openConnection(conn, ++retries);
+                        System.Threading.Thread.Sleep(DbRetrySleepMilliseconds);
+                        OpenConnection(conn, ++retries);
                     }
                     else throw;
                 }
             }
             catch (Exception ex)
             {
-                if (retries < dbMaxRetries)
+                if (retries < DbMaxRetries)
                 {
                     Console.WriteLine("Exception in open connection. Retrying.", ex);
-                    System.Threading.Thread.Sleep(dbRetrySleepMilliseconds);
-                    openConnection(conn, ++retries);
+                    System.Threading.Thread.Sleep(DbRetrySleepMilliseconds);
+                    OpenConnection(conn, ++retries);
                 }
                 else throw;
             }
@@ -116,7 +116,7 @@ namespace Lib
 
         #region generic get functions
 
-        public static bool getBool(NpgsqlDataReader reader, string fieldName)
+        public static bool GetBool(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -124,7 +124,7 @@ namespace Lib
             }
             return false;
         }
-        public static DateTime getDateTime(NpgsqlDataReader reader, string fieldName)
+        public static DateTime GetDateTime(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -141,7 +141,7 @@ namespace Lib
             }
             return 0;
         }
-        public static double getDouble(NpgsqlDataReader reader, string fieldName)
+        public static double GetDouble(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -149,7 +149,7 @@ namespace Lib
             }
             return 0;
         }
-        public static Guid getGuid(NpgsqlDataReader reader, string fieldName)
+        public static Guid GetGuid(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -157,18 +157,8 @@ namespace Lib
             }
             return Guid.NewGuid();
         }
-        // why do we have two versions? because somewhere in the sands of time I decided to create a new GUID where
-        // it found null in the DB. I have no idea if something in this code relies on there being a new GUID
-        // created when the DB shows null, so I just created this new version.
-        public static Guid getGuid_nullable(NpgsqlDataReader reader, string fieldName)
-        {
-            if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
-            {
-                return reader.GetGuid(reader.GetOrdinal(fieldName));
-            }
-            return Guid.Empty;
-        }
-        public static int getInt(NpgsqlDataReader reader, string fieldName)
+        
+        public static int GetInt(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -176,7 +166,7 @@ namespace Lib
             }
             return 0;
         }
-        public static short getShort(NpgsqlDataReader reader, string fieldName)
+        public static short GetShort(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -184,7 +174,7 @@ namespace Lib
             }
             return 0;
         }
-        public static long getLong(NpgsqlDataReader reader, string fieldName)
+        public static long GetLong(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -192,7 +182,7 @@ namespace Lib
             }
             return 0;
         }
-        public static decimal? getNullableDecimal(NpgsqlDataReader reader, string fieldName)
+        public static decimal? GetNullableDecimal(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -200,7 +190,7 @@ namespace Lib
             }
             return null;
         }
-        public static double? getNullableDouble(NpgsqlDataReader reader, string fieldName)
+        public static double? GetNullableDouble(NpgsqlDataReader reader, string fieldName)
         {
             if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
             {
@@ -208,22 +198,17 @@ namespace Lib
             }
             return null;
         }
-        public static string getString(NpgsqlDataReader reader, string fieldName)
+        private static string GetString(NpgsqlDataReader reader, string fieldName)
         {
-            if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
-            {
-                return reader.GetString(reader.GetOrdinal(fieldName));
-            }
-            return string.Empty;
+            return !reader.IsDBNull(reader.GetOrdinal(fieldName)) ? 
+                reader.GetString(reader.GetOrdinal(fieldName)) : 
+                string.Empty;
         }
-        public static TimeSpan getTimeSpan(NpgsqlDataReader reader, string fieldName)
+        public static TimeSpan GetTimeSpan(NpgsqlDataReader reader, string fieldName)
         {
-            if (!reader.IsDBNull(reader.GetOrdinal(fieldName)))
-            {
-                long dbVal = reader.GetInt64(reader.GetOrdinal(fieldName));
-                return new TimeSpan(dbVal);
-            }
-            return new TimeSpan(0);
+            if (reader.IsDBNull(reader.GetOrdinal(fieldName))) return new TimeSpan(0);
+            var dbVal = reader.GetInt64(reader.GetOrdinal(fieldName));
+            return new TimeSpan(dbVal);
         }
         #endregion generic get functions
 
@@ -297,23 +282,28 @@ namespace Lib
                 """;
 
 
-            using (NpgsqlConnection conn = PostgresDAL.getConnection())
+            using (NpgsqlConnection conn = PostgresDal.GetConnection())
             {
-                PostgresDAL.openConnection(conn);
+                PostgresDal.OpenConnection(conn);
                 using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
                 {
-                    using (NpgsqlDataReader reader = PostgresDAL.executeReader(cmd))
+                    using (NpgsqlDataReader reader = PostgresDal.ExecuteReader(cmd))
                     {
                         while (reader.Read())
                         {
-                            Position position = new Position();
-                            position.PositionDate = PostgresDAL.getDateTime(reader, "last_date_of_month");
-                            position.MonthAbbreviation = PostgresDAL.getString(reader, "month_abbreviation");
-                            position.AccountId = PostgresDAL.getInt(reader, "account_id");
-                            position.AccountName = PostgresDAL.getString(reader, "account");
-                            position.AccountGroup = PostgresDAL.getString(reader, "account_type");
-                            position.ValueAtTime = PostgresDAL.getDecimal(reader, "current_balance");
-
+                            Position position = new Position()
+                            {
+                                PositionDate = PostgresDal.GetDateTime(reader, "last_date_of_month"),
+                                MonthAbbreviation = PostgresDal.GetString(reader, "month_abbreviation"),
+                                AccountId = PostgresDal.GetInt(reader, "account_id"),
+                                AccountName = PostgresDal.GetString(reader, "account"),
+                                AccountGroup = PostgresDal.GetString(reader, "account_type"),
+                                ValueAtTime = PostgresDal.getDecimal(reader, "current_balance"),
+                                Price = 1m,
+                                TotalQuantity = PostgresDal.getDecimal(reader, "current_balance"),
+                                TaxBucket = "Cash",
+                                Symbol = "Cash"
+                            };
                             positions.Add(position);
                         }
                     }
@@ -391,22 +381,28 @@ namespace Lib
                 """;
 
 
-            using (NpgsqlConnection conn = PostgresDAL.getConnection())
+            using (NpgsqlConnection conn = PostgresDal.GetConnection())
             {
-                PostgresDAL.openConnection(conn);
+                PostgresDal.OpenConnection(conn);
                 using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
                 {
-                    using (NpgsqlDataReader reader = PostgresDAL.executeReader(cmd))
+                    using (NpgsqlDataReader reader = PostgresDal.ExecuteReader(cmd))
                     {
                         while (reader.Read())
                         {
-                            Position position = new Position();
-                            position.PositionDate = PostgresDAL.getDateTime(reader, "last_date_of_month");
-                            position.MonthAbbreviation = PostgresDAL.getString(reader, "month_abbreviation");
-                            position.AccountId = PostgresDAL.getInt(reader, "account_id");
-                            position.AccountName = PostgresDAL.getString(reader, "account");
-                            position.AccountGroup = PostgresDAL.getString(reader, "account_type");
-                            position.ValueAtTime = PostgresDAL.getDecimal(reader, "current_balance");
+                            Position position = new Position()
+                            {
+                                PositionDate = PostgresDal.GetDateTime(reader, "last_date_of_month"),
+                                MonthAbbreviation = PostgresDal.GetString(reader, "month_abbreviation"),
+                                AccountId = PostgresDal.GetInt(reader, "account_id"),
+                                AccountName = PostgresDal.GetString(reader, "account"),
+                                AccountGroup = PostgresDal.GetString(reader, "account_type"),
+                                ValueAtTime = PostgresDal.getDecimal(reader, "current_balance"),
+                                TaxBucket = "Debt",
+                                Symbol = "Debt",
+                                Price = 1m,
+                                TotalQuantity = PostgresDal.getDecimal(reader, "current_balance")
+                            };
 
                             positions.Add(position);
                         }
@@ -543,26 +539,28 @@ namespace Lib
                 """;
 
 
-            using (NpgsqlConnection conn = PostgresDAL.getConnection())
+            using (NpgsqlConnection conn = PostgresDal.GetConnection())
             {
-                PostgresDAL.openConnection(conn);
+                PostgresDal.OpenConnection(conn);
                 using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue(":from", from);
                     cmd.Parameters.AddWithValue(":to", to);
-                    using (NpgsqlDataReader reader = PostgresDAL.executeReader(cmd))
+                    using (NpgsqlDataReader reader = PostgresDal.ExecuteReader(cmd))
                     {
                         while (reader.Read())
                         {
-                            BudgetPosition position = new BudgetPosition();
-                            position.PositionDate = PostgresDAL.getDateTime(reader, "last_date_of_month");
-                            position.MonthAbbreviation = PostgresDAL.getString(reader, "month_abbreviation");
-                            position.CategoryId = PostgresDAL.getString(reader, "category_id");
-                            position.CategoryName = PostgresDAL.getString(reader, "display_name");
-                            position.ParentCategoryId = PostgresDAL.getString(reader, "category_parent");
-                            position.SumTotal = PostgresDAL.getDecimal(reader, "sum");
-                            position.Ordinal = PostgresDAL.getInt(reader, "cat_sort_order");
-                            position.ShowInReport = PostgresDAL.getBool(reader, "show_in_report");
+                            BudgetPosition position = new BudgetPosition()
+                            {
+                                PositionDate = PostgresDal.GetDateTime(reader, "last_date_of_month"),
+                                MonthAbbreviation = PostgresDal.GetString(reader, "month_abbreviation"),
+                                CategoryId = PostgresDal.GetString(reader, "category_id"),
+                                CategoryName = PostgresDal.GetString(reader, "display_name"),
+                                ParentCategoryId = PostgresDal.GetString(reader, "category_parent"),
+                                SumTotal = PostgresDal.getDecimal(reader, "sum"),
+                                Ordinal = PostgresDal.GetInt(reader, "cat_sort_order"),
+                                ShowInReport = PostgresDal.GetBool(reader, "show_in_report"),
+                            };
                             positions.Add(position);
                         }
                     }
@@ -681,35 +679,37 @@ namespace Lib
                 """;
 
 
-            using (NpgsqlConnection conn = PostgresDAL.getConnection())
+            using (NpgsqlConnection conn = PostgresDal.GetConnection())
             {
-                PostgresDAL.openConnection(conn);
+                PostgresDal.OpenConnection(conn);
                 using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
                 {
-                    using (NpgsqlDataReader reader = PostgresDAL.executeReader(cmd))
+                    using (NpgsqlDataReader reader = PostgresDal.ExecuteReader(cmd))
                     {
                         while (reader.Read())
                         {
-                            Position position = new Position();
-                            position.PositionDate = PostgresDAL.getDateTime(reader, "last_date_of_month");
-                            position.MonthAbbreviation = PostgresDAL.getString(reader, "month_abbreviation");
-                            position.AccountId = PostgresDAL.getInt(reader, "account_id");
-                            position.AccountName = PostgresDAL.getString(reader, "account");
-                            position.AccountGroup = PostgresDAL.getString(reader, "account_group");
-                            position.TaxBucket = PostgresDAL.getString(reader, "tax_bucket");
-                            position.Symbol = PostgresDAL.getString(reader, "symbol");
-                            position.FundType1 = PostgresDAL.getString(reader, "fundtype1");
-                            position.FundType2 = PostgresDAL.getString(reader, "fundtype2");
-                            position.FundType3 = PostgresDAL.getString(reader, "fundtype3");
-                            position.FundType4 = PostgresDAL.getString(reader, "fundtype4");
-                            position.FundType5 = PostgresDAL.getString(reader, "fundtype5");
-                            position.Price = PostgresDAL.getDecimal(reader, "price");
-                            position.TotalQuantity = PostgresDAL.getDecimal(reader, "total_quantity");
-                            position.ValueAtTime = PostgresDAL.getDecimal(reader, "current_value");
-                            position.CostBasis = PostgresDAL.getDecimal(reader, "cost_basis");
-                            position.TotalWealthAtTime = PostgresDAL.getDecimal(reader, "total_wealth");
-                            position.InvestmentGain = PostgresDAL.getDecimal(reader, "investment_gain");
-                            position.PercentOfWealth = PostgresDAL.getDecimal(reader, "percent_total_wealth");
+                            Position position = new Position()
+                            {
+                                PositionDate = PostgresDal.GetDateTime(reader, "last_date_of_month"),
+                                MonthAbbreviation = PostgresDal.GetString(reader, "month_abbreviation"),
+                                AccountId = PostgresDal.GetInt(reader, "account_id"),
+                                AccountName = PostgresDal.GetString(reader, "account"),
+                                AccountGroup = PostgresDal.GetString(reader, "account_group"),
+                                TaxBucket = PostgresDal.GetString(reader, "tax_bucket"),
+                                Symbol = PostgresDal.GetString(reader, "symbol"),
+                                FundType1 = PostgresDal.GetString(reader, "fundtype1"),
+                                FundType2 = PostgresDal.GetString(reader, "fundtype2"),
+                                FundType3 = PostgresDal.GetString(reader, "fundtype3"),
+                                FundType4 = PostgresDal.GetString(reader, "fundtype4"),
+                                FundType5 = PostgresDal.GetString(reader, "fundtype5"),
+                                Price = PostgresDal.getDecimal(reader, "price"),
+                                TotalQuantity = PostgresDal.getDecimal(reader, "total_quantity"),
+                                ValueAtTime = PostgresDal.getDecimal(reader, "current_value"),
+                                CostBasis = PostgresDal.getDecimal(reader, "cost_basis"),
+                                TotalWealthAtTime = PostgresDal.getDecimal(reader, "total_wealth"),
+                                InvestmentGain = PostgresDal.getDecimal(reader, "investment_gain"),
+                                PercentOfWealth = PostgresDal.getDecimal(reader, "percent_total_wealth")
+                            };
 
                             positions.Add(position);
                         }

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Globalization;
 using System.Text;
 using Lib;
 using Lib.DataTypes;
@@ -13,32 +11,28 @@ namespace PersonalFinance
 {
     internal class PresentationBuilder
     {
-        internal string _outputDir = "/media/dan/fdrive/codeprojects/PersonalFinance/OutputFiles/";
-
-        List<Position>? _wealthPositions;
-        List<Position>? _cashPositions;
-        List<Position>? _debtPositions;
-        List<BudgetPosition>? _budgetPositions;
-        List<PgCategory> _budgetCategories = new List<PgCategory>();
-
-        List<Position>? _currentWealthPositions;
-        List<Position>? _currentCashPositions;
-        List<Position>? _currentDebtPositions;
-
-        List<(string? MonthAbbreviation, DateTime PositionDate)>? _months;
-        List<string?>? _taxBuckets;
-        List<string?>? _accounts;
-        List<string?>? _accountGroups;
-        List<string?>? _stockTypeIndividualVsIndex;
-        List<string?>? _symbols;
-
-        List<AreaChart>? _areaCharts;
-        List<MonteCarloResultsChart> _monteCarloResultsCharts = [];
-        SingleModelRunResult _singleModelRunResult;
+        private const string OutputDirectory = "/media/dan/fdrive/codeprojects/PersonalFinance/OutputFiles/";
+        private List<Position> _wealthPositions = [];
+        private List<Position> _cashPositions = [];
+        private List<Position> _debtPositions = [];
+        private List<BudgetPosition> _budgetPositions = [];
+        private List<PgCategory> _budgetCategories = [];
+        private  List<Position> _currentWealthPositions = [];
+        private List<Position> _currentCashPositions = [];
+        private List<Position> _currentDebtPositions = [];
+        private  List<(string MonthAbbreviation, DateTime PositionDate)> _months = [];
+        private  List<string> _taxBuckets = [];
+        private  List<string> _accounts = [];
+        private List<string> _accountGroups = [];
+        private List<string> _stockTypeIndividualVsIndex = [];
+        private List<string> _symbols = [];
+        private List<AreaChart> _areaCharts = [];
+        private List<MonteCarloResultsChart> _monteCarloResultsCharts = [];
+        private SingleModelRunResult? _singleModelRunResult;
 
         private DateTime? _effectiveDate;
 
-        const string accountingFormat = "#,##0.00;(#,##0.00);--";
+        private const string AccountingFormat = "#,##0.00;(#,##0.00);--";
 
         internal void BuildPresentation()
         {
@@ -51,7 +45,7 @@ namespace PersonalFinance
             string html = pHtml.GetHTML();
             string timestamp = $".{DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss")}";
             //timestamp = "";
-            string fullOutputPath = $"{_outputDir}PersonalFinanceBreakdown{timestamp}.html";
+            string fullOutputPath = $"{OutputDirectory}PersonalFinanceBreakdown{timestamp}.html";
             try
             {
                 File.WriteAllText(fullOutputPath, html);
@@ -65,12 +59,13 @@ namespace PersonalFinance
         }
         public DateTime GetEffectiveDate()
         {
-            if (_effectiveDate == null)
-                _effectiveDate = _wealthPositions.Max(x => x.PositionDate);
+            if(_wealthPositions is null) throw new Exception("Wealth positions not populated");
+            _effectiveDate ??= _wealthPositions.Max(x => x.PositionDate);
             return (DateTime)_effectiveDate;
         }
         public string GetChartsHead()
         {
+            if(_areaCharts is null) throw new InvalidDataException($"{nameof(_areaCharts)} not defined");
             StringBuilder output = new StringBuilder();
             output.AppendLine("<script type=\"text/javascript\" src=\"https://www.gstatic.com/charts/loader.js\"></script>");
             output.AppendLine("<script type=\"text/javascript\">");
@@ -154,7 +149,7 @@ namespace PersonalFinance
         }
         private List<string> GetChildrenCatIds(string catId)
         {
-            List<string> output = new List<string>();
+            var output = new List<string>();
             var children = _budgetCategories
                 .Where(x => x.ParentId == catId)
                 .Select(x => x.Id)
@@ -200,7 +195,7 @@ namespace PersonalFinance
                                 where
                                     bp.MonthAbbreviation == monthAbbreviation &&
                                     (
-                                        descendants.Contains(bp.CategoryId) ||
+                                        (bp.CategoryId is not null && descendants.Contains(bp.CategoryId)) ||
                                         bp.CategoryId == catId
                                     )
                                 select bp;
@@ -220,7 +215,8 @@ namespace PersonalFinance
                 {
                     // total for all months; this cat and all children
                     var query = from bp in _budgetPositions
-                                where  descendants.Contains(bp.CategoryId) || bp.CategoryId == catId
+                                where (bp.CategoryId is not null && descendants.Contains(bp.CategoryId)) ||
+                                      bp.CategoryId == catId
                                 select bp;
 
                     var thisTotal = query.Sum(x => x.SumTotal);
@@ -263,9 +259,9 @@ namespace PersonalFinance
             
             List<BudgetTableCell> cells = new List<BudgetTableCell>();
             int currentRow = 1;
-            foreach (var c_prime in catsSansParents)
+            foreach (var cPrime in catsSansParents)
             {
-                var getCellsResult = GetCellsForCat(c_prime.Id, currentRow, 0, months);
+                var getCellsResult = GetCellsForCat(cPrime.Id, currentRow, 0, months);
                 cells.AddRange(getCellsResult.cells);
                 currentRow = getCellsResult.nextRow;
             }
@@ -290,7 +286,7 @@ namespace PersonalFinance
                 tableBody.AppendLine("<tr class=\"ledgerline\">");
                 for (int currentColumn = 0; currentColumn <= months.Count + 1; currentColumn++)
                 {
-                    var cell = cells.Where(x => x.Row == rowNum && x.Column == currentColumn).FirstOrDefault();
+                    var cell = cells.FirstOrDefault(x => x.Row == rowNum && x.Column == currentColumn);
                     string label = cell.Label;
                     if (currentColumn == 0)
                     {
@@ -298,26 +294,15 @@ namespace PersonalFinance
                     }
                     if (currentColumn > 0 && currentColumn < months.Count + 1)
                     {
-                        tableBody.AppendLine($"<td class=\"{cell.CssClass}\">{cell.Value.ToString(accountingFormat)}</td>");
+                        tableBody.AppendLine($"<td class=\"{cell.CssClass}\">{cell.Value.ToString(AccountingFormat)}</td>");
                     }
                     if (currentColumn == months.Count + 1)
                     {
-                        tableBody.AppendLine($"<td class=\"{cell.CssClass}\">{cell.Value.ToString(accountingFormat)}</td>");
+                        tableBody.AppendLine($"<td class=\"{cell.CssClass}\">{cell.Value.ToString(AccountingFormat)}</td>");
                     }
                 }
                 tableBody.AppendLine("</tr>");
             }
-
-            //for (int currentRow = 0; currentRow <= maxRow; currentRow++)
-            //{
-            //    tableBody.AppendLine("<tr>");
-            //    for (int currentColumn = 0; currentColumn <= months.Count; currentColumn++)
-            //    {
-            //        var cell = cells.Where(x => x.row == currentRow && x.column == currentColumn).FirstOrDefault();
-            //        tableBody.AppendLine(cell.value);
-            //    }
-            //    tableBody.AppendLine("</tr>");
-            //}
 
 
             StringBuilder output = new StringBuilder();
@@ -366,7 +351,7 @@ namespace PersonalFinance
                 {debtLiabilitiesSummary}
                         <tr>
                             <th class="level0 suml0">Total net worth:</th>
-                            <td class="level0 suml0">$&nbsp;&nbsp;&nbsp;&nbsp;{totalNetWorth.ToString(accountingFormat)}</td>
+                            <td class="level0 suml0">$&nbsp;&nbsp;&nbsp;&nbsp;{totalNetWorth.ToString(AccountingFormat)}</td>
                         </tr>
                     </table>
                 """);
@@ -401,10 +386,10 @@ namespace PersonalFinance
             var from = firstDayThisMonth.AddMonths(-12);
             
             var context = new PgContext();
-            _wealthPositions = PostgresDAL.GetWealthPositions();
-            _cashPositions = PostgresDAL.GetCashPositions();
-            _debtPositions = PostgresDAL.GetDebtPositions();
-            _budgetPositions = PostgresDAL.GetBudgetPositions(from, to);
+            _wealthPositions = PostgresDal.GetWealthPositions();
+            _cashPositions = PostgresDal.GetCashPositions();
+            _debtPositions = PostgresDal.GetDebtPositions();
+            _budgetPositions = PostgresDal.GetBudgetPositions(from, to);
             //_budgetCategories = PostgresDAL.GetCategories();
             _budgetCategories = context.PgCategories
                 .Where(x => x.ShowInReport)
@@ -448,7 +433,7 @@ namespace PersonalFinance
             // get distinct Symbols
             _symbols = _wealthPositions.Select(p => p.Symbol).Distinct().ToList();
 
-            _stockTypeIndividualVsIndex = new List<string?>();
+            _stockTypeIndividualVsIndex = [];
             _stockTypeIndividualVsIndex.Add("Individual stock");
             _stockTypeIndividualVsIndex.Add("Index");
 
@@ -522,7 +507,7 @@ namespace PersonalFinance
                 "future tax implications for investment assets. Whether we will" +
                 " have to pay tax on the total amount, just the growth, or none" +
                 " of it.",
-                Func_CatMatch = taxBucketCatMatch,
+                FuncCatMatch = taxBucketCatMatch,
                 Categories = _taxBuckets
             });
             _areaCharts.Add(new AreaChart()
@@ -536,7 +521,7 @@ namespace PersonalFinance
                 " fine-grained version of the \"Wealth by tax types\" chart, " +
                 "showing all the individual accounts that roll up into the " +
                 "account families.",
-                Func_CatMatch = accountCatMatch,
+                FuncCatMatch = accountCatMatch,
                 Categories = _accounts
 
             });
@@ -550,7 +535,7 @@ namespace PersonalFinance
                 Description = "The \"Wealth by account groups\" chart above " +
                 "shows our total wealth by account families. Different account " +
                 "families can contain multiple specific accounts.",
-                Func_CatMatch = accountGroupCatMatch,
+                FuncCatMatch = accountGroupCatMatch,
                 Categories = _accountGroups
             });
             _areaCharts.Add(new AreaChart()
@@ -565,7 +550,7 @@ namespace PersonalFinance
                 "(buying N shares of Microsoft) versus purchases of stock " +
                 "indexes (mutual funds, EFTs, and other investment vehicles " +
                 "that buy a broad range of investments).",
-                Func_CatMatch = indexVsIndividualCatMatch,
+                FuncCatMatch = indexVsIndividualCatMatch,
                 Categories = _stockTypeIndividualVsIndex
             });
 
@@ -582,24 +567,9 @@ namespace PersonalFinance
                 "factored into home equity. Other debt is not included. Note, " +
                 "the VanXXX represents an institutional fund that I couldn't " +
                 "find the ticker symbol for.",
-                Func_CatMatch = symbolCatMatch,
+                FuncCatMatch = symbolCatMatch,
                 Categories = _symbols
             });
-            
-            
-            // _areaCharts.Add(new AreaChart()
-            // {
-            //     Ordinal = 40,
-            //     JavascriptId = "mc_fun_points_chart_div",
-            //     JavascriptFunctionName = "drawMcFunPointsChart",
-            //     Title = "Monte Carlo Fun Points",
-            //     VAxisTitle = "Fun Points!",
-            //     Description = "It's the funzies, y'all. Get funzies when you spend money you don't have to spend." +
-            //                   " Lose funzies when you are anxious about your money or when you have to work to " +
-            //                   "support your lifestyle.",
-            //     Func_CatMatch = symbolCatMatch,
-            //     Categories = _symbols
-            // });
         } 
         private void DefineMonteCarloCharts()
         {
@@ -616,7 +586,7 @@ namespace PersonalFinance
                 Description = "It's the funzies, y'all. Get funzies when you spend money you don't have to spend." +
                               " Lose funzies when you are anxious about your money or when you have to work to " +
                               "support your lifestyle.",
-                StatLinesAtTime = _singleModelRunResult.TotalFunPointsOverTime,
+                StatLinesAtTime = _singleModelRunResult?.TotalFunPointsOverTime,
                 BankruptcyRatesOverTime = null
             });
             _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
@@ -627,7 +597,7 @@ namespace PersonalFinance
                 Title = "Monte Carlo Net Worth",
                 VAxisTitle = "Total net worth (USD)",
                 Description = "Measures your projected total net worth over time",
-                StatLinesAtTime = _singleModelRunResult.NetWorthStatsOverTime,
+                StatLinesAtTime = _singleModelRunResult?.NetWorthStatsOverTime,
                 BankruptcyRatesOverTime = null
             });
             
@@ -641,7 +611,7 @@ namespace PersonalFinance
                 Description = "Measures your projected total spend over time. Spend includes money you had to " +
                               "spend, like groceries, mortgages, etc. It also includes any fun spending." +
                               " It does not include money you spent to buy investment positions.",
-                StatLinesAtTime = _singleModelRunResult.TotalSpendOverTime,
+                StatLinesAtTime = _singleModelRunResult?.TotalSpendOverTime,
                 BankruptcyRatesOverTime = null
             });
             _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
@@ -652,7 +622,7 @@ namespace PersonalFinance
                 Title = "Monte Carlo Tax",
                 VAxisTitle = "Total tax payment (USD)",
                 Description = "Measures your total lifetime tax payment (starting at $0 at the simulation start date)",
-                StatLinesAtTime = _singleModelRunResult.TotalTaxOverTime,
+                StatLinesAtTime = _singleModelRunResult?.TotalTaxOverTime,
                 BankruptcyRatesOverTime = null
             });
             _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
@@ -664,7 +634,7 @@ namespace PersonalFinance
                 VAxisTitle = "Bankruptcy percentage",
                 Description = "The percentage of simulated lives in bankruptcy at each point in time in the simulator",
                 StatLinesAtTime = null,
-                BankruptcyRatesOverTime = _singleModelRunResult.BankruptcyRateOverTime
+                BankruptcyRatesOverTime = _singleModelRunResult?.BankruptcyRateOverTime
             });
         } 
         private string GetInvestmentAssestsSummary(decimal totalWealthPositions)
@@ -678,7 +648,7 @@ namespace PersonalFinance
                 decimal totalValue = g.Sum(x => x.ValueAtTime);
                 wealthGroupsRows.AppendLine("<tr>");
                 wealthGroupsRows.AppendLine($"<th class=\"level2\">{g.Key}:</th>");
-                wealthGroupsRows.AppendLine($"<td class=\"level2\">{totalValue.ToString(accountingFormat)}</td>");
+                wealthGroupsRows.AppendLine($"<td class=\"level2\">{totalValue.ToString(AccountingFormat)}</td>");
                 wealthGroupsRows.AppendLine("</tr>");
             }
 
@@ -691,7 +661,7 @@ namespace PersonalFinance
                             {wealthGroupsRows}
                         <tr>
                             <th class="level1 suml1">Total investments:</th>
-                            <td class="level1 suml1">{totalWealthPositions.ToString(accountingFormat)}</td>
+                            <td class="level1 suml1">{totalWealthPositions.ToString(AccountingFormat)}</td>
                         </tr>
                 """);
 
@@ -705,7 +675,7 @@ namespace PersonalFinance
             {
                 rows.AppendLine("<tr>");
                 rows.AppendLine($"<th class=\"level2\">{r.AccountName}:</th>");
-                rows.AppendLine($"<td class=\"level2\">{r.ValueAtTime.ToString(accountingFormat)}</td>");
+                rows.AppendLine($"<td class=\"level2\">{r.ValueAtTime.ToString(AccountingFormat)}</td>");
                 rows.AppendLine("</tr>");
             }
 
@@ -718,7 +688,7 @@ namespace PersonalFinance
                             {rows}
                         <tr>
                             <th class="level1 suml1">Total cash:</th>
-                            <td class="level1 suml1">{totalCash.ToString(accountingFormat)}</td>
+                            <td class="level1 suml1">{totalCash.ToString(AccountingFormat)}</td>
                         </tr>
                 """);
 
@@ -735,11 +705,11 @@ namespace PersonalFinance
                         </tr>
                         <tr>
                             <th class="level2">Value of house on Logan Circle</th>
-                            <td class="level2">{totalProperty.ToString(accountingFormat)}</td>
+                            <td class="level2">{totalProperty.ToString(AccountingFormat)}</td>
                         </tr>
                         <tr>
                             <th class="level1 suml1">Total property:</th>
-                            <td class="level1 suml1">{totalProperty.ToString(accountingFormat)}</td>
+                            <td class="level1 suml1">{totalProperty.ToString(AccountingFormat)}</td>
                         </tr>
                 """);
 
@@ -753,7 +723,7 @@ namespace PersonalFinance
             {
                 rows.AppendLine("<tr>");
                 rows.AppendLine($"<th class=\"level2\">{r.AccountName}:</th>");
-                rows.AppendLine($"<td class=\"level2\">{(r.ValueAtTime * -1.0M).ToString(accountingFormat)}</td>");
+                rows.AppendLine($"<td class=\"level2\">{(r.ValueAtTime * -1.0M).ToString(AccountingFormat)}</td>");
                 rows.AppendLine("</tr>");
             }
 
@@ -766,7 +736,7 @@ namespace PersonalFinance
                             {rows}
                         <tr>
                             <th class="level1 suml1">Total debt:</th>
-                            <td class="level1 suml1">{(totalDebt * -1M).ToString(accountingFormat)}</td>
+                            <td class="level1 suml1">{(totalDebt * -1M).ToString(AccountingFormat)}</td>
                         </tr>
                 """);
 
@@ -796,10 +766,10 @@ namespace PersonalFinance
                 {
                     var sum = _wealthPositions
                         .Where(p => p.MonthAbbreviation == month.MonthAbbreviation
-                            && c.Func_CatMatch(p, cat))
+                            && c.FuncCatMatch is not null && c.FuncCatMatch(p, cat))
                         .Sum(x => x.ValueAtTime);                        
 
-                    var value = Math.Round(sum, 0).ToString();// c.Func_GetValueForMonthAndCategory(month.MonthAbbreviation, cat);
+                    var value = Math.Round(sum, 0).ToString(CultureInfo.CurrentCulture);
                     values.Add(value.ToString());
                 }
                 output.AppendLine($"          ['{month.MonthAbbreviation}', {String.Join(",", values)}],");

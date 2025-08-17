@@ -12,20 +12,16 @@ namespace PersonalFinance
 {
     internal class TreeBuilder
     {
-        internal List<PgCategory> _categories;
-        internal List<PgCategory> _category_tree;
-        internal List<PgTransaction> _transactions;
-        internal StringBuilder _output;
-        internal decimal _globalSize;
-        internal List<(decimal, decimal, int)> _colorRanges;
-        internal string _outputPath = @"C:\Users\Dan\Documents\household budget queries\2023_household_spend_sankey.html";
+        private List<PgCategory> _categories = [];
+        private readonly List<PgCategory> _categoryTree = [];
+        private List<PgTransaction> _transactions = [];
+        private readonly StringBuilder _output = new StringBuilder();
+        private decimal _globalSize = 0;
+        private List<(decimal, decimal, int)> _colorRanges = [];
+        private const string OutputPath = @"C:\Users\Dan\Documents\household budget queries\2023_household_spend_sankey.html";
 
         internal void Build()
         {
-            _category_tree = new List<PgCategory>();
-            _output = new StringBuilder();
-            _globalSize = 0;
-
             var context = new PgContext();
 
             //_categories = PostgresDAL.GetCategories();
@@ -37,16 +33,16 @@ namespace PersonalFinance
             _transactions = context.PgTransactions.ToList();
 
             var topLevelCats = _categories
-                .Where(c => c.ParentId == null || c.ParentId == string.Empty);
+                .Where(c => string.IsNullOrEmpty(c.ParentId));
             foreach (var cat in topLevelCats)
             {
-                _category_tree.Add(cat);
+                _categoryTree.Add(cat);
                 AddChildrenAndTransToCat(cat);
                 _globalSize = Math.Max(Math.Abs(cat.TransactionTotal), _globalSize);
             }
 
             AddHeaderToOutput();
-            foreach (var cat in _category_tree)
+            foreach (var cat in _categoryTree)
             {
                 AddCatToOutput(cat, null);
             }
@@ -54,9 +50,9 @@ namespace PersonalFinance
 
             var finalOutput = _output.ToString();
 
-            System.IO.File.WriteAllText(_outputPath, finalOutput);
+            System.IO.File.WriteAllText(OutputPath, finalOutput);
         }
-        internal void AddCatToOutput(PgCategory cat, PgCategory parent)
+        internal void AddCatToOutput(PgCategory cat, PgCategory? parent)
         {
             string format = "C2";
             int amplitude = NormalizeValue(cat.TransactionTotal);
