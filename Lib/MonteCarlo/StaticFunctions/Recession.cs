@@ -44,7 +44,15 @@ public static class Recession
         }
         return results;
     }
-
+    
+    public static bool WeLivinLarge(
+        McModel simParameters, BookOfAccounts bookOfAccounts)
+    {
+        var netWorth = AccountCalculation.CalculateNetWorth(bookOfAccounts);
+        return (netWorth >= simParameters.LivinLargeNetWorthTrigger) ? true : false;
+    }
+    
+    
     public static (bool areWeInARecession, decimal recessionRecoveryPoint, decimal recessionDurationCounter)
         CalculateAreWeInARecession(
         RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams)
@@ -104,6 +112,8 @@ public static class Recession
         }
         return result;
     }
+    
+    
     public static RecessionStats CalculateRecessionStats(
         RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams, BookOfAccounts bookOfAccounts,
         LocalDateTime currentDate)
@@ -122,6 +132,8 @@ public static class Recession
         result.AreWeInExtremeAusterityMeasures = extremeAusterityResults.areWeInExtremeAusterityMeasures;
         result.LastExtremeAusterityMeasureEnd = extremeAusterityResults.lastExtremeAusterityMeasureEnd;
         
+        // We livin' large yet?
+        result.AreWeInLivinLargeMode = WeLivinLarge(simParams, bookOfAccounts);
         
         return result;
     }
@@ -136,6 +148,7 @@ public static class Recession
             AreWeInExtremeAusterityMeasures = stats.AreWeInExtremeAusterityMeasures,
             LastExtremeAusterityMeasureEnd = stats.LastExtremeAusterityMeasureEnd,
             RecessionRecoveryPoint = stats.RecessionRecoveryPoint,
+            AreWeInLivinLargeMode = stats.AreWeInLivinLargeMode,
         };
     }
 }

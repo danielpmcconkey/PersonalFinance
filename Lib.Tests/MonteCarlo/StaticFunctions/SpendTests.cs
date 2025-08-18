@@ -36,6 +36,8 @@ public class SpendTests
             SimEndDate = new LocalDateTime(2066, 3, 1, 0, 0),
             SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+            LivinLargeRatio = 1.5m,
+            LivinLargeNetWorthTrigger = 4000000m,
         };
     }
 
@@ -197,23 +199,26 @@ public class SpendTests
     }
 
     [Theory]
-    [InlineData(true, true, 0.6)]   // Extreme austerity
-    [InlineData(true, false, 0.8)]   // Regular recession
-    [InlineData(false, false, 1.0)]  // No recession
-    public void CalculateRecessionSpendOverride_AppliesCorrectRatio(
-        bool inRecession, bool inExtremeAusterity, decimal expectedRatio)
+    [InlineData(true, true, false, 0.6)]   // Extreme austerity
+    [InlineData(true, false, false, 0.8)]   // Regular recession
+    [InlineData(false, false, false, 1.0)]  // No recession
+    [InlineData(false, false, true, 1.5)]  // Livin large
+    public void CalculateSpendOverride_AppliesCorrectRatio(
+        bool inRecession, bool inExtremeAusterity, bool livinLarge, decimal expectedRatio)
     {
         // Arrange
         var simParams = CreateTestModel();
+        
         var recessionStats = new RecessionStats
         {
             AreWeInARecession = inRecession,
-            AreWeInExtremeAusterityMeasures = inExtremeAusterity
+            AreWeInExtremeAusterityMeasures = inExtremeAusterity,
+            AreWeInLivinLargeMode = livinLarge
         };
         var standardAmount = 1000m;
 
         // Act
-        var result = Spend.CalculateRecessionSpendOverride(simParams, standardAmount, recessionStats);
+        var result = Spend.CalculateSpendOverride(simParams, standardAmount, recessionStats);
 
         // Assert
         Assert.Equal(standardAmount * expectedRatio, result);

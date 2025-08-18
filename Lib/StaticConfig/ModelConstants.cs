@@ -10,13 +10,13 @@ public static class ModelConstants
     /// MinorVersion is your general version increment. If two model runs have differing major and minor numbers then
     /// you should consider them as apples-to-oranges comparisons  
     /// </summary>
-    public static int MinorVersion = 7; 
+    public static int MinorVersion = 8; 
     /// <summary>
     /// PatchVersion can be used when a change doesn't affect the LifeSimulator.Run outcome. If two model runs have the
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples
     /// comparisons
     /// </summary>
-    public static int PatchVersion = 1;
+    public static int PatchVersion = 0;
     
     public static decimal FunPenaltyBankruptcy = -35000m;
     public static decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
@@ -37,6 +37,12 @@ public static class ModelConstants
     public const decimal AusterityRatioMax = 0.95M;
     
     /// <summary>
+    /// the percentage of desired monthly spend that you actually spend when in livin large mode 
+    /// </summary>
+    public const decimal LivinLargeRatioMin = 1.0M;
+    public const decimal LivinLargeRatioMax = 2.0M;
+    
+    /// <summary>
     /// the percentage of desired monthly spend that you actually spend when times are really tough
     /// </summary>
     public const decimal ExtremeAusterityRatioMin = 0.25M;
@@ -47,6 +53,12 @@ public static class ModelConstants
     /// </summary>
     public const decimal ExtremeAusterityNetWorthTriggerMin = 250000m;
     public const decimal ExtremeAusterityNetWorthTriggerMax = 1500000m;
+    
+    /// <summary>
+    /// If net worth is above this level, you go into livin' large mode
+    /// </summary>
+    public const decimal LivinLargeNetWorthTriggerMin = 2000000m;
+    public const decimal LivinLargeNetWorthTriggerMax = 10000000m;
 
     public const int NumMonthsCashOnHandMin = 3;
     public const int NumMonthsCashOnHandMax = 60;

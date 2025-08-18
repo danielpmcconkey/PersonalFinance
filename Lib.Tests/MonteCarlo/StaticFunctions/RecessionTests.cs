@@ -36,6 +36,8 @@ public class RecessionTests
             SimEndDate = new LocalDateTime(2066, 3, 1, 0, 0),
             SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+            LivinLargeRatio = 1.0m,
+            LivinLargeNetWorthTrigger = 4000000m,
         };
     }
 
@@ -664,5 +666,53 @@ public class RecessionTests
 
         // Assert
         Assert.Equal(120m, result.RecessionRecoveryPoint); // Keeps higher point
+    }
+
+    [Theory]
+    [InlineData(2800000, false)]
+    [InlineData(2900000, false)]
+    [InlineData(3000000, false)]
+    [InlineData(3100000, true)]
+    [InlineData(3200000, true)]
+    [InlineData(3300000, true)]
+    internal void WeLivinLarge_ReturnsCorrectValue(decimal netWorth, bool expected)
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.LivinLargeNetWorthTrigger = 3100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, netWorth, _testDate).accounts;
+        
+        // Act
+        var actual = Recession.WeLivinLarge(simParams, accounts);
+        
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Theory]
+    [InlineData(2800000, false)]
+    [InlineData(2900000, false)]
+    [InlineData(3000000, false)]
+    [InlineData(3100000, true)]
+    [InlineData(3200000, true)]
+    [InlineData(3300000, true)]
+    internal void CalculateRecessionStats_WhenRich_SetsWeLivinLargeToTrue(decimal netWorth, bool expected)
+    {
+        // Arrange
+        var simParams = CreateTestModel();
+        simParams.LivinLargeNetWorthTrigger = 3100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, netWorth, _testDate).accounts;
+        var prices = TestDataManager.CreateTestCurrentPrices(
+            1m, 100m, 50m, 0m);
+        var recessionStats = new RecessionStats();
+        
+        // Act
+        var actual = Recession.CalculateRecessionStats(
+            recessionStats, prices, simParams, accounts, _testDate).AreWeInLivinLargeMode;
+        
+        // Assert
+        Assert.Equal(expected, actual);
     }
 }

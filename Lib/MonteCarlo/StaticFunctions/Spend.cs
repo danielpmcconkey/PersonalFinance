@@ -182,11 +182,14 @@ public static class Spend
     }
 
     /// <summary>
-    /// if we're currently in a recession or extreme austerity measures, then temper the fun spend
+    /// if we're currently in a recession or extreme austerity measures, then temper the fun spend. if we livin' large,
+    /// go nuts
     /// </summary>
-    public static decimal CalculateRecessionSpendOverride(
+    public static decimal CalculateSpendOverride(
         McModel simParameters, decimal standardSpendAmount, RecessionStats recessionStats)
     {
+        // if we livin' large, it doesn't matter if we're in a recession or not. we livin' LARGE
+        if (recessionStats.AreWeInLivinLargeMode) return standardSpendAmount * simParameters.LivinLargeRatio;
         
         if (recessionStats.AreWeInExtremeAusterityMeasures) 
             return standardSpendAmount * simParameters.ExtremeAusterityRatio;

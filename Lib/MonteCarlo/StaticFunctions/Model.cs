@@ -27,26 +27,6 @@ public class Model
             _ => throw new InvalidDataException("Invalid HereditarySource")
         };
     }
-    /// <summary>
-    /// This is used to generically provide a random value between min and max by detecting whether the property is an
-    /// int or a decimal. Uses the MateProperty function above to increase DRY compliance
-    /// </summary>
-    // private static T MateNumericProperty<T>(
-    //     McModel parentA,
-    //     McModel parentB,
-    //     Func<McModel, T> propertySelector,
-    //     T minValue,
-    //     T maxValue) where T : struct
-    // {
-    //     return MateProperty(
-    //         parentA,
-    //         parentB,
-    //         propertySelector,
-    //         () => typeof(T) == typeof(decimal) 
-    //             ? (T)(object)GetUnSeededRandomDecimal((decimal)(object)minValue, (decimal)(object)maxValue)
-    //             : (T)(object)GetUnSeededRandomInt((int)(object)minValue, (int)(object)maxValue)
-    //     );
-    // }
     
     /// <summary>
     /// This is used to generically provide a random value between min and max by detecting whether the property is an
@@ -228,7 +208,11 @@ public class Model
             DesiredMonthlySpendPostRetirement = Model.GetUnSeededRandomDecimal(
                 ModelConstants.DesiredMonthlySpendPostRetirementMin, ModelConstants.DesiredMonthlySpendPostRetirementMax),
             Percent401KTraditional = Model.GetUnSeededRandomDecimal(
-                ModelConstants.Percent401KTraditionalMin, ModelConstants.Percent401KTraditionalMax)
+                ModelConstants.Percent401KTraditionalMin, ModelConstants.Percent401KTraditionalMax),
+            LivinLargeRatio = GetUnSeededRandomDecimal(
+                ModelConstants.LivinLargeRatioMin, ModelConstants.LivinLargeRatioMax),
+            LivinLargeNetWorthTrigger = GetUnSeededRandomDecimal(
+                ModelConstants.LivinLargeNetWorthTriggerMin, ModelConstants.LivinLargeNetWorthTriggerMax),
         };
     }
     
@@ -257,6 +241,8 @@ public class Model
             DesiredMonthlySpendPreRetirement = MateDesiredMonthlySpendPreRetirement(a, b),
             DesiredMonthlySpendPostRetirement = MateDesiredMonthlySpendPostRetirement(a, b),
             Percent401KTraditional = MatePercent401KTraditional(a, b),
+            LivinLargeRatio = MateLivinLargeRatio(a, b),
+            LivinLargeNetWorthTrigger = MateLivinLargeNetWorthTrigger(a, b),
         };
     }
     
@@ -299,6 +285,20 @@ public class Model
             model => model.ExtremeAusterityRatio,
             ModelConstants.ExtremeAusterityRatioMin,
             ModelConstants.ExtremeAusterityRatioMax);
+    
+    public static decimal MateLivinLargeNetWorthTrigger(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.LivinLargeNetWorthTrigger,
+            ModelConstants.LivinLargeNetWorthTriggerMin,
+            ModelConstants.LivinLargeNetWorthTriggerMax);
+    
+    public static decimal MateLivinLargeRatio(McModel a, McModel b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.LivinLargeRatio,
+            ModelConstants.LivinLargeRatioMin,
+            ModelConstants.LivinLargeRatioMax);
     
     public static int MateNumMonthsCashOnHand(McModel a, McModel b) =>
         MateNumericProperty(

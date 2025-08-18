@@ -257,8 +257,8 @@ public static class Simulation
         var funSpend = Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
         var notFunSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
         
-        // required spend can't move. But your fun spend can go down if we're in a recession
-        funSpend = Spend.CalculateRecessionSpendOverride(simParams, funSpend, recessionStats);
+        // required spend can't move. But your fun spend can go down if we're in a recession or up if we livin' large
+        funSpend = Spend.CalculateSpendOverride(simParams, funSpend, recessionStats);
         
         var withdrawalAmount = funSpend + notFunSpend;
         

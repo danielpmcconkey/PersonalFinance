@@ -65,6 +65,18 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("extremeausteritynetworthtrigger")]
         public required decimal ExtremeAusterityNetWorthTrigger { get; set; }
         
+        /// <summary>
+        /// the percentage of desired monthly spend that you actually spend when in livin' large mode 
+        /// </summary>
+        [Column("livinlargeratio", TypeName = "numeric(5,4)")]
+        public required decimal LivinLargeRatio { get; set; }
+        
+        /// <summary>
+        /// If net worth is above this level, you go into livin' large mode
+        /// </summary>
+        [Column("livinlargenetworthtrigger", TypeName = "numeric(18,4)")]
+        public required decimal LivinLargeNetWorthTrigger { get; set; }
+        
         [Column("rebalancefrequency")]
         public required RebalanceFrequency RebalanceFrequency { get; set; }
         

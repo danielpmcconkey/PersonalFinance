@@ -188,6 +188,8 @@ internal static class TestDataManager
             SimEndDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+            LivinLargeRatio = 1.0m,
+            LivinLargeNetWorthTrigger = 4000000m,
         };
     }
 
