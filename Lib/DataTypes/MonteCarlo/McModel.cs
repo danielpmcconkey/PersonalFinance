@@ -107,7 +107,7 @@ namespace Lib.DataTypes.MonteCarlo
         [Column("desiredmonthlyspendpreretirement")]
         public required decimal DesiredMonthlySpendPreRetirement { get; set; }
         
-        // <summary>
+        /// <summary>
         /// the amount of fun bucks you get to blow post retirement (above + beyond required spend)
         /// </summary>
         [Column("desiredmonthlyspendpostretirement")]

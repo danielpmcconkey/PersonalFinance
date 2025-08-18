@@ -90,7 +90,7 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 7
+and minorversion = 8
 --and patchversion = 2
 and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc, r.bankruptcyrateatendofsim asc
@@ -100,4 +100,6 @@ limit 100
 select * from personalfinance.singlemodelrunresult
 order by rundate desc
 limit 20;
+
+alter table personalfinance.montecarlomodel add livinlargenetworthtrigger numeric(18,4) not null default 4000000.0;
 */

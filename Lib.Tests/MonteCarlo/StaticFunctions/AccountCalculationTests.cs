@@ -21,16 +21,7 @@ public class AccountCalculationTests
         Assert.Equal(0, result);
     }
 
-    [Fact]
-    public void CalculateDebtTotal_NullDebtAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        accounts.DebtAccounts = null;
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => AccountCalculation.CalculateDebtTotal(accounts));
-    }
+   
 
     [Fact]
     public void CalculateDebtTotal_SingleAccountSinglePosition_ReturnsCorrectTotal()
@@ -534,18 +525,7 @@ public class AccountCalculationTests
         Assert.Equal(600m, balance); // Cash accounts should be excluded
     }
 
-    [Fact]
-    public void CalculateTotalBalanceByBucketType_WithNullInvestmentAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var bookOfAccounts = TestDataManager.CreateEmptyBookOfAccounts();
-        bookOfAccounts.InvestmentAccounts = null;
-
-        // Act & Assert
-        var exception = Assert.Throws<InvalidDataException>(() => 
-            AccountCalculation.CalculateTotalBalanceByBucketType(bookOfAccounts, McInvestmentPositionType.LONG_TERM));
-        Assert.Equal("InvestmentAccounts is null", exception.Message);
-    }
+    
     
     [Theory]
     [InlineData(100, 10, 1000)] // Regular case

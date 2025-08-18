@@ -70,6 +70,7 @@ namespace PersonalFinance
             output.AppendLine("<script type=\"text/javascript\" src=\"https://www.gstatic.com/charts/loader.js\"></script>");
             output.AppendLine("<script type=\"text/javascript\">");
             output.AppendLine("google.charts.load('current', { 'packages':['corechart']});");
+            output.AppendLine("google.charts.load('current', {'packages':['bar']});");
             // draw the charts when the page loads
             foreach (var c in _areaCharts.OrderBy(x => x.Ordinal))
             {
@@ -636,6 +637,45 @@ namespace PersonalFinance
                 StatLinesAtTime = null,
                 BankruptcyRatesOverTime = _singleModelRunResult?.BankruptcyRateOverTime
             });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 60,
+                JavascriptId = "mc_funbyyear_chart_div",
+                JavascriptFunctionName = "drawFunByYearChart",
+                Title = "Monte Carlo Fun Points by Year",
+                VAxisTitle = "Fun Points",
+                Description = "The amount of fun points logged each year",
+                StatLinesAtTime = _singleModelRunResult?.FunPointsByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 70,
+                JavascriptId = "mc_spendbyyear_chart_div",
+                JavascriptFunctionName = "drawSpendByYearChart",
+                Title = "Monte Carlo spend by Year",
+                VAxisTitle = "Money spent",
+                Description = "The amount of money you spent (required and fun) each year",
+                StatLinesAtTime = _singleModelRunResult?.SpendByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 80,
+                JavascriptId = "mc_taxbyyear_chart_div",
+                JavascriptFunctionName = "drawTaxByYearChart",
+                Title = "Monte Carlo tax by Year",
+                VAxisTitle = "Tax paid",
+                Description = "The amount of money you paid in tax each year",
+                StatLinesAtTime = _singleModelRunResult?.TaxByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+
+            
+
         } 
         private string GetInvestmentAssestsSummary(decimal totalWealthPositions)
         {
@@ -799,16 +839,31 @@ namespace PersonalFinance
         {
             StringBuilder output = new StringBuilder();
             output.AppendLine($"      function {c.JavascriptFunctionName}() {"{"}");
-            output.AppendLine("        var data = new google.visualization.DataTable();");
-            output.AppendLine("        data.addColumn('string', 'Month');");
-            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '10 percentile');");
-            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '25 percentile');");
-            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '50 percentile');");
-            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '75 percentile');");
-            if(c.StatLinesAtTime is not null) output.AppendLine($"        data.addColumn('number', '90 percentile');");
-            if(c.BankruptcyRatesOverTime is not null) output.AppendLine($"        data.addColumn('number', 'All');");
-            output.AppendLine("        data.addRows([");
+            if (!c.IsBar)
+            {
+                output.AppendLine("        var data = new google.visualization.DataTable();");
+                output.AppendLine("        data.addColumn('string', 'Month');");
+                if (c.StatLinesAtTime is not null)
+                    output.AppendLine($"        data.addColumn('number', '10 percentile');");
+                if (c.StatLinesAtTime is not null)
+                    output.AppendLine($"        data.addColumn('number', '25 percentile');");
+                if (c.StatLinesAtTime is not null)
+                    output.AppendLine($"        data.addColumn('number', '50 percentile');");
+                if (c.StatLinesAtTime is not null)
+                    output.AppendLine($"        data.addColumn('number', '75 percentile');");
+                if (c.StatLinesAtTime is not null)
+                    output.AppendLine($"        data.addColumn('number', '90 percentile');");
+                if (c.BankruptcyRatesOverTime is not null)
+                    output.AppendLine($"        data.addColumn('number', 'All');");
+                output.AppendLine("        data.addRows([");
+            }
 
+            else
+            {
+                output.AppendLine("        var data = new google.visualization.arrayToDataTable([");
+                output.AppendLine("          ['Year', '10 percentile', '25 percentile','50 percentile'," +
+                                  "'75 percentile','90 percentile'],");
+            }
 
 
             // iterate through months and calculate the total wealth by category
@@ -817,6 +872,7 @@ namespace PersonalFinance
                 foreach (var statLine in c.StatLinesAtTime)
                 {
                     var dateText = statLine.Date.ToDateTimeUnspecified().ToString("MMM-yyyy");
+                    if (c.IsBar) dateText = statLine.Date.ToDateTimeUnspecified().ToString("yyyy");
                     var percentile10 = Math.Round(statLine.Percentile10, 0).ToString();
                     var percentile25 = Math.Round(statLine.Percentile25, 0).ToString();
                     var percentile50 = Math.Round(statLine.Percentile50, 0).ToString();
@@ -840,18 +896,32 @@ namespace PersonalFinance
 
             output.AppendLine("        ]);");
             output.AppendLine("");
-            output.AppendLine($"        var options = {"{"}title:'{c.Title}',");
-            output.AppendLine("                       hAxis:{title: 'Month',  titleTextStyle: {color: '#333'}},");
-            output.AppendLine($"                       vAxis: {"{"}title: '{c.VAxisTitle}', minValue: 0{"}"}, ");
-            output.AppendLine("                       isStacked:false,");
-            output.AppendLine("                       width:1500,");
-            output.AppendLine("                       height:500,");
-            output.AppendLine("                       explorer: { actions: ['dragToZoom', 'rightClickToReset']	},");
-            output.AppendLine("                       focusTarget: 'category'");
-            output.AppendLine("                       };");
-            output.AppendLine("");
-            output.AppendLine($"        var chart = new google.visualization.LineChart(document.getElementById('{c.JavascriptId}'));");
-            output.AppendLine("        chart.draw(data, options);");
+            if (!c.IsBar)
+            {
+                output.AppendLine($"        var options = {"{"}title:'{c.Title}',");
+                output.AppendLine("                       hAxis:{title: 'Month',  titleTextStyle: {color: '#333'}},");
+                output.AppendLine($"                       vAxis: {"{"}title: '{c.VAxisTitle}', minValue: 0{"}"}, ");
+                output.AppendLine("                       isStacked:false,");
+                output.AppendLine("                       width:1500,");
+                output.AppendLine("                       height:500,");
+                output.AppendLine("                       explorer: { actions: ['dragToZoom', 'rightClickToReset']	},");
+                output.AppendLine("                       focusTarget: 'category'");
+                output.AppendLine("                       };");
+                output.AppendLine("");
+                output.AppendLine(
+                        $"        var chart = new google.visualization.LineChart(document.getElementById('{c.JavascriptId}'));");
+                output.AppendLine("        chart.draw(data, options);");
+            }
+            else
+            {
+                output.AppendLine("        var options = { width:1500, height:500, chart: { title:'" +
+                                  c.Title +
+                                  "' } };");
+                output.AppendLine("        var chart = new google.charts.Bar(document.getElementById('" +
+                                  c.JavascriptId +
+                                  "'));");
+                output.AppendLine("        chart.draw(data, google.charts.Bar.convertOptions(options));");
+            }
             output.AppendLine("      }");
 
 

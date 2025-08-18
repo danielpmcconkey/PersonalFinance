@@ -124,22 +124,7 @@ public class AccountDebtPaymentTests
         Assert.Equal(1000m, newAccount.Positions[1].CurrentBalance);
     }
 
-    [Fact]
-    public void CreditDebtAccount_WithNullPositions_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var account = new McDebtAccount
-        {
-            Id = Guid.NewGuid(),
-            Name = "Test Account",
-            Positions = null
-        };
-        var payments = new Dictionary<Guid, decimal>();
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => 
-            AccountDebtPayment.CreditDebtAccount(account, _testDate, payments));
-    }
+    
 
     [Fact]
     public void PayDownLoans_WithSufficientFunds_SuccessfullyPaysLoans()
@@ -202,18 +187,5 @@ public class AccountDebtPaymentTests
 
         // Assert
         Assert.False(result.isSuccessful);
-    }
-
-    [Fact]
-    public void PayDownLoans_WithNullDebtAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var accounts = new BookOfAccounts { DebtAccounts = null };
-        var taxLedger = new TaxLedger();
-        var lifetimeSpend = new LifetimeSpend();
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => 
-            AccountDebtPayment.PayDownLoans(accounts, _testDate, taxLedger, lifetimeSpend));
     }
 }

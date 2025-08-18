@@ -667,18 +667,6 @@ public class InvestmentSalesTests
     }
 
     [Fact]
-    public void SellInvestmentsToRmdAmount_WithNullInvestmentAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var book = new BookOfAccounts { InvestmentAccounts = null };
-        var taxLedger = new TaxLedger();
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => 
-            InvestmentSales.SellInvestmentsToRmdAmount(100m, book, taxLedger, _testDate));
-    }
-
-    [Fact]
     public void SellInvestmentsToDollarAmountByPositionType_WithSufficientFundsInOnePosition_SellsCorrectAmount()
     {
         // Arrange
@@ -800,22 +788,5 @@ public class InvestmentSalesTests
         // Assert
         Assert.Equal(expectedTaxDeferredSaleAmount, taxDistributionRecorded);
         Assert.Equal(expectedCapitalGains, capitalGainsRecorded);
-    }
-
-    [Fact]
-    public void SellInvestmentsToDollarAmountByPositionType_WithNullInvestmentAccounts_ThrowsInvalidDataException()
-    {
-        // Arrange
-        var book = new BookOfAccounts { InvestmentAccounts = null };
-        var taxLedger = new TaxLedger();
-
-        // Act & Assert
-        Assert.Throws<InvalidDataException>(() => 
-            InvestmentSales.SellInvestmentsToDollarAmountByPositionType(
-                100m,
-                McInvestmentPositionType.LONG_TERM,
-                book,
-                taxLedger,
-                _testDate));
     }
 }

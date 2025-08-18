@@ -12,4 +12,5 @@ public class MonteCarloResultsChart
     public string? Description { get; init; }
     public SingleModelRunResultStatLineAtTime[]? StatLinesAtTime { get; init; }
     public SingleModelRunResultBankruptcyRateAtTime[]? BankruptcyRatesOverTime { get; init; }
+    public bool IsBar { get; init; } = false;
 }

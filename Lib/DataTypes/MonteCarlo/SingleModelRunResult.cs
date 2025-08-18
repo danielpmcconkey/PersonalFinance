@@ -38,6 +38,13 @@ public record SingleModelRunResult
     public required SingleModelRunResultStatLineAtTime[] TotalTaxOverTime { get; init; }
     [NotMapped]
     public required SingleModelRunResultBankruptcyRateAtTime[] BankruptcyRateOverTime { get; init; }
+    
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] FunPointsByYear { get; init; }
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] SpendByYear { get; init; }
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] TaxByYear { get; init; }
     [NotMapped]
     public required List<SimSnapshot>[] AllSnapshots { get; init; }
     

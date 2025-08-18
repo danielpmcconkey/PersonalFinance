@@ -137,7 +137,7 @@ public class AccountCashManagementTests
         // Arrange
         var initialBalance = 1000m;
         var withdrawAmount = 5000m;
-        var investmentsNeeded = 4000m;
+        // var investmentsNeeded = 4000m;
         var accounts = CreateTestAccounts(initialBalance);
         // it should sell mid first, so put only enough to close it out, then put too much in long
         accounts.Brokerage.Positions = [

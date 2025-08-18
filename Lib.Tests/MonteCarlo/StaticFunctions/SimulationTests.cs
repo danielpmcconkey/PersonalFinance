@@ -14,7 +14,7 @@ public class SimulationTests
     private readonly LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 12, 0);
     private readonly PgPerson _testPerson;
     private readonly McModel _simParams;
-    private readonly BookOfAccounts _accounts;
+    //private readonly BookOfAccounts _accounts;
     private readonly TaxLedger _ledger;
     private readonly LifetimeSpend _spend;
     private readonly CurrentPrices _prices;
@@ -24,7 +24,7 @@ public class SimulationTests
         // Initialize test data
         _testPerson = TestDataManager.CreateTestPerson();
         _simParams = CreateTestModel();
-        _accounts = new BookOfAccounts();
+        //_accounts = new BookOfAccounts();
         _ledger = new TaxLedger();
         _spend = new LifetimeSpend();
         _prices = new CurrentPrices();

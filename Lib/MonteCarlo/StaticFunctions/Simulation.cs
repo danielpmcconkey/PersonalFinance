@@ -99,6 +99,47 @@ public static class Simulation
         );
     }
 
+    public static SingleModelRunResultStatLineAtTime[] CreateYearlyMarkersFromSimSnapshots( 
+        int[] orderedYears, SingleModelRunResultStatLineAtTime[] specificValuesOverTime)
+    {
+        
+        var result = new SingleModelRunResultStatLineAtTime[orderedYears.Length];
+        var totalsAfterLastYear = new SingleModelRunResultStatLineAtTime(
+            new LocalDateTime(1900, 12, 31, 0, 0),
+            0, 0, 0, 0, 0);
+        for (int i = 0; i < orderedYears.Length; i++)
+        {
+            var statsInYear = specificValuesOverTime
+                .Where(x => x.Date.Year == orderedYears[i])
+                .ToArray();
+            var date = new LocalDateTime(orderedYears[i], 12, 31, 0, 0);
+            var thisYears10Lifetime = GetLastValueFromSingleModelRunResultsOverTime(statsInYear, 10);
+            var thisYears25Lifetime = GetLastValueFromSingleModelRunResultsOverTime(statsInYear, 25);
+            var thisYears50Lifetime = GetLastValueFromSingleModelRunResultsOverTime(statsInYear, 50);
+            var thisYears75Lifetime = GetLastValueFromSingleModelRunResultsOverTime(statsInYear, 75);
+            var thisYears90Lifetime = GetLastValueFromSingleModelRunResultsOverTime(statsInYear, 90);
+            
+            var thisYearsStatLine = new SingleModelRunResultStatLineAtTime(
+                date,
+                thisYears10Lifetime - totalsAfterLastYear.Percentile10,
+                thisYears25Lifetime - totalsAfterLastYear.Percentile25,
+                thisYears50Lifetime - totalsAfterLastYear.Percentile50,
+                thisYears75Lifetime - totalsAfterLastYear.Percentile75,
+                thisYears90Lifetime - totalsAfterLastYear.Percentile90
+            );
+            result[i] = thisYearsStatLine;
+            totalsAfterLastYear = new SingleModelRunResultStatLineAtTime(
+                date,
+                thisYears10Lifetime,
+                thisYears25Lifetime,
+                thisYears50Lifetime,
+                thisYears75Lifetime,
+                thisYears90Lifetime
+            );
+        }
+        return result;
+    }
+
     public static decimal GetLastValueFromSingleModelRunResultBankruptcyRateAtTime(SingleModelRunResultBankruptcyRateAtTime[] statsArray)
     {
         if (statsArray.Length == 0) throw new ArgumentException("Stats array cannot be empty");
@@ -115,8 +156,6 @@ public static class Simulation
         // Get the last entry in the time series
         var lastEntry = statsArray.MaxBy(x => x.Date);
         
-        var type = typeof(SingleModelRunResult);
-        var properties = type.GetProperties();
         
         // Dictionary to map percentile numbers to their corresponding property names in SingleModelRunResultStatLineAtTime
         var percentileMap = new Dictionary<int, string>
@@ -176,6 +215,13 @@ public static class Simulation
             cursorDate = cursorDate.PlusMonths(1);
             i++;
         }
+        
+        var orderedYears = allSnapshots
+            .SelectMany(x => x)
+            .Select(x => x.CurrentDateWithinSim.Year)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToArray();
 
         var result= new SingleModelRunResult()
         {
@@ -191,6 +237,9 @@ public static class Simulation
             TotalSpendOverTime = totalSpendOverTime,
             TotalTaxOverTime = totalTaxOverTime,
             BankruptcyRateOverTime = bankruptcyRateOverTime,
+            FunPointsByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalFunPointsOverTime),
+            SpendByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalSpendOverTime),
+            TaxByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalTaxOverTime),
             NetWorthAtEndOfSim10 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 10),
             NetWorthAtEndOfSim25 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 25),
             NetWorthAtEndOfSim50 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 50),

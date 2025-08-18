@@ -174,7 +174,7 @@ public class SimulationTrigger
         using var context = new PgContext();
 
         var query = " select m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate," +
-                    " retirementdate, socialsecuritystart, austerityratio, extremeausterityratio," +
+                    " retirementdate, socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger," +
                     " extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand," +
                     " nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance," +
                     " recessionchecklookbackmonths, recessionrecoverypointmodifier, desiredmonthlyspendpreretirement" +
@@ -186,7 +186,7 @@ public class SimulationTrigger
                     $" and minorversion = {minorVersion} " +
                     $"and r.bankruptcyrateatendofsim <= 0.1 " +
                     "group by m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate" +
-                    ", retirementdate, socialsecuritystart, austerityratio, extremeausterityratio" +
+                    ", retirementdate, socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger" +
                     ", extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand" +
                     ", nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance" +
                     ", recessionchecklookbackmonths, recessionrecoverypointmodifier" +

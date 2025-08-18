@@ -8,7 +8,7 @@ namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
 public class TaxCalculationTests
 {
-    private readonly int _testYear = 2025;
+    // private readonly int _testYear = 2025;
     private readonly LocalDateTime _baseDate = new(2025, 1, 1, 0, 0);
     
 
