@@ -432,7 +432,14 @@ namespace PersonalFinance
             _accountGroups = _wealthPositions.Select(p => p.AccountGroup).Distinct().ToList();
 
             // get distinct Symbols
-            _symbols = _wealthPositions.Select(p => p.Symbol).Distinct().ToList();
+            //_symbols = _wealthPositions.Select(p => p.Symbol).Distinct().ToList();
+            var maxMonth = _months.Max(x => x.PositionDate);
+            _symbols = _wealthPositions
+                .Where(x => x.PositionDate == maxMonth && x.ValueAtTime > 0)
+                .Select(x => x.Symbol)
+                .Distinct()
+                .ToList();
+            _symbols.Add("No longer held");
 
             _stockTypeIndividualVsIndex = [];
             _stockTypeIndividualVsIndex.Add("Individual stock");
@@ -494,7 +501,11 @@ namespace PersonalFinance
                         : (IsPositionStock(p) && !IsPositionIndex(p))
                 );
             Func<Position, string, bool> symbolCatMatch = (p, cat) =>
-                (p.Symbol == cat);
+            {
+                if (cat != "No longer held") return (p.Symbol == cat);
+                return !_symbols.Contains(p.Symbol);
+            };
+                
 
             _areaCharts = new List<AreaChart>();
             _areaCharts.Add(new AreaChart()
