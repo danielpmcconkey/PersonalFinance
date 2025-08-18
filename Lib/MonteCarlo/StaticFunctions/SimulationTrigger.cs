@@ -191,7 +191,7 @@ public class SimulationTrigger
                     ", nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance" +
                     ", recessionchecklookbackmonths, recessionrecoverypointmodifier" +
                     ", desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, percent401ktraditional " +
-                    "order by max(r.funpointsatendofsim50) desc " +
+                    "order by max(r.funpointsatendofsim50) desc, min(r.bankruptcyrateatendofsim) asc " +
                     $"limit {maxFromDb}";
         return context.McModels.FromSqlRaw(query).ToList();
     }

@@ -49,7 +49,7 @@ group by
 	, desiredmonthlyspendpreretirement
 	, desiredmonthlyspendpostretirement
 	, percent401ktraditional
-order by max(r.funpointsatendofsim50) desc
+order by max(r.funpointsatendofsim50) desc, min(r.bankruptcyrateatendofsim) asc
 limit 10
 
 
@@ -93,7 +93,7 @@ and majorversion = 0
 and minorversion = 7
 --and patchversion = 2
 and r.bankruptcyrateatendofsim <= .1
-order by r.funpointsatendofsim50 desc
+order by r.funpointsatendofsim50 desc, r.bankruptcyrateatendofsim asc
 limit 100
 
 /*
