@@ -11,6 +11,7 @@ public struct TaxLedger
     public List<(LocalDateTime earnedDate, decimal amount)> SocialSecurityIncome { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> W2Income { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> TaxableIraDistribution { get; set; } = [];
+    public List<(LocalDateTime earnedDate, decimal amount)> TaxFreeWithrawals { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> TaxableInterestReceived { get; set; } = []; // todo: record taxable interest received
     public List<(LocalDateTime earnedDate, decimal amount)> TaxFreeInterestPaid { get; set; } = [];
     public List<(LocalDateTime earnedDate, decimal amount)> QualifiedDividendsReceived { get; set; } = [];

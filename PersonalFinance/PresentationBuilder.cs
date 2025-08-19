@@ -684,9 +684,54 @@ namespace PersonalFinance
                 BankruptcyRatesOverTime = null,
                 IsBar = true,
             });
-
-            
-
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 90,
+                JavascriptId = "mc_healthspendbyyear_chart_div",
+                JavascriptFunctionName = "drawHealthSpendByYearChart",
+                Title = "Monte Carlo health spend by year",
+                VAxisTitle = "Health spend",
+                Description = "The amount of money you paid in health care each year",
+                StatLinesAtTime = _singleModelRunResult?.HealthSpendByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 100,
+                JavascriptId = "mc_iradistrbyyear_chart_div",
+                JavascriptFunctionName = "drawIraDistByYearChart",
+                Title = "Monte Carlo IRA distributions by Year",
+                VAxisTitle = "IRA distributions",
+                Description = "The amount of money you pulled from tax-deferred accounts each year",
+                StatLinesAtTime = _singleModelRunResult?.IraDistributionsByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 110,
+                JavascriptId = "mc_capgainsbyyear_chart_div",
+                JavascriptFunctionName = "drawCapGainsByYearChart",
+                Title = "Monte Carlo capital gains by Year",
+                VAxisTitle = "Capital gains",
+                Description = "The amount of money you received as capital gains each year",
+                StatLinesAtTime = _singleModelRunResult?.CapitalGainsByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 120,
+                JavascriptId = "mc_taxfreebyyear_chart_div",
+                JavascriptFunctionName = "drawTaxFreeByYearChart",
+                Title = "Monte Carlo tax free withdrawals by Year",
+                VAxisTitle = "Tax free withdrawals",
+                Description = "The amount of money you pulled from tax-free accounts each year",
+                StatLinesAtTime = _singleModelRunResult?.TaxFreeWithdrawalsByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
         } 
         private string GetInvestmentAssestsSummary(decimal totalWealthPositions)
         {

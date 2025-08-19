@@ -24,6 +24,7 @@ public static class Tax
             LongTermCapitalGains = ledger.LongTermCapitalGains,
             ShortTermCapitalGains = ledger.ShortTermCapitalGains,
             TotalTaxPaidLifetime = ledger.TotalTaxPaidLifetime,
+            TaxFreeWithrawals = ledger.TaxFreeWithrawals,
         };
     }
 
@@ -70,26 +71,34 @@ public static class Tax
     public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordInvestmentSale(TaxLedger ledger, LocalDateTime saleDate, McInvestmentPosition position,
         McInvestmentAccountType accountType)
     {
-        switch(accountType)
+        // todo: add a UT to RecordInvestmentSale for tax free withdrawals
+        return accountType switch
         {
-            case McInvestmentAccountType.ROTH_401_K:
-            case McInvestmentAccountType.ROTH_IRA:
-            case McInvestmentAccountType.HSA:
+            McInvestmentAccountType.ROTH_401_K or McInvestmentAccountType.ROTH_IRA or McInvestmentAccountType.HSA =>
                 // these are completely tax free
-                return (ledger, []);
-            case McInvestmentAccountType.TAXABLE_BROKERAGE:
+                RecordTaxFreeWithdrawal(ledger, saleDate, position.CurrentValue),
+            McInvestmentAccountType.TAXABLE_BROKERAGE =>
                 // taxed on growth only
-                return RecordLongTermCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost);
-            case McInvestmentAccountType.TRADITIONAL_401_K:
-            case McInvestmentAccountType.TRADITIONAL_IRA:
+                RecordLongTermCapitalGain(ledger, saleDate, position.CurrentValue - position.InitialCost),
+            McInvestmentAccountType.TRADITIONAL_401_K or McInvestmentAccountType.TRADITIONAL_IRA =>
                 // tax deferred. everything is counted as income
-                return RecordIraDistribution(ledger, saleDate, position.CurrentValue);
-            case McInvestmentAccountType.PRIMARY_RESIDENCE:
-            case McInvestmentAccountType.CASH:
+                RecordIraDistribution(ledger, saleDate, position.CurrentValue),
+            McInvestmentAccountType.PRIMARY_RESIDENCE or McInvestmentAccountType.CASH =>
                 // these should not be "sold"
-                throw new InvalidDataException("Cannot sell cash or primary residence accounts");
-        }
-        throw new InvalidDataException("Unknown account type");
+                throw new InvalidDataException("Cannot sell cash or primary residence accounts"),
+            _ => throw new InvalidDataException("Unknown account type")
+        };
+    }
+    
+    public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordTaxFreeWithdrawal(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)
+    {
+        // todo: UT RecordTaxFreeWithdrawal
+        if (amount <= 0) return (ledger, []);
+        (TaxLedger ledger, List<ReconciliationMessage> messages) result = (CopyTaxLedger(ledger), []);
+        result.ledger.TaxFreeWithrawals.Add((earnedDate, amount));
+        if (!MonteCarloConfig.DebugMode) return result;
+        result.messages.Add(new ReconciliationMessage(earnedDate, amount, "Tax free withdrawal logged"));
+        return result;
     }
     
     public static (TaxLedger ledger, List<ReconciliationMessage> messages) RecordTaxPaid(TaxLedger ledger, LocalDateTime earnedDate, decimal amount)

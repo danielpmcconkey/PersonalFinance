@@ -191,7 +191,8 @@ public class SpendTests
         );
 
         // Act
-        var result = Spend.CalculateMonthlyRequiredSpend(simParams, CreateTestPerson(), currentDate, accounts);
+        var result = Spend.CalculateMonthlyRequiredSpend(
+            simParams, CreateTestPerson(), currentDate, accounts).TotalSpend;
 
         // Assert
         var expectedTotal = person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare;
@@ -265,22 +266,40 @@ public class SpendTests
         var amount = 100m;
 
         // Act & Assert
-        var spendResult = Spend.RecordSpend(lifetimeSpend, amount, _baseDate).spend;
+        var spendResult = Spend.RecordMultiSpend(lifetimeSpend, _baseDate, amount,
+            null, null, null, 
+            null, null, null, null, 
+            null).spend;
         Assert.Equal(amount, spendResult.TotalSpendLifetime);
 
-        var debtAccrualResult = Spend.RecordDebtAccrual(lifetimeSpend, amount, _baseDate).spend;
+        var debtAccrualResult = Spend.RecordMultiSpend(lifetimeSpend, _baseDate, null,
+            null, amount, null, 
+            null, null, null, null, 
+            null).spend;
         Assert.Equal(amount, debtAccrualResult.TotalDebtAccrualLifetime);
 
-        var debtPaymentResult = Spend.RecordDebtPayment(lifetimeSpend, amount, _baseDate).spend;
+        var debtPaymentResult = Spend.RecordMultiSpend(lifetimeSpend, _baseDate, null,
+            null, null, null, 
+            amount, null, null, null, 
+            null).spend;
         Assert.Equal(amount, debtPaymentResult.TotalDebtPaidLifetime);
 
-        var investmentResult = Spend.RecordInvestmentAccrual(lifetimeSpend, amount, _baseDate).spend;
+        var investmentResult = Spend.RecordMultiSpend(lifetimeSpend, _baseDate, null,
+            amount, null, null, 
+            null, null, null, null, 
+            null).spend;
         Assert.Equal(amount, investmentResult.TotalInvestmentAccrualLifetime);
 
-        var ssWageResult = Spend.RecordSocialSecurityWage(lifetimeSpend, amount, _baseDate).spend;
+        var ssWageResult = Spend.RecordMultiSpend(lifetimeSpend, _baseDate, null,
+            null, null, amount, 
+            null, null, null, null, 
+            null).spend;
         Assert.Equal(amount, ssWageResult.TotalSocialSecurityWageLifetime);
 
-        var funPointsResult = Spend.RecordFunPoints(lifetimeSpend, amount, _baseDate).spend;
+        var funPointsResult = Spend.RecordMultiSpend(lifetimeSpend, _baseDate, null,
+            null, null, null, 
+            null, amount, null, null, 
+            null).spend;
         Assert.Equal(amount, funPointsResult.TotalFunPointsLifetime);
     }
 }

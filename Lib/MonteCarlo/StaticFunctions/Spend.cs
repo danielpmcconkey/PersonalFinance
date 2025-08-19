@@ -21,7 +21,7 @@ public static class Spend
             var futureDate = currentDate.PlusMonths(i);
             var fun = CalculateMonthlyFunSpend(simParams, person, futureDate);
             var required = CalculateMonthlyRequiredSpend(simParams, person, futureDate, accounts);
-            var totalThisMonth = fun + required;
+            var totalThisMonth = fun + required.TotalSpend;
             cashNeeded += totalThisMonth;
                           
         }
@@ -153,7 +153,7 @@ public static class Spend
         
         return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
     }
-    public static decimal CalculateMonthlyRequiredSpend(McModel simParams, PgPerson person, LocalDateTime currentDate
+    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpend(McModel simParams, PgPerson person, LocalDateTime currentDate
         , BookOfAccounts accounts)
     {
         var standardSpend = person.RequiredMonthlySpend;
@@ -162,7 +162,7 @@ public static class Spend
             .SelectMany(x => x.Positions
                 .Where(y => y.IsOpen))
             .Sum(x => x.MonthlyPayment);
-        return standardSpend + healthCareSpend + debtSpend;
+        return (standardSpend + healthCareSpend + debtSpend, healthCareSpend, debtSpend);
     }
     /// <summary>
     /// the CalculateMonthlyRequiredSpend will take debts into account for purposes of rebalancing and investing extra
@@ -170,7 +170,7 @@ public static class Spend
     /// the required spend without debt payments. this is here in support of the Simulation.PayForStuff method that only
     /// wants the actual required spend, assuming that PayDownDebt will be taking care of the debt payment
     /// </summary>
-    public static decimal CalculateMonthlyRequiredSpendWithoutDebt(McModel simParams, PgPerson person,
+    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpendWithoutDebt(McModel simParams, PgPerson person,
         LocalDateTime currentDate)
     {
         // create an empty book of accounts
@@ -215,6 +215,8 @@ public static class Spend
             TotalDebtPaidLifetime = lifetimeSpend.TotalDebtPaidLifetime,
             TotalFunPointsLifetime = lifetimeSpend.TotalFunPointsLifetime,
             TotalLifetimeHealthCareSpend = lifetimeSpend.TotalLifetimeHealthCareSpend,
+            TotalLifetimeFunSpend = lifetimeSpend.TotalLifetimeFunSpend,
+            TotalLifetimeRequiredSpend = lifetimeSpend.TotalLifetimeRequiredSpend,
         };
         return spend;
     }
@@ -222,86 +224,39 @@ public static class Spend
     #endregion
 
     #region Record functions
-
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordDebtAccrual(
-        LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
+    
+    /// <summary>
+    /// adds to existing totals when a value is present. otherwise, uses the existing totals
+    /// </summary>
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordMultiSpend(
+        LifetimeSpend lifetimeSpend, LocalDateTime currentDate, 
+        decimal? totalSpendLifetime,
+        decimal? totalInvestmentAccrualLifetime,
+        decimal? totalDebtAccrualLifetime,
+        decimal? totalSocialSecurityWageLifetime,
+        decimal? totalDebtPaidLifetime,
+        decimal? totalFunPointsLifetime,
+        decimal? totalLifetimeHealthCareSpend,
+        decimal? totalLifetimeFunSpend,
+        decimal? totalLifetimeRequiredSpend)
     {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalDebtAccrualLifetime += amount;
-        if (MonteCarloConfig.DebugMode)
-        {
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Debt accrual recorded: {amount}"));
-        }
+        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (new LifetimeSpend(), []);
+        result.spend.TotalSpendLifetime = (totalSpendLifetime is null) ? lifetimeSpend.TotalSpendLifetime : lifetimeSpend.TotalSpendLifetime + (decimal)totalSpendLifetime;
+        result.spend.TotalInvestmentAccrualLifetime = (totalInvestmentAccrualLifetime is null) ? lifetimeSpend.TotalInvestmentAccrualLifetime : lifetimeSpend.TotalInvestmentAccrualLifetime + (decimal)totalInvestmentAccrualLifetime;
+        result.spend.TotalDebtAccrualLifetime = (totalDebtAccrualLifetime is null) ? lifetimeSpend.TotalDebtAccrualLifetime : lifetimeSpend.TotalDebtAccrualLifetime + (decimal)totalDebtAccrualLifetime;
+        result.spend.TotalSocialSecurityWageLifetime = (totalSocialSecurityWageLifetime is null) ? lifetimeSpend.TotalSocialSecurityWageLifetime : lifetimeSpend.TotalSocialSecurityWageLifetime + (decimal)totalSocialSecurityWageLifetime;
+        result.spend.TotalDebtPaidLifetime = (totalDebtPaidLifetime is null) ? lifetimeSpend.TotalDebtPaidLifetime : lifetimeSpend.TotalDebtPaidLifetime + (decimal)totalDebtPaidLifetime;
+        result.spend.TotalFunPointsLifetime = (totalFunPointsLifetime is null) ? lifetimeSpend.TotalFunPointsLifetime : lifetimeSpend.TotalFunPointsLifetime + (decimal)totalFunPointsLifetime;
+        result.spend.TotalLifetimeHealthCareSpend = (totalLifetimeHealthCareSpend is null) ? lifetimeSpend.TotalLifetimeHealthCareSpend : lifetimeSpend.TotalLifetimeHealthCareSpend + (decimal)totalLifetimeHealthCareSpend;
+        result.spend.TotalLifetimeFunSpend = (totalLifetimeFunSpend is null) ? lifetimeSpend.TotalLifetimeFunSpend : lifetimeSpend.TotalLifetimeFunSpend + (decimal)totalLifetimeFunSpend;
+        result.spend.TotalLifetimeRequiredSpend = (totalLifetimeRequiredSpend is null) ? lifetimeSpend.TotalLifetimeRequiredSpend : lifetimeSpend.TotalLifetimeRequiredSpend + (decimal)totalLifetimeRequiredSpend;
+        if (!MonteCarloConfig.DebugMode) return result;
+        
+        result.messages.Add(new ReconciliationMessage(currentDate,null, "Multi spend recorded."));
+        
         return result;
     }
     
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordDebtPayment(
-        LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
-    {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalDebtPaidLifetime += amount;
-        if (MonteCarloConfig.DebugMode)
-        {
-            
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Debt payment recorded: {amount}"));
-        }
-        return result;
-    }
-
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunPoints(LifetimeSpend lifetimeSpend, decimal funPoints, LocalDateTime currentDate)
-    {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalFunPointsLifetime += funPoints;
-        if (MonteCarloConfig.DebugMode)
-        {
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Fun points recorded: {funPoints}"));
-        }
-        return result;
-    }
-    
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordInvestmentAccrual(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
-    {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalInvestmentAccrualLifetime += amount;
-        if (MonteCarloConfig.DebugMode)
-        {
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Investment accrual recorded: {amount}"));
-        }
-        return result;
-    }
-    
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordSocialSecurityWage(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
-    {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalSocialSecurityWageLifetime += amount;
-        if (MonteCarloConfig.DebugMode)
-        {
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Social security wage recorded: {amount}"));
-        }
-        return result;
-    }
-    
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
-    {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalSpendLifetime += amount;
-        if (MonteCarloConfig.DebugMode)
-        {
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Spend recorded: {amount}"));
-        }
-        return result;
-    }
-    
-    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordHealthcareSpend(LifetimeSpend lifetimeSpend, decimal amount, LocalDateTime currentDate)
-    {
-        (LifetimeSpend spend, List<ReconciliationMessage> messages) result = (CopyLifetimeSpend(lifetimeSpend), []);
-        result.spend.TotalLifetimeHealthCareSpend += amount;
-        if (MonteCarloConfig.DebugMode)
-        {
-            result.messages.Add(new ReconciliationMessage(currentDate,null, $"Healthcare spend recorded: {amount}"));
-        }
-        return result;
-    }
     
     #endregion
 

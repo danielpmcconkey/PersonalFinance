@@ -29,7 +29,10 @@ public static class Payday
         var deposit = AccountCashManagement.DepositCash(results.bookOfAccounts, amount, currentDate);
         results.bookOfAccounts = deposit.accounts;
         
-        var recordSsWage = Spend.RecordSocialSecurityWage(results.spend, amount, currentDate);
+        var recordSsWage = Spend.RecordMultiSpend(results.spend, currentDate, null,
+            null, null, amount, 
+            null, null, null, null, 
+            null);
         results.spend = recordSsWage.spend;
         
         var reccordSsTax = Tax.RecordSocialSecurityIncome(results.ledger, currentDate, amount);
@@ -193,7 +196,10 @@ public static class Payday
         
         // record the health portion of the spend
         var recordHealthSpend =
-            Spend.RecordHealthcareSpend(result.spend, annualPreTaxHealthDeductions / 12, currentDate);
+            Spend.RecordMultiSpend(result.spend, currentDate, null, null, 
+                null, null, null, null,
+                annualPreTaxHealthDeductions / 12, null, 
+                null);
         result.spend = recordHealthSpend.spend;
         
         if (!MonteCarloConfig.DebugMode) return result;

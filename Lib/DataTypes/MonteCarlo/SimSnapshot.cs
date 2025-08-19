@@ -13,4 +13,9 @@ public record SimSnapshot
     public required bool IsRetired { get; set; }
     public required bool AreWeInARecession { get; set; }
     public required bool AreWeInExtremeAusterityMeasures { get; set; }
+    public required decimal TotalHealthCareSpendSoFar { get; set; }
+    public required decimal TotalCapitalGainsSoFar { get; set; }
+    public required decimal TotalIraDistributionsSoFar { get; set; }
+    public required decimal TotalTaxFreeWithdrawalsSoFar { get; set; }
+    
 }

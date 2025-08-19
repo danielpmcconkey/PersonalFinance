@@ -674,7 +674,8 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = false,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
+            simParams, person, currentDate).TotalSpend;
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
@@ -737,7 +738,8 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = false,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
+            simParams, person, currentDate).TotalSpend;
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
@@ -770,7 +772,8 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = true,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
+            simParams, person, currentDate).TotalSpend;
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
@@ -802,7 +805,8 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = false,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
+            simParams, person, currentDate).TotalSpend;
         var expectedFun = 
             ModelConstants.FunBonusRetirement + // you still get retirement freedom
             requiredSpend * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend * -1 // but each dollar spent makes you nervous
@@ -837,7 +841,8 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = true,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
+            simParams, person, currentDate).TotalSpend;
         var expectedFun = 
                 ModelConstants.FunBonusRetirement + // you still get retirement freedom
                 requiredSpend * ModelConstants.FunPenaltyRetiredInExtremeAusterityPercentOfRequiredSpend * -1 // but each dollar spent makes you nervous
@@ -872,7 +877,8 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = true,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
+            simParams, person, currentDate).TotalSpend;
         var expectedFun = 
                 ModelConstants.FunBonusRetirement + // you still get retirement freedom
                 requiredSpend * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend * -1 + // but each dollar spent makes you nervous

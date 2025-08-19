@@ -77,6 +77,7 @@ public static class InvestmentSales
             switch (account.AccountType)
             {
                 case McInvestmentAccountType.ROTH_401_K:
+                case McInvestmentAccountType.ROTH_IRA:
                 case McInvestmentAccountType.HSA:
                     totalTaxFree += amountSoldThisPosition;
                     break;
@@ -90,8 +91,11 @@ public static class InvestmentSales
                     if (position.Entry >= currentDate.PlusYears(-1)) totalShortTermCapitalGains += capitalGains;
                     totalTaxableSold += amountSoldThisPosition;
                     break;
+                case McInvestmentAccountType.PRIMARY_RESIDENCE:
+                case McInvestmentAccountType.CASH:
+                    throw new InvalidDataException("Cannot sell cash or primary residence accounts");
                 default:
-                    break;
+                    throw new ArgumentOutOfRangeException();
             }
 
             if (amountStillNeeded >= position.CurrentValue)
@@ -121,6 +125,10 @@ public static class InvestmentSales
         var recordIraResults = Tax.RecordIraDistribution(results.ledger, currentDate, totalIraDistribution);
         results.ledger = recordIraResults.ledger;
         
+        // record the tax free withdrawals
+        var recordTaxFreeResults = Tax.RecordTaxFreeWithdrawal(results.ledger, currentDate, totalTaxFree);
+        results.ledger = recordTaxFreeResults.ledger;
+
         // record the Capital Gains
         var recordLongTermCapitalGainsResults = Tax.RecordLongTermCapitalGain(results.ledger, currentDate, totalLongTermCapitalGains);
         results.ledger = recordLongTermCapitalGainsResults.ledger;
@@ -130,6 +138,7 @@ public static class InvestmentSales
         if (!MonteCarloConfig.DebugMode) return results;
         results.messages.Add(new ReconciliationMessage(currentDate, results.amountSold, "Total investments sold"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalIraDistribution, "Total tax deferred sold"));
+        results.messages.Add(new ReconciliationMessage(currentDate, totalTaxFree, "Total tax free sold"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalTaxableSold, "Total taxable sold"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalLongTermCapitalGains, "Total long term capital gains"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalLongTermCapitalGains, "Total short term capital gains"));
@@ -142,98 +151,6 @@ public static class InvestmentSales
         
         return results;
     }
-    
-    // /// <summary>
-    // /// sells enough full positions of the provided position type to reach the amountToSell, using the provided account
-    // /// type order. It deposits proceeds into the cash account.
-    // /// </summary>
-    // /// <returns>the exact amount sold, a new book of accounts, and a new ledger</returns>
-    // public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
-    //     SellInvestmentsToDollarAmountByPositionTypeOrderedByAccountType(
-    //         decimal amountToSell, McInvestmentPositionType positionType, McInvestmentAccountType[] typeOrder,
-    //         BookOfAccounts bookOfAccounts, TaxLedger taxLedger, LocalDateTime currentDate)
-    // {
-    //     (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger,
-    //         List<ReconciliationMessage> messages) results = (
-    //             0, 
-    //             AccountCopy.CopyBookOfAccounts(bookOfAccounts),
-    //             Tax.CopyTaxLedger(taxLedger),
-    //             []
-    //         );
-    //     Dictionary<McInvestmentAccountType, int> orderRank = [];
-    //     for (int i = 0; i < typeOrder.Length; i++) orderRank.Add(typeOrder[i], i);
-    //     
-    //     var oneYearAgo = currentDate.PlusYears(-1);
-    //     var query = from account in results.newBookOfAccounts.InvestmentAccounts
-    //         where typeOrder.Contains(account.AccountType)
-    //         from position in account.Positions
-    //         where (position.IsOpen && position.Entry < oneYearAgo && position.InvestmentPositionType == positionType)
-    //         orderby (orderRank[account.AccountType], position.Entry)
-    //         select (account, position)
-    //         ;
-    //     var totalIraDistribution = 0m;
-    //     var totalTaxableSold = 0m;
-    //     var totalCapitalGains = 0m;
-    //     var totalTaxFree = 0m;
-    //         
-    //     foreach (var (account, position) in query)
-    //     {
-    //         if (results.amountSold >= amountToSell) break;
-    //         results.amountSold += position.CurrentValue;
-    //         switch (account.AccountType)
-    //         {
-    //             case McInvestmentAccountType.ROTH_401_K:
-    //             case McInvestmentAccountType.HSA:
-    //                 totalTaxFree += position.CurrentValue;
-    //                 break;
-    //             case McInvestmentAccountType.TRADITIONAL_401_K:
-    //             case McInvestmentAccountType.TRADITIONAL_IRA:
-    //                 totalIraDistribution += position.CurrentValue;
-    //                 break;
-    //             case McInvestmentAccountType.TAXABLE_BROKERAGE:
-    //                 totalCapitalGains += (position.CurrentValue - position.InitialCost);
-    //                 totalTaxableSold += position.CurrentValue;
-    //                 break;
-    //             default:
-    //                 break;
-    //         }
-    //         // close the position
-    //         position.Quantity = 0;
-    //         position.IsOpen = false;
-    //         
-    //         
-    //     
-    //         position.Quantity = 0;
-    //         position.IsOpen = false;
-    //     }
-    //     // deposit the proceeds
-    //     var depositResults = AccountCashManagement.DepositCash(
-    //         results.newBookOfAccounts, results.amountSold, currentDate);
-    //     results.newBookOfAccounts = depositResults.accounts;
-    //     
-    //     // record the IRA distributions
-    //     var recordIraResults = Tax.RecordIraDistribution(results.newLedger, currentDate, totalIraDistribution);
-    //     results.newLedger = recordIraResults.ledger;
-    //     
-    //     // record the Capital Gains
-    //     var recordCapitalGainsResults = Tax.RecordLongTermCapitalGain(results.newLedger, currentDate, totalCapitalGains);
-    //     results.newLedger = recordCapitalGainsResults.ledger;
-    //     
-    //     if (!MonteCarloConfig.DebugMode) return results;
-    //     results.messages.Add(new ReconciliationMessage(currentDate, results.amountSold, "Total investments sold"));
-    //     results.messages.Add(new ReconciliationMessage(currentDate, totalIraDistribution, "Total tax deferred sold"));
-    //     results.messages.Add(new ReconciliationMessage(currentDate, totalTaxableSold, "Total taxable sold"));
-    //     results.messages.Add(new ReconciliationMessage(currentDate, totalCapitalGains, "Total capital gains"));
-    //     results.messages.Add(new ReconciliationMessage(currentDate, totalTaxFree, "Total tax free sold"));
-    //     results.messages.AddRange(depositResults.messages);
-    //     results.messages.AddRange(recordIraResults.messages);
-    //     results.messages.AddRange(recordCapitalGainsResults.messages);
-    //     
-    //     
-    //     return results;
-    // }
-    //
-    
    
 
     /// <summary>

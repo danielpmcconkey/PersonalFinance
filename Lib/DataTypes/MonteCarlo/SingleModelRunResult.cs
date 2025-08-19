@@ -46,6 +46,14 @@ public record SingleModelRunResult
     [NotMapped]
     public required SingleModelRunResultStatLineAtTime[] TaxByYear { get; init; }
     [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] HealthSpendByYear { get; init; }
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] IraDistributionsByYear { get; init; }
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] CapitalGainsByYear { get; init; }
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] TaxFreeWithdrawalsByYear { get; init; }
+    [NotMapped]
     public required List<SimSnapshot>[] AllSnapshots { get; init; }
     
     [Column("networthatendofsim10", TypeName = "numeric(18,4)")]

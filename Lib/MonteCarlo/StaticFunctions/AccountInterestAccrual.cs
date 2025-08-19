@@ -74,7 +74,10 @@ public static class AccountInterestAccrual
         
         result.newPosition.CurrentBalance += amount;
 
-        var recordResult = Spend.RecordDebtAccrual(result.newSpend, amount, currentDate);
+        var recordResult = Spend.RecordMultiSpend(result.newSpend, currentDate, null,
+            null, amount, null, 
+            null, null, null, null, 
+            null);
         result.newSpend = recordResult.spend;
         
         if (!MonteCarloConfig.DebugMode) return result;

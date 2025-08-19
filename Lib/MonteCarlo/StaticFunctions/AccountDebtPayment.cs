@@ -118,7 +118,10 @@ public static class AccountDebtPayment
             throw new InvalidDataException($"Total debt payment {totalDebtPayment} does not match total credited {totalCredited}");       
         }
 
-        var recordResult = Spend.RecordDebtPayment(result.newSpend, totalCredited, currentDate);
+        var recordResult =  Spend.RecordMultiSpend(result.newSpend, currentDate, null,
+            null, null, null, 
+            totalCredited, null, null, null, 
+            null);
         result.newSpend = recordResult.spend;
         result.messages.AddRange(recordResult.messages);
         

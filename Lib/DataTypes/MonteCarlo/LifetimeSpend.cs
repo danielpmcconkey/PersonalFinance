@@ -13,4 +13,6 @@ public struct LifetimeSpend
     public decimal TotalDebtPaidLifetime { get; set; } = 0m;
     public decimal TotalFunPointsLifetime { get; set; } = 0m;
     public decimal TotalLifetimeHealthCareSpend { get; set; } = 0m;
+    public decimal TotalLifetimeFunSpend { get; set; } = 0m;
+    public decimal TotalLifetimeRequiredSpend { get; set; } = 0m;
 }
