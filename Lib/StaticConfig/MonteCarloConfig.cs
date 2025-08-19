@@ -62,6 +62,7 @@ public static class MonteCarloConfig
     public static bool ShouldReconcileEOYRecap;
     public static LocalDateTime ReconciliationSimStartDate;
     public static LocalDateTime ReconciliationSimEndDate;
+    public static string ChampionModelId;
     
 
     static MonteCarloConfig()
@@ -90,6 +91,7 @@ public static class MonteCarloConfig
         NumberOfModelsToBreed = ConfigManager.ReadIntSetting("NumberOfModelsToBreed");
         NumberOfModelsToPull = ConfigManager.ReadIntSetting("NumberOfModelsToPull");
         RunTrainingInLoop = ConfigManager.ReadBoolSetting("RunTrainingInLoop");
+        ChampionModelId = ConfigManager.ReadStringSetting("ChampionModelId");
         
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }

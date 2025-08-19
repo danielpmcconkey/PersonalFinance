@@ -1,5 +1,6 @@
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
+using Lib.StaticConfig;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using NodaTime;
@@ -14,8 +15,7 @@ public static class DataStage
         
         using var context = new PgContext();
         var champ = context.McModels
-                        .Where(x => x.Id == Guid.Parse("65dc4b1b-43ab-44ca-9997-10282ccda7d3"))
-                        .FirstOrDefault() ??
+                        .FirstOrDefault(x => x.Id == Guid.Parse(MonteCarloConfig.ChampionModelId)) ??
                     throw new InvalidDataException();
         return champ;
     }
