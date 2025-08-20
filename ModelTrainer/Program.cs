@@ -27,22 +27,27 @@ logger.Info("Pulling historical pricing data");
 decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
 
 
-logger.Info("Running in single model mode");
-
-logger.Info("Pulling model champion from the database");
-McModel champion =DataStage.GetModelChampion(dan);
-
-// over-write the start and end dates from the DB champion model to use what's in the app config
-champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
-champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
+logger.Info("Running in model training mode");
 
 logger.Info(logger.FormatBarSeparator('*'));
-logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
+logger.Info(logger.FormatHeading("Beginning Monte Carlo training session"));
 logger.Info(logger.FormatBarSeparator('*'));
-var results = SimulationTrigger.RunSingleModelSession(
-    logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
-logger.Info("Single model simulation of all lives completed");
-
+var keepRunning = true;
+while(keepRunning)
+{
+    SimulationTrigger.RunModelTrainingSession(
+    logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
+    logger.Info("Training session completed.");
+    if (MonteCarloConfig.RunTrainingInLoop)
+    {
+        logger.Info("Starting another");
+    }
+    else
+    {
+        logger.Info("Not looping.");
+        keepRunning = false;
+    }
+}
 logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Exiting"));
 logger.Info(logger.FormatBarSeparator('*'));

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MonteCarloCLI", "MonteCarlo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Lib.Tests", "Lib.Tests\Lib.Tests.csproj", "{462ECED5-3D05-48A6-8FDC-6EF2D6B1345D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ModelTrainer", "ModelTrainer\ModelTrainer.csproj", "{70A0D7ED-FCB7-4B3A-A1D4-F63A5822170F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{462ECED5-3D05-48A6-8FDC-6EF2D6B1345D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{462ECED5-3D05-48A6-8FDC-6EF2D6B1345D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{462ECED5-3D05-48A6-8FDC-6EF2D6B1345D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70A0D7ED-FCB7-4B3A-A1D4-F63A5822170F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70A0D7ED-FCB7-4B3A-A1D4-F63A5822170F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70A0D7ED-FCB7-4B3A-A1D4-F63A5822170F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70A0D7ED-FCB7-4B3A-A1D4-F63A5822170F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
