@@ -38,6 +38,7 @@ public class RecessionTests
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
             LivinLargeRatio = 1.0m,
             LivinLargeNetWorthTrigger = 4000000m,
+            Generation = -1,
         };
     }
 

@@ -213,6 +213,7 @@ public class Model
                 ModelConstants.LivinLargeRatioMin, ModelConstants.LivinLargeRatioMax),
             LivinLargeNetWorthTrigger = GetUnSeededRandomDecimal(
                 ModelConstants.LivinLargeNetWorthTriggerMin, ModelConstants.LivinLargeNetWorthTriggerMax),
+            Generation = 1,
         };
     }
     
@@ -243,6 +244,7 @@ public class Model
             Percent401KTraditional = MatePercent401KTraditional(a, b),
             LivinLargeRatio = MateLivinLargeRatio(a, b),
             LivinLargeNetWorthTrigger = MateLivinLargeNetWorthTrigger(a, b),
+            Generation = Math.Max(a.Generation, b.Generation) + 1,
         };
     }
     

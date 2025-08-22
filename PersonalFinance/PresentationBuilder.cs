@@ -732,6 +732,30 @@ namespace PersonalFinance
                 BankruptcyRatesOverTime = null,
                 IsBar = true,
             });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 130,
+                JavascriptId = "mc_funspendbyyear_chart_div",
+                JavascriptFunctionName = "drawFundSpendByYearChart",
+                Title = "Monte Carlo fun spend by Year",
+                VAxisTitle = "Fun spend",
+                Description = "The amount of money you spent to have fun each year",
+                StatLinesAtTime = _singleModelRunResult?.FunSpendByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
+            _monteCarloResultsCharts.Add(new MonteCarloResultsChart()
+            {
+                Ordinal = 130,
+                JavascriptId = "mc_requiredspendbyyear_chart_div",
+                JavascriptFunctionName = "drawRequiredSpendByYearChart",
+                Title = "Monte Carlo required spend by Year",
+                VAxisTitle = "Required spend",
+                Description = "The amount of money you spent each year that you had no choice over. Includes bills and health care costs, but does not include debt payback",
+                StatLinesAtTime = _singleModelRunResult?.NotFunSpendByYear,
+                BankruptcyRatesOverTime = null,
+                IsBar = true,
+            });
         } 
         private string GetInvestmentAssestsSummary(decimal totalWealthPositions)
         {

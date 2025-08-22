@@ -54,6 +54,10 @@ public record SingleModelRunResult
     [NotMapped]
     public required SingleModelRunResultStatLineAtTime[] TaxFreeWithdrawalsByYear { get; init; }
     [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] FunSpendByYear { get; init; }
+    [NotMapped]
+    public required SingleModelRunResultStatLineAtTime[] NotFunSpendByYear { get; init; }
+    [NotMapped]
     public required List<SimSnapshot>[] AllSnapshots { get; init; }
     
     [Column("networthatendofsim10", TypeName = "numeric(18,4)")]

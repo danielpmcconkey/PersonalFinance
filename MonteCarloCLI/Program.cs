@@ -6,7 +6,6 @@ using System.Reflection;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
 using NodaTime;
-
 string logDir = ConfigManager.ReadStringSetting("LogDir");
 string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
 string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";

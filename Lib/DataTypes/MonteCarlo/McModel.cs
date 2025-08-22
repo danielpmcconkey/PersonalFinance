@@ -118,6 +118,9 @@ namespace Lib.DataTypes.MonteCarlo
         /// </summary>
         [Column("percent401ktraditional", TypeName = "numeric(5,4)")]
         public required decimal Percent401KTraditional { get; set; }
+        
+        [Column("generation")]
+        public required int Generation { get; set; }
 
     }
 }

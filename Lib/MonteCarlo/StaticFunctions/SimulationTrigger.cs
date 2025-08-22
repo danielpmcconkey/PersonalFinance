@@ -110,8 +110,6 @@ public class SimulationTrigger
         
         var results = Simulation.InterpretSimulationResults(simParams, allLivesRuns);
         
-        logger.Info("Saving model run results to the database");
-        SaveSingleModelRunResultsToDb(results);
         return results;
     }
     

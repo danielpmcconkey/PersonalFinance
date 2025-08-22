@@ -17,5 +17,7 @@ public record SimSnapshot
     public required decimal TotalCapitalGainsSoFar { get; set; }
     public required decimal TotalIraDistributionsSoFar { get; set; }
     public required decimal TotalTaxFreeWithdrawalsSoFar { get; set; }
+    public required decimal TotalFunSpendSoFar { get; set; }
+    public required decimal TotalNotFunSpendSoFar { get; set; }
     
 }

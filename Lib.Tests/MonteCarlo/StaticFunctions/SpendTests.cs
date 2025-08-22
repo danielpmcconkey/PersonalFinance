@@ -38,6 +38,7 @@ public class SpendTests
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
             LivinLargeRatio = 1.5m,
             LivinLargeNetWorthTrigger = 4000000m,
+            Generation = -1,
         };
     }
 

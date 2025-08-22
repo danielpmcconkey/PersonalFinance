@@ -81,6 +81,8 @@ public static class Simulation
                                      + sim.TaxLedger.LongTermCapitalGains.Sum(x => x.amount),
             TotalIraDistributionsSoFar = sim.TaxLedger.TaxableIraDistribution.Sum(x => x.amount),
             TotalTaxFreeWithdrawalsSoFar = sim.TaxLedger.TaxFreeWithrawals.Sum(x => x.amount),
+            TotalFunSpendSoFar = sim.LifetimeSpend.TotalLifetimeFunSpend,
+            TotalNotFunSpendSoFar = sim.LifetimeSpend.TotalLifetimeRequiredSpend,
         };
     }
 
@@ -199,6 +201,8 @@ public static class Simulation
         var totalIraDistributionsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
         var totalCapitalGainsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
         var totalTaxFreeWithdrawalsOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
+        var totalFunSpendOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
+        var totalNotFunSpendOverTime = new SingleModelRunResultStatLineAtTime[monthsCount];
         var bankruptcyRateOverTime = new SingleModelRunResultBankruptcyRateAtTime[monthsCount]; 
         var cursorDate = minDate;
         int i = 0;
@@ -209,7 +213,7 @@ public static class Simulation
                 .Where(y => y.CurrentDateWithinSim == cursorDate)
                 .ToList();
             var allNetWorths = allSimSnapshotsThatDay.Select(x => x.NetWorth).ToArray();
-            var allFun = allSimSnapshotsThatDay.Select(x => x.TotalFunPointsSoFar).ToArray();
+            var allFunPoints = allSimSnapshotsThatDay.Select(x => x.TotalFunPointsSoFar).ToArray();
             var allSpend = allSimSnapshotsThatDay.Select(x => x.TotalSpendSoFar).ToArray();
             var allTax = allSimSnapshotsThatDay.Select(x => x.TotalTaxSoFar).ToArray();
             var allBankruptcies = allSimSnapshotsThatDay.Select(x => x.IsBankrupt).ToArray();
@@ -217,15 +221,19 @@ public static class Simulation
             var allIraDistributions = allSimSnapshotsThatDay.Select(x => x.TotalIraDistributionsSoFar).ToArray();
             var allCapitalGains = allSimSnapshotsThatDay.Select(x => x.TotalCapitalGainsSoFar).ToArray();
             var allTaxFreeWithdrawals = allSimSnapshotsThatDay.Select(x => x.TotalTaxFreeWithdrawalsSoFar).ToArray();
+            var allFunSpend = allSimSnapshotsThatDay.Select(x => x.TotalFunSpendSoFar).ToArray();
+            var allNotFunSpend = allSimSnapshotsThatDay.Select(x => x.TotalNotFunSpendSoFar).ToArray();
             
             netWorthStatsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allNetWorths);
-            totalFunPointsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allFun);
+            totalFunPointsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allFunPoints);
             totalSpendOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allSpend);
             totalTaxOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allTax);
             totalHealthSpendOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allHealthSpend);
             totalIraDistributionsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allIraDistributions);
             totalCapitalGainsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allCapitalGains);
             totalTaxFreeWithdrawalsOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allTaxFreeWithdrawals);
+            totalFunSpendOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allFunSpend);
+            totalNotFunSpendOverTime[i] = CreateSingleModelRunResultStatLineAtTime(cursorDate, allNotFunSpend);
             
             var bankruptcyRate = allBankruptcies.Count(x => x) / (decimal)allBankruptcies.Length;
             bankruptcyRateOverTime[i] = new SingleModelRunResultBankruptcyRateAtTime(cursorDate, bankruptcyRate);
@@ -263,6 +271,8 @@ public static class Simulation
             IraDistributionsByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalIraDistributionsOverTime),
             CapitalGainsByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalCapitalGainsOverTime),
             TaxFreeWithdrawalsByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalTaxFreeWithdrawalsOverTime),
+            FunSpendByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalFunSpendOverTime),
+            NotFunSpendByYear = CreateYearlyMarkersFromSimSnapshots(orderedYears, totalNotFunSpendOverTime),
             
             NetWorthAtEndOfSim10 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 10),
             NetWorthAtEndOfSim25 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(netWorthStatsOverTime, 25),
@@ -355,16 +365,6 @@ public static class Simulation
         results.spend = notFunResult.spend;
         results.messages.AddRange(notFunResult.messages);
         if (!notFunResult.isSuccessful) return results;
-        
-        // record the health spend
-        
-        var recordHealthResults =
-            Spend.RecordMultiSpend(results.spend, currentDate, null, null, 
-                null, null, null, null,
-                requiredSpendResults.HealthSpend, null, 
-                null);
-        results.spend = recordHealthResults.spend;
-        results.messages.AddRange(recordHealthResults.messages);
             
         // now try the fun spend
         var funResult = SpendCash(
@@ -374,6 +374,16 @@ public static class Simulation
         results.spend = funResult.spend;
         results.messages.AddRange(funResult.messages);
         if (!funResult.isSuccessful) return results;
+        
+        // record the spends
+        var funPointsToRecord = Spend.CalculateFunPointsForSpend(funSpend, person, currentDate);
+        var totalSpend = funSpend + notFunSpend;
+        var recordResults = Spend.RecordMultiSpend(results.spend, currentDate, totalSpend,
+            null, null, null, 
+            null, funPointsToRecord, requiredSpendResults.HealthSpend, funSpend, 
+            notFunSpend);
+        results.spend = recordResults.spend;
+        results.messages.AddRange(recordResults.messages);
         
         // all good; mark as successful and return
         results.isSuccessful = true;
@@ -422,6 +432,12 @@ public static class Simulation
             results.spend = notFunResult.spend;
             results.messages.AddRange(notFunResult.messages);
             if (!notFunResult.isSuccessful) return results;
+            var recordSpendResults = Spend.RecordMultiSpend(results.spend, currentDate, null,
+                null, null, null, 
+                null, null, null, null, 
+                taxLiability);
+            results.spend = recordSpendResults.spend;
+            results.messages.AddRange(recordSpendResults.messages);
         }
         
         // don't forget to record the tax liability, either way
@@ -591,17 +607,6 @@ public static class Simulation
             return results;
         }
 
-        decimal? funPointsToRecord = (isFun) ? 
-            Spend.CalculateFunPointsForSpend(amount, person, currentDate) : 
-            null;
-        
-        // record the spends here before returning
-        var recordResults = Spend.RecordMultiSpend(results.spend, currentDate, amount,
-            null, null, null, 
-            null, funPointsToRecord, null, null, 
-            null);
-        results.spend = recordResults.spend;
-        results.messages.AddRange(recordResults.messages);
         results.isSuccessful = true;
         return results;
     }
