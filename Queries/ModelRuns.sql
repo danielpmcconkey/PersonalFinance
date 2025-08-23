@@ -25,7 +25,7 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 2
+and minorversion = 8
 and r.bankruptcyrateatendofsim <= 0.1
 group by 
 	m.id
@@ -90,8 +90,8 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 8
---and patchversion = 2
+and minorversion = 9
+--and patchversion = 1
 and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc, r.bankruptcyrateatendofsim asc
 limit 100
@@ -102,4 +102,15 @@ order by rundate desc
 limit 20;
 
 alter table personalfinance.montecarlomodel add livinlargenetworthtrigger numeric(18,4) not null default 4000000.0;
+
+select * from personalfinance.montecarlomodel
+where desiredmonthlyspendpostretirement > 10000
+order by modelcreateddate desc
+limit 100
+
+select generation, count(id)
+from personalfinance.montecarlomodel
+group by generation
+order by generation desc
+limit 100
 */

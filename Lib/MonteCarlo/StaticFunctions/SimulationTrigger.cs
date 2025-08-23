@@ -166,6 +166,51 @@ public class SimulationTrigger
         }
     }
 
+    public static void CleanUpModelAndRunResultsData()
+    {
+        using var context = new PgContext();
+        // delete the run results
+        context.Database.ExecuteSql($@"
+with childless as (
+	select
+	  p.id,
+	  count(c1.id) as num_sons,
+	  count(c2.id) as num_daughters
+	from
+	  personalfinance.montecarlomodel p 
+	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+	  where p.modelcreateddate <= CURRENT_DATE - 1
+	group by
+	  p.id
+	having
+	  count(c1.id) = 0 and count(c2.id) = 0
+)
+delete from personalfinance.singlemodelrunresult
+where modelid in (select id from childless)");
+        
+        // delete the models
+        context.Database.ExecuteSql($@"
+with childless as (
+	select
+	  p.id,
+	  count(c1.id) as num_sons,
+	  count(c2.id) as num_daughters
+	from
+	  personalfinance.montecarlomodel p 
+	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+	  where p.modelcreateddate <= CURRENT_DATE - 1
+	group by
+	  p.id
+	having
+	  count(c1.id) = 0 and count(c2.id) = 0
+)
+delete from personalfinance.montecarlomodel
+where id in (select id from childless)");
+        
+    }
+
     public static List<McModel> FetchModelsForTrainingByVersion(PgPerson person, int majorVersion, int minorVersion)
     {
         var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
@@ -176,7 +221,7 @@ public class SimulationTrigger
                     " extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand," +
                     " nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance," +
                     " recessionchecklookbackmonths, recessionrecoverypointmodifier, desiredmonthlyspendpreretirement" +
-                    ", desiredmonthlyspendpostretirement, percent401ktraditional " +
+                    ", desiredmonthlyspendpostretirement, percent401ktraditional, generation " +
                     "from personalfinance.singlemodelrunresult r " +
                     "left join personalfinance.montecarlomodel m on r.modelid = m.id" +
                     " where m.id is not null " +
@@ -188,7 +233,7 @@ public class SimulationTrigger
                     ", extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand" +
                     ", nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance" +
                     ", recessionchecklookbackmonths, recessionrecoverypointmodifier" +
-                    ", desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, percent401ktraditional " +
+                    ", desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, percent401ktraditional, generation " +
                     "order by max(r.funpointsatendofsim50) desc, min(r.bankruptcyrateatendofsim) asc " +
                     $"limit {maxFromDb}";
         return context.McModels.FromSqlRaw(query).ToList();

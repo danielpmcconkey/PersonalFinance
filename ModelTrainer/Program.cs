@@ -31,6 +31,7 @@ logger.Info("Running in model training mode");
 
 logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Beginning Monte Carlo training session"));
+logger.Info(logger.FormatHeading($"Version {ModelConstants.MajorVersion}.{ModelConstants.MinorVersion}.{ModelConstants.PatchVersion}"));
 logger.Info(logger.FormatBarSeparator('*'));
 var keepRunning = true;
 while(keepRunning)
@@ -38,9 +39,11 @@ while(keepRunning)
     SimulationTrigger.RunModelTrainingSession(
     logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
     logger.Info("Training session completed.");
+    logger.Info("Cleaning up unneeded model training data.");
+    SimulationTrigger.CleanUpModelAndRunResultsData();
     if (MonteCarloConfig.RunTrainingInLoop)
     {
-        logger.Info("Starting another");
+        logger.Info("Starting another training session");
     }
     else
     {

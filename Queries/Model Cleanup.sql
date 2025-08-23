@@ -1,42 +1,36 @@
-with all_runs as (
-	select 
-		m.id
-		, r.majorversion
-		, r.minorversion
-		, max(r.funpointsatendofsim50) as funpointsatendofsim50
-		, min(r.bankruptcyrateatendofsim) as bankruptcyrateatendofsim
-	from personalfinance.singlemodelrunresult r
-	left join personalfinance.montecarlomodel m on r.modelid = m.id
-	where m.id is not null
-	and r.bankruptcyrateatendofsim <= 0.1
-	group by 
-		m.id
-		, r.majorversion
-		, r.minorversion
-), ordered_runs as (
-	select 
-	* 
-		, row_number() over(
-				partition by majorversion, minorversion
-				order by funpointsatendofsim50 desc, bankruptcyrateatendofsim asc) 
-				as row_num
-	from all_runs
-), keepers as (
-	select id from ordered_runs where row_num <= 20
+with childless as (
+	select
+	  p.id,
+	  count(c1.id) as num_sons,
+	  count(c2.id) as num_daughters
+	from
+	  personalfinance.montecarlomodel p 
+	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+	  where p.modelcreateddate <= CURRENT_DATE - 1
+	group by
+	  p.id
+	having
+	  count(c1.id) = 0 and count(c2.id) = 0
 )
-/*
--- uncomment this section to delete unneeded run results
-delete
---select count(*)
-from personalfinance.singlemodelrunresult
-where modelid not in (select id from keepers)
-*/
+delete from personalfinance.singlemodelrunresult
+where modelid in (select id from childless)
 
 
-/*
--- uncomment this section to delete unneeded models
---delete
-select count(*)
-from personalfinance.montecarlomodel
-where id not in (select id from keepers)
-*/
+with childless as (
+	select
+	  p.id,
+	  count(c1.id) as num_sons,
+	  count(c2.id) as num_daughters
+	from
+	  personalfinance.montecarlomodel p 
+	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+	  where p.modelcreateddate <= CURRENT_DATE - 1
+	group by
+	  p.id
+	having
+	  count(c1.id) = 0 and count(c2.id) = 0
+)
+delete from personalfinance.montecarlomodel
+where id in (select id from childless)
