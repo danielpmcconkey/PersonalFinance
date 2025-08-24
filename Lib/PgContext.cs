@@ -1,7 +1,5 @@
-﻿using Lib.DataTypes;
+﻿using Lib.DataTypes.Postgres;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Lib.DataTypes.MonteCarlo;
 using Npgsql;
 
@@ -209,63 +207,6 @@ namespace Lib
                     .WithMany(c => c.Transactions)
                     .HasForeignKey(t => t.CategoryId);
             });
-            //     modelBuilder.Entity<DataTypes.MonteCarlo.Person>(e =>
-            //     {
-            //         e.HasKey(p => p.Id);
-            //         e.HasMany(p => p.InvestmentAccounts)
-            //             .WithOne(a => a.Person)
-            //             .HasForeignKey(a => a.PersonId);
-            //         e.HasMany(p => p.DebtAccounts)
-            //             .WithOne(a => a.Person)
-            //             .HasForeignKey(a => a.PersonId);
-            //         e.HasMany(p => p.Models)
-            //             .WithOne(m => m.Person)
-            //             .HasForeignKey(m => m.PersonId);
-            //     });
-            //     modelBuilder.Entity<DataTypes.MonteCarlo.Model>(e =>
-            //     {
-            //         e.HasKey(m => m.Id);
-            //         e.HasOne(m => m.Person)
-            //             .WithMany(p => p.Models)
-            //             .HasForeignKey(m => m.PersonId)
-            //             .OnDelete(DeleteBehavior.Cascade);
-            //         e.HasMany(m => m.BatchResults)
-            //             .WithOne(br => br.Model)
-            //             .HasForeignKey(br => br.ModelId);
-            //         e.Property(m => m.RebalanceFrequency).HasConversion<int>();
-            //     });
-            //     modelBuilder.Entity<DataTypes.MonteCarlo.InvestmentAccount>(e =>
-            //     {
-            //         e.HasKey(a => a.Id);
-            //         e.HasMany(a => a.Positions)
-            //             .WithOne(p => p.InvestmentAccount)
-            //             .HasForeignKey(p => p.InvestmentAccountId);
-            //         e.Property(a => a.AccountType).HasConversion<int>();
-            //     });
-            //     modelBuilder.Entity<DataTypes.MonteCarlo.DebtAccount>(e =>
-            //     {
-            //         e.HasKey(a => a.Id);
-            //         e.HasMany(a => a.Positions)
-            //             .WithOne(p => p.DebtAccount)
-            //             .HasForeignKey(p => p.DebtAccountId);
-            //     });
-            //     modelBuilder.Entity<DataTypes.MonteCarlo.DebtPosition>(e =>
-            //     {
-            //         e.HasKey(p => p.Id);
-            //         e.HasOne(p => p.DebtAccount)
-            //             .WithMany(a => a.Positions)
-            //             .HasForeignKey(p => p.DebtAccountId)
-            //             .OnDelete(DeleteBehavior.Cascade);
-            //     });
-            //     modelBuilder.Entity<DataTypes.MonteCarlo.InvestmentPosition>(e =>
-            //     {
-            //         e.HasKey(p => p.Id);
-            //         e.HasOne(p => p.InvestmentAccount)
-            //             .WithMany(a => a.Positions)
-            //             .HasForeignKey(p => p.InvestmentAccountId)
-            //             .OnDelete(DeleteBehavior.Cascade);
-            //         e.Property(a => a.InvenstmentPositionType).HasConversion<int>();
-            //     });
         }
     }
 }

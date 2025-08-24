@@ -4,7 +4,7 @@ using Lib.DataTypes.MonteCarlo;
 using NodaTime;
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using Lib.DataTypes;
+using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.StaticConfig;

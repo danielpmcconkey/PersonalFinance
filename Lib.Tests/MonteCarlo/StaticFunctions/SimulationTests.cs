@@ -3,6 +3,7 @@ using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.DataTypes;
+using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.MonteCarlo.TaxForms.NC;
 using Lib.StaticConfig;

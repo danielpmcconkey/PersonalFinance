@@ -1,4 +1,4 @@
-using Lib.DataTypes;
+using Lib.DataTypes.Postgres;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using NodaTime;

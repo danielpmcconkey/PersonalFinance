@@ -7,6 +7,7 @@ using Npgsql;
 using NpgsqlTypes;
 using Lib.DataTypes;
 using Lib;
+using Lib.DataTypes.Postgres;
 
 namespace PersonalFinance
 {

@@ -1,17 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
-using Lib.DataTypes.MonteCarlo;
 
-namespace Lib.DataTypes;
-[Table("taxbucket", Schema = "personalfinance")]
+namespace Lib.DataTypes.Postgres;
+[Table("investmentaccountgroup", Schema = "personalfinance")]
 [PrimaryKey(nameof(Id))]
-public record PgTaxBucket
+public record PgInvestmentAccountGroup
 {
     [Column("id")]
     public required int Id { get; set; }
     
-    [Column("name", TypeName = "varchar(100)")]
+    [Column("name", TypeName = "varchar(200)")]
     public required string Name { get; set; }
-
+    
     public List<PgInvestmentAccount> InvestmentAccounts { get; set; } = [];
 }

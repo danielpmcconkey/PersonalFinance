@@ -2,17 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 using NodaTime;
 
-namespace Lib.DataTypes;
-[Table("cashposition", Schema = "personalfinance")]
+namespace Lib.DataTypes.Postgres;
+[Table("debtposition", Schema = "personalfinance")]
 [PrimaryKey(nameof(Id))]
-public record PgCashPosition
+public record PgDebtPosition
 {
     [Column("id")]
     public required int Id { get; set; }
     
-    [Column("cashaccount")]
-    public required int CashAccountId { get; set; }
-    public PgCashAccount? CashAccount { get; set; }
+    [Column("debtaccount")]
+    public required int DebtAccountId { get; set; }
+    public PgDebtAccount? DebtAccount { get; set; }
     
     [Column("position_date")]
     public required LocalDateTime PositionDate { get; set; }

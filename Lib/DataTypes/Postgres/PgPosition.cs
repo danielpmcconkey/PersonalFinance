@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 using NodaTime;
 
-namespace Lib.DataTypes;
+namespace Lib.DataTypes.Postgres;
 
 [Table("position", Schema = "personalfinance")]
 [PrimaryKey(nameof(Id))]

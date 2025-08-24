@@ -411,46 +411,6 @@ namespace Lib
             }
             return positions;
         }
-        // public static List<PgCategory> GetCategories()
-        // {
-        //     List<PgCategory> categories = new List<PgCategory>();
-        //     string query = @"
-        //         SET search_path TO personalfinance;
-        //         select 
-	       //          id 
-	       //          , parent_id
-	       //          , display_name
-	       //          , ordinal_within_parent
-        //             , show_in_report
-        //         from category
-        //         where show_in_report = true
-	       //      order by ordinal_within_parent 
-        //         ;
-        //         ";
-        //
-        //
-        //     using (NpgsqlConnection conn = PostgresDAL.getConnection())
-        //     {
-        //         PostgresDAL.openConnection(conn);
-        //         using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
-        //         {
-        //             using (NpgsqlDataReader reader = PostgresDAL.executeReader(cmd))
-        //             {
-        //                 while (reader.Read())
-        //                 {
-        //                     PgCategory pgCategory = new PgCategory();
-        //                     pgCategory.Id = PostgresDAL.getString(reader, "id");
-        //                     pgCategory.ParentId = PostgresDAL.getString(reader, "parent_id");
-        //                     pgCategory.DisplayName = PostgresDAL.getString(reader, "display_name");
-        //                     pgCategory.OrdinalWithinParent = PostgresDAL.getShort(reader, "ordinal_within_parent");
-        //                     pgCategory.ShowInReport = PostgresDAL.getBool(reader, "show_in_report");
-        //                     categories.Add(pgCategory);
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     return categories;
-        // }
         public static List<BudgetPosition> GetBudgetPositions(DateTime from, DateTime to)
         {
             List<BudgetPosition> positions = new List<BudgetPosition>();
@@ -718,44 +678,6 @@ namespace Lib
             }
             return positions;
         }
-        // public static List<Transaction> GetTransactions()
-        // {
-        //     List<Transaction> transactions = new List<Transaction>();
-        //     string query = @"
-        //         SET search_path TO personalfinance;
-        //         select 
-	       //            id,
-        //               category_id,
-        //               transactiondate,
-        //               description,
-        //               amount 
-        //         from tran
-        //         ;
-        //         ";
-        //
-        //
-        //     using (NpgsqlConnection conn = PostgresDAL.getConnection())
-        //     {
-        //         PostgresDAL.openConnection(conn);
-        //         using (NpgsqlCommand cmd = new NpgsqlCommand(query, conn))
-        //         {
-        //             using (NpgsqlDataReader reader = PostgresDAL.executeReader(cmd))
-        //             {
-        //                 while (reader.Read())
-        //                 {
-        //                     Transaction transaction = new Transaction();
-        //                     transaction.Id = PostgresDAL.getInt(reader, "id");
-        //                     transaction.CategoryId = PostgresDAL.getString(reader, "category_id");
-        //                     transaction.DateTime = PostgresDAL.getDateTime(reader, "transactiondate");
-        //                     transaction.Description = PostgresDAL.getString(reader, "description");
-        //                     transaction.Amount = PostgresDAL.getDecimal(reader, "amount");
-        //                     transactions.Add(transaction);
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     return transactions;
-        // }
         #endregion
     }
 }

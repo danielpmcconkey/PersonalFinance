@@ -37,6 +37,7 @@ champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
 
 logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
+logger.Info(logger.FormatHeading($"Version {ModelConstants.MajorVersion}.{ModelConstants.MinorVersion}.{ModelConstants.PatchVersion}"));
 logger.Info(logger.FormatBarSeparator('*'));
 var results = SimulationTrigger.RunSingleModelSession(
     logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);

@@ -1,5 +1,6 @@
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
+using Lib.DataTypes.Postgres;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;

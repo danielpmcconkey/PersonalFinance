@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
+using Lib.DataTypes.Postgres;
 using Lib.StaticConfig;
 using NodaTime;
 

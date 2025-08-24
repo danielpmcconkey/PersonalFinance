@@ -3,6 +3,7 @@ using System.Text;
 using Lib;
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
+using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;

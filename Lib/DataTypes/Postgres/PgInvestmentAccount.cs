@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Lib.DataTypes;
+namespace Lib.DataTypes.Postgres;
 
 
 [Table("investmentaccount", Schema = "personalfinance")]

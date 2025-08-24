@@ -1,4 +1,4 @@
-using Lib.DataTypes;
+using Lib.DataTypes.Postgres;
 using Xunit;
 using NodaTime;
 using Lib.DataTypes.MonteCarlo;

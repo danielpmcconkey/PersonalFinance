@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
-namespace Lib.DataTypes;
+namespace Lib.DataTypes.Postgres;
 
 [Table("debtaccount", Schema = "personalfinance")]
 [PrimaryKey(nameof(Id))]

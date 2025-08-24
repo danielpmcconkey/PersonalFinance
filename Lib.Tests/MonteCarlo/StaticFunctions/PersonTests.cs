@@ -4,6 +4,7 @@ using Lib.DataTypes.MonteCarlo;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using Lib.DataTypes;
+using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo.StaticFunctions;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
