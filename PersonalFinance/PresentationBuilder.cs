@@ -19,6 +19,7 @@ namespace PersonalFinance;
         private List<PgInvestmentAccountGroup> _investmentAccountGroups;
         private List<PgDebtAccount> _debtAccounts;
         private List<PgCashAccount> _cashAccounts;
+        private List<PresInvestmentPosition> _monthEndInvestmentPositions;
         
         // private const string 
         // private List<PgPosition> _wealthPositions = [];
@@ -29,7 +30,7 @@ namespace PersonalFinance;
         // private  List<PgPosition> _currentWealthPositions = [];
         // private List<PgPosition> _currentCashPositions = [];
         // private List<PgDebtPosition> _currentDebtPositions = [];
-        // private  List<(string MonthAbbreviation, LocalDateTime PositionDate)> _months = [];
+        private  List<(string MonthAbbreviation, LocalDate MonthEnd)> _months = [];
         // private  List<string> _taxBuckets = [];
         // private  List<string> _accounts = [];
         // private List<string> _accountGroups = [];
@@ -38,13 +39,16 @@ namespace PersonalFinance;
         private List<AreaChart> _areaCharts = [];
         private List<MonteCarloResultsChart> _monteCarloResultsCharts = [];
         private SingleModelRunResult? _singleModelRunResult;
-        private string _formattedFinancialSummary;
+        private readonly string _formattedFinancialSummary;
 
         internal PresentationBuilder()
         {
             _investmentAccountGroups = PresentationDal.FetchInvestAccountGroupsAndChildData();
             _debtAccounts = PresentationDal.FetchDebtAccountsAndPositions();
             _cashAccounts = PresentationDal.FetchCashAccountsAndPositions();
+            _monthEndInvestmentPositions = 
+                ChartData.GetEndOfMonthPositionsBySymbolAndAccount(_investmentAccountGroups);
+            _months = ChartData.GetInvestmentMonthEnds(_monthEndInvestmentPositions);
             
             //_singleModelRunResult = MonteCarloFunctions.RunMonteCarlo();
             
@@ -54,11 +58,10 @@ namespace PersonalFinance;
 
         internal void BuildPresentation()
         {
-            PresentationHtml pHtml = new PresentationHtml();
-            string html = pHtml.GetHtml(_formattedFinancialSummary, "");
-            string timestamp = $".{DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss")}";
-            //timestamp = "";
-            string fullOutputPath = $"{PresentationConfig.PresentationOutputDir}PersonalFinanceBreakdown{timestamp}.html";
+             
+            var html = Html.CreateOverallHtml(_formattedFinancialSummary, "");
+            var timestamp = $".{DateTime.Now:yyyy.MM.dd.HH.mm.ss}";
+            var fullOutputPath = $"{PresentationConfig.PresentationOutputDir}PersonalFinanceBreakdown{timestamp}.html";
             try
             {
                 File.WriteAllText(fullOutputPath, html);

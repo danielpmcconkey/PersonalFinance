@@ -1,4 +1,4 @@
-namespace Lib.DataTypes.Presentation;
+/*namespace Lib.DataTypes.Presentation;
 
 public record BudgetPosition()
 {
@@ -10,4 +10,4 @@ public record BudgetPosition()
     public int? Ordinal { get; set; }
     public decimal SumTotal { get; set; }
     public bool ShowInReport { get; set; }
-}
+}*/

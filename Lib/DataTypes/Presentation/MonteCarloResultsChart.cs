@@ -1,8 +1,8 @@
 using Lib.DataTypes.MonteCarlo;
 
-namespace PersonalFinance;
+namespace Lib.DataTypes.Presentation;
 
-public class MonteCarloResultsChart
+public record MonteCarloResultsChart
 {
     public int Ordinal { get; init; }
     public string? JavascriptId { get; init; }

@@ -3,7 +3,7 @@ using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
 using Model = Lib.DataTypes.MonteCarlo.Model;
 
-namespace Lib.DataTypes.Presentation;
+namespace Lib.Presentation;
 
 public static class MonteCarloFunctions
 {

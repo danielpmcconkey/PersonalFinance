@@ -2,7 +2,7 @@ using System.Text;
 using Lib.DataTypes.Postgres;
 using Lib.StaticConfig;
 
-namespace Lib.DataTypes.Presentation;
+namespace Lib.Presentation;
 
 public static class NetWorth
 {
