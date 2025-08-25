@@ -10,9 +10,9 @@ public static class Payday
 {
     public static (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
         ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-            TaxLedger ledger, LifetimeSpend lifetimeSpend, McModel simParams)
+            TaxLedger ledger, LifetimeSpend lifetimeSpend, DataTypes.MonteCarlo.Model model)
     {
-        if (currentDate < simParams.SocialSecurityStart)
+        if (currentDate < model.SocialSecurityStart)
         {
             return (bookOfAccounts, ledger, lifetimeSpend, []);
         }
@@ -48,7 +48,7 @@ public static class Payday
     }
     public static (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
         ProcessPreRetirementPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, 
-            TaxLedger ledger, LifetimeSpend lifetimeSpend, McModel simParams, CurrentPrices prices)
+            TaxLedger ledger, LifetimeSpend lifetimeSpend, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
     {
         if (person.IsRetired) return (bookOfAccounts, ledger, lifetimeSpend, []);
         // set up return tuple
@@ -92,7 +92,7 @@ public static class Payday
         
         // add to savings accounts
         var savingsResult = AddPaycheckRelatedRetirementSavings(
-            person, currentDate, result.bookOfAccounts, simParams, prices);
+            person, currentDate, result.bookOfAccounts, model, prices);
         result.bookOfAccounts = savingsResult.accounts;
 
         if (!MonteCarloConfig.DebugMode) return result;
@@ -113,7 +113,7 @@ public static class Payday
     /// that the cash that funds these purchases was already deducted from your paycheck (or is free, like the match)  
     /// </summary>
     public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) AddPaycheckRelatedRetirementSavings(
-        PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, McModel simParams, CurrentPrices prices)
+        PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
     {
         if (person.IsBankrupt || person.IsRetired) return (bookOfAccounts, []);
 

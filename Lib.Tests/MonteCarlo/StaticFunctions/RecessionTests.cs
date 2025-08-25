@@ -2,6 +2,7 @@ using Xunit;
 using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
@@ -12,9 +13,9 @@ public class RecessionTests
     {
         InvestmentAccounts = new List<McInvestmentAccount>() , DebtAccounts = new List<McDebtAccount>()
     };
-    private McModel CreateTestModel()
+    private Model CreateTestModel()
     {
-        return new McModel
+        return new Model
         {
             RecessionRecoveryPointModifier = 1.05m,
             RecessionCheckLookBackMonths = 12,
@@ -81,10 +82,10 @@ public class RecessionTests
     public void CalculateExtremeAusterityMeasures_BelowTrigger_EntersAusterity()
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-        simParams.RecessionRecoveryPointModifier = 1.1m;
-        simParams.RecessionCheckLookBackMonths = 13;
+        var model = CreateTestModel();
+        model.ExtremeAusterityNetWorthTrigger = 100000m;
+        model.RecessionRecoveryPointModifier = 1.1m;
+        model.RecessionCheckLookBackMonths = 13;
         
         var bookOfAccounts = CreateTestBookOfAccounts(50000m); // below trigger
 
@@ -94,7 +95,7 @@ public class RecessionTests
 
         // Act
         var result = 
-            Recession.CalculateExtremeAusterityMeasures(simParams, bookOfAccounts, recessionStats, currentDate);
+            Recession.CalculateExtremeAusterityMeasures(model, bookOfAccounts, recessionStats, currentDate);
 
         // Assert
         Assert.True(result.areWeInExtremeAusterityMeasures);
@@ -120,10 +121,10 @@ public class RecessionTests
         int monthsLater, bool expectation)
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-        simParams.RecessionRecoveryPointModifier = 1.1m;
-        simParams.RecessionCheckLookBackMonths = 13;
+        var model = CreateTestModel();
+        model.ExtremeAusterityNetWorthTrigger = 100000m;
+        model.RecessionRecoveryPointModifier = 1.1m;
+        model.RecessionCheckLookBackMonths = 13;
         var bookOfAccounts = CreateTestBookOfAccounts(150000m); // Above trigger
 
         var lastEndDate = new LocalDateTime(2024, 1, 1, 0, 0);
@@ -136,7 +137,7 @@ public class RecessionTests
 
         // Act
         var result =
-            Recession.CalculateExtremeAusterityMeasures(simParams, bookOfAccounts, recessionStats, currentDate);
+            Recession.CalculateExtremeAusterityMeasures(model, bookOfAccounts, recessionStats, currentDate);
 
         // Assert
         Assert.Equal(expectation, result.areWeInExtremeAusterityMeasures);
@@ -156,13 +157,13 @@ public class RecessionTests
         {
             LongRangeInvestmentCostHistory = new List<decimal> { 100m, 95m } // Less than required history
         };
-        var simParams = CreateTestModel();
-        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-        simParams.RecessionRecoveryPointModifier = 1.1m;
-        simParams.RecessionCheckLookBackMonths = 13;
+        var model = CreateTestModel();
+        model.ExtremeAusterityNetWorthTrigger = 100000m;
+        model.RecessionRecoveryPointModifier = 1.1m;
+        model.RecessionCheckLookBackMonths = 13;
 
         // Act
-        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, model);
 
         // Assert
         Assert.False(result.areWeInARecession);
@@ -235,12 +236,12 @@ public class RecessionTests
             CurrentLongTermInvestmentPrice = fullHistory[position ]
             
         };
-        var simParams = CreateTestModel();
-        simParams.RecessionRecoveryPointModifier = 1.0m;
-        simParams.RecessionCheckLookBackMonths = 10;
+        var model = CreateTestModel();
+        model.RecessionRecoveryPointModifier = 1.0m;
+        model.RecessionCheckLookBackMonths = 10;
 
         // Act
-        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, model);
 
         // Assert
         Assert.Equal(expected, result.areWeInARecession);
@@ -261,13 +262,13 @@ public class RecessionTests
             {
                 currentPrices.LongRangeInvestmentCostHistory.Add(100m);
             }
-            var simParams = CreateTestModel();
-            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-            simParams.RecessionRecoveryPointModifier = 1.1m;
-            simParams.RecessionCheckLookBackMonths = 13;
+            var model = CreateTestModel();
+            model.ExtremeAusterityNetWorthTrigger = 100000m;
+            model.RecessionRecoveryPointModifier = 1.1m;
+            model.RecessionCheckLookBackMonths = 13;
 
             // Act
-            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, model);
 
             // Assert
             Assert.True(result.areWeInARecession);
@@ -292,13 +293,13 @@ public class RecessionTests
             {
                 currentPrices.LongRangeInvestmentCostHistory.Add(90m);
             }
-            var simParams = CreateTestModel();
-            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-            simParams.RecessionRecoveryPointModifier = 1.1m;
-            simParams.RecessionCheckLookBackMonths = 13;
+            var model = CreateTestModel();
+            model.ExtremeAusterityNetWorthTrigger = 100000m;
+            model.RecessionRecoveryPointModifier = 1.1m;
+            model.RecessionCheckLookBackMonths = 13;
 
             // Act
-            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, model);
 
             // Assert
             Assert.False(result.areWeInARecession);
@@ -320,13 +321,13 @@ public class RecessionTests
             {
                 CurrentLongTermInvestmentPrice = 90m // Below recovery point
             };
-            var simParams = CreateTestModel();
-            simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-            simParams.RecessionRecoveryPointModifier = 1.1m;
-            simParams.RecessionCheckLookBackMonths = 13;
+            var model = CreateTestModel();
+            model.ExtremeAusterityNetWorthTrigger = 100000m;
+            model.RecessionRecoveryPointModifier = 1.1m;
+            model.RecessionCheckLookBackMonths = 13;
 
             // Act
-            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+            var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, model);
 
             // Assert
             Assert.True(result.areWeInARecession);
@@ -351,13 +352,13 @@ public class RecessionTests
         {
             currentPrices.LongRangeInvestmentCostHistory.Add(90m + i);
         }
-        var simParams = CreateTestModel();
-        simParams.ExtremeAusterityNetWorthTrigger = 100000m;
-        simParams.RecessionRecoveryPointModifier = 1.1m;
-        simParams.RecessionCheckLookBackMonths = 13;
+        var model = CreateTestModel();
+        model.ExtremeAusterityNetWorthTrigger = 100000m;
+        model.RecessionRecoveryPointModifier = 1.1m;
+        model.RecessionCheckLookBackMonths = 13;
 
         // Act
-        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, simParams);
+        var result = Recession.CalculateAreWeInARecession(currentStats, currentPrices, model);
 
         // Assert
         Assert.False(result.areWeInARecession);
@@ -397,13 +398,13 @@ public class RecessionTests
         // Arrange
         var currentStats = new RecessionStats { RecessionRecoveryPoint = 100m };
         var currentPrices = CreateTestPrices(110m);
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         
         
 
         // Act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.Equal(currentStats.RecessionRecoveryPoint, result.RecessionRecoveryPoint);
@@ -416,9 +417,9 @@ public class RecessionTests
         // arrange
         const decimal oldHighWaterMark = 100m;
         const decimal newHighWaterMark = 106m;
-        var simParams = CreateTestModel();
-        simParams.RecessionCheckLookBackMonths = 12;
-        simParams.RecessionRecoveryPointModifier = 1.05m;
+        var model = CreateTestModel();
+        model.RecessionCheckLookBackMonths = 12;
+        model.RecessionRecoveryPointModifier = 1.05m;
         
         var currentStats = new RecessionStats
         {
@@ -436,7 +437,7 @@ public class RecessionTests
         
         // act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams,_bookOfAccounts, _testDate);
+            currentStats, currentPrices, model,_bookOfAccounts, _testDate);
         
         // assert
         Assert.False(result.AreWeInARecession);
@@ -451,9 +452,9 @@ public class RecessionTests
         const decimal oldHighWaterMark = 100m;
         const decimal oldDownYearCounter = 1.5m;
         var expectedDownYearCounter = oldDownYearCounter + (1m / 12m);
-        var simParams = CreateTestModel();
-        simParams.RecessionCheckLookBackMonths = 12;
-        simParams.RecessionRecoveryPointModifier = 1.05m;
+        var model = CreateTestModel();
+        model.RecessionCheckLookBackMonths = 12;
+        model.RecessionRecoveryPointModifier = 1.05m;
         
         var currentStats = new RecessionStats
         {
@@ -467,7 +468,7 @@ public class RecessionTests
         
         // act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
         
         // assert
         Assert.True(result.AreWeInARecession);
@@ -482,9 +483,9 @@ public class RecessionTests
         // arrange
         const decimal lastYearsPrice = 100m;
         const decimal currentPrice = 97m;
-        var simParams = CreateTestModel();
-        simParams.RecessionCheckLookBackMonths = 12;
-        simParams.RecessionRecoveryPointModifier = 1.05m;
+        var model = CreateTestModel();
+        model.RecessionCheckLookBackMonths = 12;
+        model.RecessionRecoveryPointModifier = 1.05m;
         
         var currentStats = new RecessionStats
         {
@@ -495,14 +496,14 @@ public class RecessionTests
         currentPrices.CurrentLongTermGrowthRate = .05m;
         currentPrices.CurrentLongTermInvestmentPrice = currentPrice; 
         currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice);
-        for (var i = 0; i < simParams.RecessionCheckLookBackMonths; i++)
+        for (var i = 0; i < model.RecessionCheckLookBackMonths; i++)
         {
             currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice - i);
         };
         
         // act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
         
         // assert
         Assert.True(result.AreWeInARecession);
@@ -515,9 +516,9 @@ public class RecessionTests
         // arrange
         const decimal lastYearsPrice = 95m;
         const decimal currentPrice = 110m;
-        var simParams = CreateTestModel();
-        simParams.RecessionCheckLookBackMonths = 12;
-        simParams.RecessionRecoveryPointModifier = 1.05m;
+        var model = CreateTestModel();
+        model.RecessionCheckLookBackMonths = 12;
+        model.RecessionRecoveryPointModifier = 1.05m;
         
         var currentStats = new RecessionStats
         {
@@ -528,14 +529,14 @@ public class RecessionTests
         currentPrices.CurrentLongTermGrowthRate = .05m;
         currentPrices.CurrentLongTermInvestmentPrice = currentPrice; 
         currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice);
-        for (var i = 0; i < simParams.RecessionCheckLookBackMonths; i++)
+        for (var i = 0; i < model.RecessionCheckLookBackMonths; i++)
         {
             currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice + i);
         };
         
         // act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
         
         // assert
         Assert.False(result.AreWeInARecession);
@@ -555,11 +556,11 @@ public class RecessionTests
             RecessionDurationCounter = 0.5m
         };
         var currentPrices = CreateTestPrices(120m);
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
 
         // Act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.False(result.AreWeInARecession);
@@ -584,12 +585,12 @@ public class RecessionTests
             history.Add(100m);
         }
         var currentPrices = CreateTestPrices(80m, history);
-        var simParams = CreateTestModel();
-        simParams.RecessionCheckLookBackMonths = 10;
+        var model = CreateTestModel();
+        model.RecessionCheckLookBackMonths = 10;
 
         // Act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.True(result.AreWeInARecession);
@@ -611,12 +612,12 @@ public class RecessionTests
             history.Add(90m);
         }
         var currentPrices = CreateTestPrices(110m, history);
-        var simParams = CreateTestModel();
-        simParams.RecessionCheckLookBackMonths = 10;
+        var model = CreateTestModel();
+        model.RecessionCheckLookBackMonths = 10;
 
         // Act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.False(result.AreWeInARecession);
@@ -633,11 +634,11 @@ public class RecessionTests
             RecessionRecoveryPoint = 100m
         };
         var currentPrices = CreateTestPrices(104m); // Below 105m (100 * 1.05)
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
 
         // Act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.True(result.AreWeInARecession);
@@ -659,11 +660,11 @@ public class RecessionTests
             history.Add(100m);
         }
         var currentPrices = CreateTestPrices(110m, history);
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
 
         // Act
         var result = Recession.CalculateRecessionStats(
-            currentStats, currentPrices, simParams, _bookOfAccounts, _testDate);
+            currentStats, currentPrices, model, _bookOfAccounts, _testDate);
 
         // Assert
         Assert.Equal(120m, result.RecessionRecoveryPoint); // Keeps higher point
@@ -679,13 +680,13 @@ public class RecessionTests
     internal void WeLivinLarge_ReturnsCorrectValue(decimal netWorth, bool expected)
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.LivinLargeNetWorthTrigger = 3100000m;
+        var model = CreateTestModel();
+        model.LivinLargeNetWorthTrigger = 3100000m;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, netWorth, _testDate).accounts;
         
         // Act
-        var actual = Recession.WeLivinLarge(simParams, accounts);
+        var actual = Recession.WeLivinLarge(model, accounts);
         
         // Assert
         Assert.Equal(expected, actual);
@@ -701,8 +702,8 @@ public class RecessionTests
     internal void CalculateRecessionStats_WhenRich_SetsWeLivinLargeToTrue(decimal netWorth, bool expected)
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.LivinLargeNetWorthTrigger = 3100000m;
+        var model = CreateTestModel();
+        model.LivinLargeNetWorthTrigger = 3100000m;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, netWorth, _testDate).accounts;
         var prices = TestDataManager.CreateTestCurrentPrices(
@@ -711,7 +712,7 @@ public class RecessionTests
         
         // Act
         var actual = Recession.CalculateRecessionStats(
-            recessionStats, prices, simParams, accounts, _testDate).AreWeInLivinLargeMode;
+            recessionStats, prices, model, accounts, _testDate).AreWeInLivinLargeMode;
         
         // Assert
         Assert.Equal(expected, actual);

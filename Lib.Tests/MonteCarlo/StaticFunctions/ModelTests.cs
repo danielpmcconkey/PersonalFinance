@@ -4,6 +4,7 @@ using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
 using NodaTime;
 using Xunit;
+using Model = Lib.MonteCarlo.StaticFunctions.Model;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 

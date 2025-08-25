@@ -113,4 +113,16 @@ from personalfinance.montecarlomodel
 group by generation
 order by generation desc
 limit 100
+
+select
+	  p.id,
+	  count(c1.id) + count(c2.id) as num_children
+	from
+	  personalfinance.montecarlomodel p 
+	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+	  where p.modelcreateddate <= CURRENT_DATE - 1
+	group by
+	  p.id
+  order by 2 desc
 */

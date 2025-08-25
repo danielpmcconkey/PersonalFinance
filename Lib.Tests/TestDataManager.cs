@@ -2,6 +2,7 @@ using Lib.DataTypes.Postgres;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using NodaTime;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
 namespace Lib.Tests;
 
@@ -164,9 +165,9 @@ internal static class TestDataManager
             RequiredMonthlySpendHealthCare = 15,
         };
     }
-    internal static McModel CreateTestModel()
+    internal static Model CreateTestModel()
     {
-        return new McModel
+        return new Model
         {
             RetirementDate = new LocalDateTime(2045,2,1,0,0),
             NumMonthsCashOnHand = 12,

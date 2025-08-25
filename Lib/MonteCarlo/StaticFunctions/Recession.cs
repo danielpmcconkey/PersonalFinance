@@ -8,7 +8,7 @@ public static class Recession
 {
     public static (bool areWeInExtremeAusterityMeasures, LocalDateTime? lastExtremeAusterityMeasureEnd)
         CalculateExtremeAusterityMeasures(
-            McModel simParameters, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
+            DataTypes.MonteCarlo.Model simParameters, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
             LocalDateTime currentDate)
     {
         
@@ -46,7 +46,7 @@ public static class Recession
     }
     
     public static bool WeLivinLarge(
-        McModel simParameters, BookOfAccounts bookOfAccounts)
+        DataTypes.MonteCarlo.Model simParameters, BookOfAccounts bookOfAccounts)
     {
         var netWorth = AccountCalculation.CalculateNetWorth(bookOfAccounts);
         return (netWorth >= simParameters.LivinLargeNetWorthTrigger) ? true : false;
@@ -55,7 +55,7 @@ public static class Recession
     
     public static (bool areWeInARecession, decimal recessionRecoveryPoint, decimal recessionDurationCounter)
         CalculateAreWeInARecession(
-        RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams)
+        RecessionStats currentStats, CurrentPrices currentPrices, DataTypes.MonteCarlo.Model model)
     {
         (bool areWeInARecession, decimal recessionRecoveryPoint, decimal recessionDurationCounter) result = (
             currentStats.AreWeInARecession, 
@@ -67,7 +67,7 @@ public static class Recession
             // we were previously in a down year. Let's see if we've made
             // it out yet
             if (currentPrices.CurrentLongTermInvestmentPrice >
-                (currentStats.RecessionRecoveryPoint * simParams.RecessionRecoveryPointModifier))
+                (currentStats.RecessionRecoveryPoint * model.RecessionRecoveryPointModifier))
             {
                 // we've eclipsed the prior recovery point, we've made it
                 // out. go ahead and set the recovery point to today's cost
@@ -89,10 +89,10 @@ public static class Recession
             var numMonthsOfHistory = currentPrices.LongRangeInvestmentCostHistory.Count;
             // if we don't have 13 months of history, we can't check last
             // year's price and won't know if we need to do any rebalancing yet
-            if (numMonthsOfHistory <= simParams.RecessionCheckLookBackMonths) return result; // not enough data yet
+            if (numMonthsOfHistory <= model.RecessionCheckLookBackMonths) return result; // not enough data yet
             
             var lookbackPrice = currentPrices.LongRangeInvestmentCostHistory[
-                numMonthsOfHistory - simParams.RecessionCheckLookBackMonths - 1]; // the minus 1 is because the array is zero-indexed
+                numMonthsOfHistory - model.RecessionCheckLookBackMonths - 1]; // the minus 1 is because the array is zero-indexed
             if (lookbackPrice > currentPrices.CurrentLongTermInvestmentPrice)
             {
                 // prices are down year over year. Set the recovery point
@@ -115,25 +115,25 @@ public static class Recession
     
     
     public static RecessionStats CalculateRecessionStats(
-        RecessionStats currentStats, CurrentPrices currentPrices, McModel simParams, BookOfAccounts bookOfAccounts,
+        RecessionStats currentStats, CurrentPrices currentPrices, DataTypes.MonteCarlo.Model model, BookOfAccounts bookOfAccounts,
         LocalDateTime currentDate)
     {
         var result = CopyRecessionStats(currentStats);
         
         var recessionResults = CalculateAreWeInARecession(
-            currentStats, currentPrices, simParams);
+            currentStats, currentPrices, model);
         result.AreWeInARecession = recessionResults.areWeInARecession;
         result.RecessionRecoveryPoint = recessionResults.recessionRecoveryPoint;
         result.RecessionDurationCounter = recessionResults.recessionDurationCounter;
         
         // check to see if we're in extreme austerity measures
         var extremeAusterityResults =
-            CalculateExtremeAusterityMeasures(simParams, bookOfAccounts, currentStats, currentDate);
+            CalculateExtremeAusterityMeasures(model, bookOfAccounts, currentStats, currentDate);
         result.AreWeInExtremeAusterityMeasures = extremeAusterityResults.areWeInExtremeAusterityMeasures;
         result.LastExtremeAusterityMeasureEnd = extremeAusterityResults.lastExtremeAusterityMeasureEnd;
         
         // We livin' large yet?
-        result.AreWeInLivinLargeMode = WeLivinLarge(simParams, bookOfAccounts);
+        result.AreWeInLivinLargeMode = WeLivinLarge(model, bookOfAccounts);
         
         return result;
     }

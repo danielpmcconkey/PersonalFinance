@@ -22,5 +22,5 @@ public record PgInvestmentAccount
     public required int InvestmentAccountGroupId { get; set; }
     public PgInvestmentAccountGroup? InvestmentAccountGroup { get; set; }
 
-    public List<PgPosition>? Positions { get; set; } = [];
+    public required List<PgPosition> Positions { get; set; } = [];
 }

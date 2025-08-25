@@ -7,6 +7,7 @@ using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.MonteCarlo.TaxForms.NC;
 using Lib.StaticConfig;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
@@ -14,7 +15,7 @@ public class SimulationTests
 {
     private readonly LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 12, 0);
     private readonly PgPerson _testPerson;
-    private readonly McModel _simParams;
+    private readonly Model _model;
     //private readonly BookOfAccounts _accounts;
     private readonly TaxLedger _ledger;
     private readonly LifetimeSpend _spend;
@@ -24,14 +25,14 @@ public class SimulationTests
     {
         // Initialize test data
         _testPerson = TestDataManager.CreateTestPerson();
-        _simParams = CreateTestModel();
+        _model = CreateTestModel();
         //_accounts = new BookOfAccounts();
         _ledger = new TaxLedger();
         _spend = new LifetimeSpend();
         _prices = new CurrentPrices();
     }
 
-    private McModel CreateTestModel()
+    private Model CreateTestModel()
     {
         var model = TestDataManager.CreateTestModel();
         model.RetirementDate = _testDate.PlusYears(5);
@@ -79,7 +80,7 @@ public class SimulationTests
 
         // Act
         var result = Simulation.PayForStuff(
-            _simParams, _testPerson, _testDate, recessionStats, _ledger, _spend, accounts);
+            _model, _testPerson, _testDate, recessionStats, _ledger, _spend, accounts);
 
         // Assert
         Assert.True(result.isSuccessful);
@@ -89,13 +90,13 @@ public class SimulationTests
     public void PayForStuff_OnlySpendsRequiredAndFun()
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        var model = CreateTestModel();
+        model.DesiredMonthlySpendPostRetirement = 800m;
         var person = TestDataManager.CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 500m;
         person.RequiredMonthlySpend = 700m;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        model.RetirementDate = person.BirthDate.PlusYears(60);
         var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
         var recessionStats = new RecessionStats();
         recessionStats.AreWeInARecession = false;
@@ -108,11 +109,11 @@ public class SimulationTests
         var expectedSpend = // 2000, 
             person.RequiredMonthlySpend
             + person.RequiredMonthlySpendHealthCare
-            + Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+            + Spend.CalculateMonthlyFunSpend(model, person, currentDate);
         var expectedCash = initialCash - expectedSpend;
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+            Simulation.PayForStuff(model, person, currentDate, recessionStats, ledger, spend, accounts);
         var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
         // Assert
         Assert.True(isSuccessful);
@@ -123,14 +124,14 @@ public class SimulationTests
     public void PayForStuff_WhenInRecession_SpendsLess()
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.DesiredMonthlySpendPostRetirement = 800m;
-        simParams.AusterityRatio = 0.9m;
+        var model = CreateTestModel();
+        model.DesiredMonthlySpendPostRetirement = 800m;
+        model.AusterityRatio = 0.9m;
         var person = TestDataManager.CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 500m;
         person.RequiredMonthlySpend = 700m;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        model.RetirementDate = person.BirthDate.PlusYears(60);
         var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
         var recessionStats = new RecessionStats();
         recessionStats.AreWeInARecession = true;
@@ -143,11 +144,11 @@ public class SimulationTests
         var expectedSpend =
             person.RequiredMonthlySpend
             + person.RequiredMonthlySpendHealthCare
-            + (Spend.CalculateMonthlyFunSpend(simParams, person, currentDate) * simParams.AusterityRatio);
+            + (Spend.CalculateMonthlyFunSpend(model, person, currentDate) * model.AusterityRatio);
         var expectedCash = initialCash - expectedSpend;
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+            Simulation.PayForStuff(model, person, currentDate, recessionStats, ledger, spend, accounts);
         var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
         // Assert
         Assert.True(isSuccessful);
@@ -158,15 +159,15 @@ public class SimulationTests
     public void PayForStuff_WhenInExtremeAusterity_SpendsEvenLess()
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.DesiredMonthlySpendPostRetirement = 800m;
-        simParams.AusterityRatio = 0.9m;
-        simParams.ExtremeAusterityRatio = 0.7m;
+        var model = CreateTestModel();
+        model.DesiredMonthlySpendPostRetirement = 800m;
+        model.AusterityRatio = 0.9m;
+        model.ExtremeAusterityRatio = 0.7m;
         var person = TestDataManager.CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 500m;
         person.RequiredMonthlySpend = 700m;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        model.RetirementDate = person.BirthDate.PlusYears(60);
         var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
         var recessionStats = new RecessionStats();
         recessionStats.AreWeInARecession = true; // make sure that they don't stack
@@ -179,11 +180,11 @@ public class SimulationTests
         var expectedSpend =
             person.RequiredMonthlySpend
             + person.RequiredMonthlySpendHealthCare
-            + (Spend.CalculateMonthlyFunSpend(simParams, person, currentDate) * simParams.ExtremeAusterityRatio);
+            + (Spend.CalculateMonthlyFunSpend(model, person, currentDate) * model.ExtremeAusterityRatio);
         var expectedCash = initialCash - expectedSpend;
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+            Simulation.PayForStuff(model, person, currentDate, recessionStats, ledger, spend, accounts);
         var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
         // Assert
         Assert.True(isSuccessful);
@@ -194,13 +195,13 @@ public class SimulationTests
     public void PayForStuff_WhenSuccessful_RecordsSpend()
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        var model = CreateTestModel();
+        model.DesiredMonthlySpendPostRetirement = 800m;
         var person = TestDataManager.CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 500m;
         person.RequiredMonthlySpend = 700m;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        model.RetirementDate = person.BirthDate.PlusYears(60);
         var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
         var recessionStats = new RecessionStats();
         recessionStats.AreWeInARecession = false;
@@ -213,11 +214,11 @@ public class SimulationTests
         var expectedSpend = // 2000, 
             person.RequiredMonthlySpend
             + person.RequiredMonthlySpendHealthCare
-            + Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+            + Spend.CalculateMonthlyFunSpend(model, person, currentDate);
         var expectedCash = initialCash - expectedSpend;
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+            Simulation.PayForStuff(model, person, currentDate, recessionStats, ledger, spend, accounts);
         var recordedSpend = newSpend.TotalSpendLifetime;
         // Assert
         Assert.True(isSuccessful);
@@ -228,13 +229,13 @@ public class SimulationTests
     public void PayForStuff_WhenSuccessful_RecordsFun()
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.DesiredMonthlySpendPostRetirement = 800m;
+        var model = CreateTestModel();
+        model.DesiredMonthlySpendPostRetirement = 800m;
         var person = TestDataManager.CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 500m;
         person.RequiredMonthlySpend = 700m;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(60);
+        model.RetirementDate = person.BirthDate.PlusYears(60);
         var currentDate = person.BirthDate.PlusYears(64); // post retirement, pre-medicare
         var recessionStats = new RecessionStats();
         recessionStats.AreWeInARecession = false;
@@ -244,7 +245,7 @@ public class SimulationTests
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var initialCash = 10000m;
         accounts = AccountCashManagement.DepositCash(accounts, initialCash, currentDate).accounts;
-        var funSpend = Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
+        var funSpend = Spend.CalculateMonthlyFunSpend(model, person, currentDate);
         var expectedSpend = // 2000, 
             person.RequiredMonthlySpend
             + person.RequiredMonthlySpendHealthCare
@@ -252,7 +253,7 @@ public class SimulationTests
         var expectedFun = Spend.CalculateFunPointsForSpend(funSpend, person, currentDate);
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayForStuff(simParams, person, currentDate, recessionStats, ledger, spend, accounts);
+            Simulation.PayForStuff(model, person, currentDate, recessionStats, ledger, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         // Assert
         Assert.True(isSuccessful);
@@ -267,7 +268,7 @@ public class SimulationTests
     {
         // Arrange
         var person = TestDataManager.CreateTestPerson();
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         person.IsRetired = false;
         person.IsBankrupt = false;
         person.Annual401KContribution = 12000m;
@@ -283,9 +284,9 @@ public class SimulationTests
         person.PostTaxInsuranceDeductions = 3588.38m;
         person.PreTaxHealthDeductions = 1244.38m;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
-        simParams.SocialSecurityStart = person.BirthDate.PlusYears(67); // not drawing ss yet
-        var currentDate = simParams.RetirementDate.PlusYears(-10); // not yet retired
+        model.RetirementDate = person.BirthDate.PlusYears(65);
+        model.SocialSecurityStart = person.BirthDate.PlusYears(67); // not drawing ss yet
+        var currentDate = model.RetirementDate.PlusYears(-10); // not yet retired
         var prices = TestDataManager.CreateTestCurrentPrices(
             1.01m, 100m, 50m, 1m);
         var spend = TestDataManager.CreateEmptySpend();
@@ -332,7 +333,7 @@ public class SimulationTests
             
         // Act
         var result = Simulation.ProcessPayday(
-           person, currentDate, accounts, ledger, spend, simParams, prices);
+           person, currentDate, accounts, ledger, spend, model, prices);
         var actualCash = AccountCalculation.CalculateCashBalance(result.accounts);
         var reportedW2 = result.ledger.W2Income.Sum(x => x.amount);
         var reportedFederalWithholding = result.ledger.FederalWithholdings.Sum(x => x.amount);
@@ -360,14 +361,14 @@ public class SimulationTests
     {
         // Arrange
         var person = TestDataManager.CreateTestPerson();
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         person.IsRetired = true;
         person.IsBankrupt = false;
         person.BirthDate = new LocalDateTime(1970, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
-        simParams.SocialSecurityStart = person.BirthDate.PlusYears(62);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
+        model.SocialSecurityStart = person.BirthDate.PlusYears(62);
         person.AnnualSocialSecurityWage = 6500m * 12m;
-        var currentDate = simParams.RetirementDate.PlusYears(1); // 1 year after retirement
+        var currentDate = model.RetirementDate.PlusYears(1); // 1 year after retirement
         var prices = TestDataManager.CreateTestCurrentPrices(
             1.01m, 100m, 50m, 1m);
         var spend = TestDataManager.CreateEmptySpend();
@@ -382,7 +383,7 @@ public class SimulationTests
             
         // Act
         var result = Simulation.ProcessPayday(
-           person, currentDate, accounts, ledger, spend, simParams, prices);
+           person, currentDate, accounts, ledger, spend, model, prices);
         var actualCash = AccountCalculation.CalculateCashBalance(result.accounts);
         var reportedW2 = result.ledger.W2Income.Sum(x => x.amount);
         var reportedSsIncome = result.ledger.SocialSecurityIncome.Sum(x => x.amount);
@@ -398,7 +399,7 @@ public class SimulationTests
     {
         // Arrange
         var person = TestDataManager.CreateTestPerson();
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         person.IsRetired = false;
         person.IsBankrupt = false;
         person.Annual401KContribution = 0;
@@ -415,8 +416,8 @@ public class SimulationTests
         person.PostTaxInsuranceDeductions = 0;
         person.PreTaxHealthDeductions = 0;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
-        simParams.SocialSecurityStart = person.BirthDate.PlusYears(62); // already drawing ss
+        model.RetirementDate = person.BirthDate.PlusYears(65);
+        model.SocialSecurityStart = person.BirthDate.PlusYears(62); // already drawing ss
         var currentDate = person.BirthDate.PlusYears(63); // already drawing ss
         var prices = TestDataManager.CreateTestCurrentPrices(
             1.01m, 100m, 50m, 1m);
@@ -430,7 +431,7 @@ public class SimulationTests
             
         // Act
         var result = Simulation.ProcessPayday(
-           person, currentDate, accounts, ledger, spend, simParams, prices);
+           person, currentDate, accounts, ledger, spend, model, prices);
         var reportedW2 = result.ledger.W2Income.Sum(x => x.amount);
         var reportedSsIncome = result.ledger.SocialSecurityIncome.Sum(x => x.amount);
         
@@ -445,11 +446,11 @@ public class SimulationTests
         // Arrange
         var person = TestDataManager.CreateTestPerson();
         person.IsRetired = false;
-        var currentDate = _simParams.RetirementDate;
+        var currentDate = _model.RetirementDate;
 
         // Act
         var (isRetired, updatedPerson) = Simulation.SetIsRetiredFlagIfNeeded(
-            currentDate, person, _simParams);
+            currentDate, person, _model);
 
         // Assert
         Assert.True(isRetired);
@@ -462,11 +463,11 @@ public class SimulationTests
         // Arrange
         var person = TestDataManager.CreateTestPerson();
         person.IsRetired = false;
-        var currentDate = _simParams.RetirementDate.PlusYears(1);
+        var currentDate = _model.RetirementDate.PlusYears(1);
 
         // Act
         var (isRetired, updatedPerson) = Simulation.SetIsRetiredFlagIfNeeded(
-            currentDate, person, _simParams);
+            currentDate, person, _model);
 
         // Assert
         Assert.True(isRetired);
@@ -479,11 +480,11 @@ public class SimulationTests
         // Arrange
         var person = TestDataManager.CreateTestPerson();
         person.IsRetired = false;
-        var currentDate = _simParams.RetirementDate.PlusYears(-1);
+        var currentDate = _model.RetirementDate.PlusYears(-1);
 
         // Act
         var (isRetired, updatedPerson) = Simulation.SetIsRetiredFlagIfNeeded(
-            currentDate, person, _simParams);
+            currentDate, person, _model);
 
         // Assert
         Assert.False(isRetired);
@@ -660,10 +661,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_PreRetirement_Punishes()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = false;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -676,12 +677,12 @@ public class SimulationTests
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
-            simParams, person, currentDate).TotalSpend;
+            model, person, currentDate).TotalSpend;
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -693,10 +694,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_PostRetirement_Rewards()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = true;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -708,12 +709,12 @@ public class SimulationTests
             AreWeInExtremeAusterityMeasures = false,
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(model, person, currentDate);
         var expectedFun = ModelConstants.FunBonusRetirement;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -724,10 +725,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_PreRetirement_RecessionDoesntMatter()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = false;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -740,12 +741,12 @@ public class SimulationTests
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
-            simParams, person, currentDate).TotalSpend;
+            model, person, currentDate).TotalSpend;
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -758,10 +759,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_PreRetirement_ExtremeAusterityDoesntMatter()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = false;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -774,12 +775,12 @@ public class SimulationTests
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
-            simParams, person, currentDate).TotalSpend;
+            model, person, currentDate).TotalSpend;
         var expectedFun = requiredSpend * ModelConstants.FunPenaltyNotRetiredPercentOfRequiredSpend * -1;
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -791,10 +792,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_PostRetirementInRecession_RecordsAnxiety()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = true;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -807,7 +808,7 @@ public class SimulationTests
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
-            simParams, person, currentDate).TotalSpend;
+            model, person, currentDate).TotalSpend;
         var expectedFun = 
             ModelConstants.FunBonusRetirement + // you still get retirement freedom
             requiredSpend * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend * -1 // but each dollar spent makes you nervous
@@ -815,7 +816,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -827,10 +828,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_PostRetirementInExtremeAnxiety_RecordsAnxiety()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = true;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -843,7 +844,7 @@ public class SimulationTests
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
-            simParams, person, currentDate).TotalSpend;
+            model, person, currentDate).TotalSpend;
         var expectedFun = 
                 ModelConstants.FunBonusRetirement + // you still get retirement freedom
                 requiredSpend * ModelConstants.FunPenaltyRetiredInExtremeAusterityPercentOfRequiredSpend * -1 // but each dollar spent makes you nervous
@@ -851,7 +852,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -863,10 +864,10 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_InRecessionAndInExtremeAnxiety_AnxietyStacks()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(65);
+        model.RetirementDate = person.BirthDate.PlusYears(65);
         person.IsRetired = true;
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
@@ -879,7 +880,7 @@ public class SimulationTests
         };
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         var requiredSpend = Spend.CalculateMonthlyRequiredSpendWithoutDebt(
-            simParams, person, currentDate).TotalSpend;
+            model, person, currentDate).TotalSpend;
         var expectedFun = 
                 ModelConstants.FunBonusRetirement + // you still get retirement freedom
                 requiredSpend * ModelConstants.FunPenaltyRetiredInRecessionPercentOfRequiredSpend * -1 + // but each dollar spent makes you nervous
@@ -888,7 +889,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -900,7 +901,7 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_InBankruptcy_PunishesHard()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.IsBankrupt = true;
         person.IsRetired = true;
@@ -917,7 +918,7 @@ public class SimulationTests
 
         // Act
         var (newSpend, messages) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accounts);
+            model, person, currentDate, recessionStats, spend, accounts);
         var recordedFun = newSpend.TotalFunPointsLifetime;
         
         // Assert
@@ -929,14 +930,14 @@ public class SimulationTests
     internal void RecordFunAndAnxiety_WithDebtDuringRecession_PunishesHarderThanWithoutDebt()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.IsBankrupt = false;
         person.IsRetired = true;
         person.BirthDate = new LocalDateTime(1980, 3, 1, 0, 0);
         person.RequiredMonthlySpend = 1300m;
         person.RequiredMonthlySpendHealthCare = 900m;
-        simParams.RetirementDate = person.BirthDate.PlusYears(62);
+        model.RetirementDate = person.BirthDate.PlusYears(62);
         var currentDate = person.BirthDate.PlusYears(63);
         var spend = TestDataManager.CreateEmptySpend();
         var recessionStats = new RecessionStats
@@ -959,10 +960,10 @@ public class SimulationTests
 
         // Act
         var (newSpendWithoutDebt, messagesWithoutDebt) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accountsWithoutDebt);
+            model, person, currentDate, recessionStats, spend, accountsWithoutDebt);
         var recordedFunWithoutDebt = newSpendWithoutDebt.TotalFunPointsLifetime;
         var (newSpendWithDebt, messagesWithDebt) = Simulation.RecordFunAndAnxiety(
-            simParams, person, currentDate, recessionStats, spend, accountsWithDebt);
+            model, person, currentDate, recessionStats, spend, accountsWithDebt);
         var recordedFunWithDebt = newSpendWithDebt.TotalFunPointsLifetime;
         
         // Assert
@@ -1018,24 +1019,24 @@ public class SimulationTests
     internal void InterpretSimulationResults_WithBankruptcies_HasANonZeroBankruptcyRate()
     {
         // Assemble
-        var simParams = TestDataManager.CreateTestModel();
+        var model = TestDataManager.CreateTestModel();
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1975, 3, 1, 0, 0);
         // set model params to guarantee bankruptcy
-        simParams.RetirementDate = person.BirthDate.PlusYears(55);
-        simParams.DesiredMonthlySpendPostRetirement = 10000m;
-        simParams.DesiredMonthlySpendPreRetirement = 10000m;
-        simParams.SocialSecurityStart = person.BirthDate.PlusYears(63);
-        simParams.RecessionCheckLookBackMonths = 10;
-        simParams.NumMonthsCashOnHand = 1;
-        simParams.NumMonthsMidBucketOnHand = 1;
-        simParams.AusterityRatio = 1m;
-        simParams.ExtremeAusterityNetWorthTrigger = 100000000m;
-        simParams.ExtremeAusterityRatio = 1m;
-        simParams.NumMonthsPriorToRetirementToBeginRebalance = 1;
-        simParams.Percent401KTraditional = 0.05m;
-        simParams.RebalanceFrequency = RebalanceFrequency.YEARLY;
-        simParams.RecessionRecoveryPointModifier = 1m;
+        model.RetirementDate = person.BirthDate.PlusYears(55);
+        model.DesiredMonthlySpendPostRetirement = 10000m;
+        model.DesiredMonthlySpendPreRetirement = 10000m;
+        model.SocialSecurityStart = person.BirthDate.PlusYears(63);
+        model.RecessionCheckLookBackMonths = 10;
+        model.NumMonthsCashOnHand = 1;
+        model.NumMonthsMidBucketOnHand = 1;
+        model.AusterityRatio = 1m;
+        model.ExtremeAusterityNetWorthTrigger = 100000000m;
+        model.ExtremeAusterityRatio = 1m;
+        model.NumMonthsPriorToRetirementToBeginRebalance = 1;
+        model.Percent401KTraditional = 0.05m;
+        model.RebalanceFrequency = RebalanceFrequency.YEARLY;
+        model.RecessionRecoveryPointModifier = 1m;
         person.RequiredMonthlySpend = 10000m;
         person.RequiredMonthlySpendHealthCare = 1000m;
         person.Annual401KContribution = 0m;
@@ -1062,9 +1063,9 @@ public class SimulationTests
         
         // Act
         var allLivesRuns = SimulationTrigger.ExecuteSingleModelAllLives(
-            logger, simParams, person, accounts.InvestmentAccounts, accounts.DebtAccounts, hypotheticalPrices);
+            logger, model, person, accounts.InvestmentAccounts, accounts.DebtAccounts, hypotheticalPrices);
         
-        var results = Simulation.InterpretSimulationResults(simParams, allLivesRuns);
+        var results = Simulation.InterpretSimulationResults(model, allLivesRuns);
         var bankruptcyRate = results.BankruptcyRateAtEndOfSim;
         
         // Assert

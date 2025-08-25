@@ -13,9 +13,9 @@ public class Model
     /// A generic mating function for properties of all types.
     /// </summary>
     public static T MateProperty<T>(
-        McModel parentA,
-        McModel parentB,
-        Func<McModel, T> propertySelector,
+        DataTypes.MonteCarlo.Model parentA,
+        DataTypes.MonteCarlo.Model parentB,
+        Func<DataTypes.MonteCarlo.Model, T> propertySelector,
         Func<T> randomValueGenerator)
     {
         var hereditarySource = GetHereditarySource();
@@ -33,9 +33,9 @@ public class Model
     /// int or a decimal. Uses the MateProperty function above to increase DRY compliance
     /// </summary>
     private static T MateNumericProperty<T>(
-        McModel parentA,
-        McModel parentB,
-        Func<McModel, T> propertySelector,
+        DataTypes.MonteCarlo.Model parentA,
+        DataTypes.MonteCarlo.Model parentB,
+        Func<DataTypes.MonteCarlo.Model, T> propertySelector,
         T minValue,
         T maxValue) where T : IComparable<T>
     {
@@ -96,7 +96,7 @@ public class Model
         throw new NotSupportedException($"Type {typeof(T)} is not supported for random generation in MateNumericProperty.");
     }
     /// <summary>
-    ///  Generic inclusive clamp used for ints, decimals, and LocalDateTime (and any IComparable<T>).
+    ///  Generic inclusive clamp used for ints, decimals, and LocalDateTime.
     /// </summary>
     private static T ClampInclusive<T>(T value, T minValue, T maxValue) where T : IComparable<T>
     {
@@ -154,9 +154,9 @@ public class Model
      * unit testing 
      */
     
-    public static McModel CreateRandomModel(LocalDateTime birthdate)
+    public static DataTypes.MonteCarlo.Model CreateRandomModel(LocalDateTime birthdate)
     {
-        return new McModel
+        return new DataTypes.MonteCarlo.Model
         {
             Id = Guid.NewGuid(),
             ParentAId = Guid.Empty,
@@ -217,9 +217,19 @@ public class Model
         };
     }
     
-    public static McModel MateModels(McModel a, McModel b, LocalDateTime birthDate)
+    public static DataTypes.MonteCarlo.Model FetchModelChampion()
     {
-        return new McModel()
+        
+        using var context = new PgContext();
+        var champ = context.McModels
+                        .FirstOrDefault(x => x.Id == Guid.Parse(MonteCarloConfig.ChampionModelId)) ??
+                    throw new InvalidDataException();
+        return champ;
+    }
+    
+    public static DataTypes.MonteCarlo.Model MateModels(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b, LocalDateTime birthDate)
+    {
+        return new DataTypes.MonteCarlo.Model()
         {
             Id = Guid.NewGuid(),
             PersonId = a.PersonId,
@@ -253,84 +263,84 @@ public class Model
 
     #region Individual Property Mating Functions
 
-    public static decimal MateAusterityRatio(McModel a, McModel b) =>
+    public static decimal MateAusterityRatio(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.AusterityRatio,
             ModelConstants.AusterityRatioMin,
             ModelConstants.AusterityRatioMax);
     
-    public static decimal MateDesiredMonthlySpendPostRetirement(McModel a, McModel b) =>
+    public static decimal MateDesiredMonthlySpendPostRetirement(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.DesiredMonthlySpendPostRetirement,
             ModelConstants.DesiredMonthlySpendPostRetirementMin,
             ModelConstants.DesiredMonthlySpendPostRetirementMax);
     
-    public static decimal MateDesiredMonthlySpendPreRetirement(McModel a, McModel b) =>
+    public static decimal MateDesiredMonthlySpendPreRetirement(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.DesiredMonthlySpendPreRetirement,
             ModelConstants.DesiredMonthlySpendPreRetirementMin,
             ModelConstants.DesiredMonthlySpendPreRetirementMax);
     
-    public static decimal MateExtremeAusterityNetWorthTrigger(McModel a, McModel b) =>
+    public static decimal MateExtremeAusterityNetWorthTrigger(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.ExtremeAusterityNetWorthTrigger,
             ModelConstants.ExtremeAusterityNetWorthTriggerMin,
             ModelConstants.ExtremeAusterityNetWorthTriggerMax);
     
-    public static decimal MateExtremeAusterityRatio(McModel a, McModel b) =>
+    public static decimal MateExtremeAusterityRatio(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.ExtremeAusterityRatio,
             ModelConstants.ExtremeAusterityRatioMin,
             ModelConstants.ExtremeAusterityRatioMax);
     
-    public static decimal MateLivinLargeNetWorthTrigger(McModel a, McModel b) =>
+    public static decimal MateLivinLargeNetWorthTrigger(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.LivinLargeNetWorthTrigger,
             ModelConstants.LivinLargeNetWorthTriggerMin,
             ModelConstants.LivinLargeNetWorthTriggerMax);
     
-    public static decimal MateLivinLargeRatio(McModel a, McModel b) =>
+    public static decimal MateLivinLargeRatio(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.LivinLargeRatio,
             ModelConstants.LivinLargeRatioMin,
             ModelConstants.LivinLargeRatioMax);
     
-    public static int MateNumMonthsCashOnHand(McModel a, McModel b) =>
+    public static int MateNumMonthsCashOnHand(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.NumMonthsCashOnHand,
             ModelConstants.NumMonthsCashOnHandMin,
             ModelConstants.NumMonthsCashOnHandMax);
     
-    public static int MateNumMonthsMidBucketOnHand(McModel a, McModel b) =>
+    public static int MateNumMonthsMidBucketOnHand(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.NumMonthsMidBucketOnHand,
             ModelConstants.NumMonthsMidBucketOnHandMin,
             ModelConstants.NumMonthsMidBucketOnHandMax);
     
-    public static int MateNumMonthsPriorToRetirementToBeginRebalance(McModel a, McModel b) =>
+    public static int MateNumMonthsPriorToRetirementToBeginRebalance(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.NumMonthsPriorToRetirementToBeginRebalance,
             ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin,
             ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax);
     
-    public static decimal MatePercent401KTraditional(McModel a, McModel b) =>
+    public static decimal MatePercent401KTraditional(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.Percent401KTraditional,
             ModelConstants.Percent401KTraditionalMin,
             ModelConstants.Percent401KTraditionalMax);
     
-    public static RebalanceFrequency MateRebalanceFrequency(McModel a, McModel b) =>
+    public static RebalanceFrequency MateRebalanceFrequency(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateProperty(
             a, b,
             model => model.RebalanceFrequency,
@@ -345,21 +355,21 @@ public class Model
                 };
             });
     
-    public static int MateRecessionCheckLookBackMonths(McModel a, McModel b) =>
+    public static int MateRecessionCheckLookBackMonths(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.RecessionCheckLookBackMonths,
             ModelConstants.RecessionCheckLookBackMonthsMin,
             ModelConstants.RecessionCheckLookBackMonthsMax);
 
-    public static decimal MateRecessionRecoveryPointModifier(McModel a, McModel b) =>
+    public static decimal MateRecessionRecoveryPointModifier(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
         MateNumericProperty(
             a, b,
             model => model.RecessionRecoveryPointModifier,
             ModelConstants.RecessionRecoveryPointModifierMin,
             ModelConstants.RecessionRecoveryPointModifierMax);
     
-    public static LocalDateTime MateRetirementDate(McModel a, McModel b, LocalDateTime birthDate) =>
+    public static LocalDateTime MateRetirementDate(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b, LocalDateTime birthDate) =>
         MateNumericProperty(
             a, b,
             model => model.RetirementDate,
@@ -372,7 +382,7 @@ public class Model
             );
     
     
-    public static LocalDateTime MateSocialSecurityStartDate(McModel a, McModel b, LocalDateTime birthDate) =>
+    public static LocalDateTime MateSocialSecurityStartDate(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b, LocalDateTime birthDate) =>
         MateNumericProperty(
             a, b,
             model => model.SocialSecurityStart,

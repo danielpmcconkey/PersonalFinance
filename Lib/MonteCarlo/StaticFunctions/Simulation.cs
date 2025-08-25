@@ -64,26 +64,26 @@ public static class Simulation
         return a + (b - a) * frac;
     }
     
-    public static SimSnapshot CreateSimSnapshot(MonteCarloSim sim)
+    public static SimSnapshot CreateSimSnapshot(SimData simData)
     {
         return new SimSnapshot()
         {
-            AreWeInARecession = sim.RecessionStats.AreWeInARecession,
-            AreWeInExtremeAusterityMeasures = sim.RecessionStats.AreWeInExtremeAusterityMeasures,
-            CurrentDateWithinSim = sim.CurrentDateInSim,
-            IsBankrupt = sim.PgPerson.IsBankrupt,
-            IsRetired = sim.PgPerson.IsRetired,
-            NetWorth = AccountCalculation.CalculateNetWorth(sim.BookOfAccounts),
-            TotalFunPointsSoFar = sim.LifetimeSpend.TotalFunPointsLifetime,
-            TotalSpendSoFar = sim.LifetimeSpend.TotalSpendLifetime,
-            TotalTaxSoFar = sim.TaxLedger.TotalTaxPaidLifetime,
-            TotalHealthCareSpendSoFar = sim.LifetimeSpend.TotalLifetimeHealthCareSpend,
-            TotalCapitalGainsSoFar = sim.TaxLedger.ShortTermCapitalGains.Sum(x => x.amount) 
-                                     + sim.TaxLedger.LongTermCapitalGains.Sum(x => x.amount),
-            TotalIraDistributionsSoFar = sim.TaxLedger.TaxableIraDistribution.Sum(x => x.amount),
-            TotalTaxFreeWithdrawalsSoFar = sim.TaxLedger.TaxFreeWithrawals.Sum(x => x.amount),
-            TotalFunSpendSoFar = sim.LifetimeSpend.TotalLifetimeFunSpend,
-            TotalNotFunSpendSoFar = sim.LifetimeSpend.TotalLifetimeRequiredSpend,
+            AreWeInARecession = simData.RecessionStats.AreWeInARecession,
+            AreWeInExtremeAusterityMeasures = simData.RecessionStats.AreWeInExtremeAusterityMeasures,
+            CurrentDateWithinSim = simData.CurrentDateInSim,
+            IsBankrupt = simData.PgPerson.IsBankrupt,
+            IsRetired = simData.PgPerson.IsRetired,
+            NetWorth = AccountCalculation.CalculateNetWorth(simData.BookOfAccounts),
+            TotalFunPointsSoFar = simData.LifetimeSpend.TotalFunPointsLifetime,
+            TotalSpendSoFar = simData.LifetimeSpend.TotalSpendLifetime,
+            TotalTaxSoFar = simData.TaxLedger.TotalTaxPaidLifetime,
+            TotalHealthCareSpendSoFar = simData.LifetimeSpend.TotalLifetimeHealthCareSpend,
+            TotalCapitalGainsSoFar = simData.TaxLedger.ShortTermCapitalGains.Sum(x => x.amount) 
+                                     + simData.TaxLedger.LongTermCapitalGains.Sum(x => x.amount),
+            TotalIraDistributionsSoFar = simData.TaxLedger.TaxableIraDistribution.Sum(x => x.amount),
+            TotalTaxFreeWithdrawalsSoFar = simData.TaxLedger.TaxFreeWithrawals.Sum(x => x.amount),
+            TotalFunSpendSoFar = simData.LifetimeSpend.TotalLifetimeFunSpend,
+            TotalNotFunSpendSoFar = simData.LifetimeSpend.TotalLifetimeRequiredSpend,
         };
     }
 
@@ -186,7 +186,7 @@ public static class Simulation
     /// <summary>
     /// reads the output from running all lives on a single model and creates statistical views
     /// </summary>
-    public static SingleModelRunResult InterpretSimulationResults(McModel model, List<SimSnapshot>[] allSnapshots)
+    public static SingleModelRunResult InterpretSimulationResults(DataTypes.MonteCarlo.Model model, List<SimSnapshot>[] allSnapshots)
     {
         // todo: unit test InterpretSimulationResults
         
@@ -321,10 +321,10 @@ public static class Simulation
             firstOfNextMonth; // t1 is longer than t2, return next first
     }
 
-    public static (PgPerson person, McModel model) NormalizeDates(PgPerson person, McModel model)
+    public static (PgPerson person, DataTypes.MonteCarlo.Model model) NormalizeDates(PgPerson person, DataTypes.MonteCarlo.Model model)
     {
         // set up the return tuple
-        (PgPerson newPerson, McModel newModel) result = (Person.CopyPerson(person, true), model);
+        (PgPerson newPerson, DataTypes.MonteCarlo.Model newModel) result = (Person.CopyPerson(person, true), model);
         result.newPerson.BirthDate = NormalizeDate(person.BirthDate);
         result.newModel.RetirementDate = NormalizeDate(model.RetirementDate);
         result.newModel.SocialSecurityStart = NormalizeDate(model.SocialSecurityStart);
@@ -335,16 +335,16 @@ public static class Simulation
 
     // todo: write a UT to make sure that PayForStuff records the health spend
     public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
-        List<ReconciliationMessage> messages) PayForStuff(McModel simParams, PgPerson person, LocalDateTime currentDate,
+        List<ReconciliationMessage> messages) PayForStuff(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate,
             RecessionStats recessionStats, TaxLedger ledger,
         LifetimeSpend spend, BookOfAccounts accounts)
     {
-        var funSpend = Spend.CalculateMonthlyFunSpend(simParams, person, currentDate);
-        var requiredSpendResults = Spend.CalculateMonthlyRequiredSpendWithoutDebt(simParams, person, currentDate);
+        var funSpend = Spend.CalculateMonthlyFunSpend(model, person, currentDate);
+        var requiredSpendResults = Spend.CalculateMonthlyRequiredSpendWithoutDebt(model, person, currentDate);
         var notFunSpend = requiredSpendResults.TotalSpend;
         
         // required spend can't move. But your fun spend can go down if we're in a recession or up if we livin' large
-        funSpend = Spend.CalculateSpendOverride(simParams, funSpend, recessionStats);
+        funSpend = Spend.CalculateSpendOverride(model, funSpend, recessionStats);
         
         var withdrawalAmount = funSpend + notFunSpend;
         
@@ -454,26 +454,26 @@ public static class Simulation
     // todo: unit test ProcessPaycheck
     public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
         ProcessPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
-            LifetimeSpend spend, McModel simParams, CurrentPrices prices)
+            LifetimeSpend spend, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
     {
         var paydayResult = Payday.ProcessPreRetirementPaycheck(
-                person, currentDate, accounts, ledger, spend, simParams, prices);
+                person, currentDate, accounts, ledger, spend, model, prices);
         return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
 
     // todo: unit test ProcessSocialSecurityCheck
     public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
         ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts,
-            TaxLedger ledger, LifetimeSpend spend, McModel simParams)
+            TaxLedger ledger, LifetimeSpend spend, DataTypes.MonteCarlo.Model model)
     {
         var paydayResult = Payday.ProcessSocialSecurityCheck(
-                person, currentDate, accounts, ledger, spend, simParams);
+                person, currentDate, accounts, ledger, spend, model);
         return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
     
     public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
         ProcessPayday (PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
-            LifetimeSpend spend, McModel simParams, CurrentPrices prices)
+            LifetimeSpend spend, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
     {
         (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) results = 
             (AccountCopy.CopyBookOfAccounts(accounts),
@@ -487,7 +487,7 @@ public static class Simulation
             if(MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
                 currentDate, null, "processing pre-retirement paycheck"));
             var paydayResult = ProcessPaycheck(
-                person, currentDate, accounts, ledger, spend, simParams, prices);
+                person, currentDate, accounts, ledger, spend, model, prices);
             results.accounts = paydayResult.accounts;
             results.ledger = paydayResult.ledger;
             results.spend = paydayResult.spend;
@@ -495,13 +495,13 @@ public static class Simulation
         }
 
         // if you aren't yet drawing SS, just return now
-        if (currentDate < simParams.SocialSecurityStart) return results;
+        if (currentDate < model.SocialSecurityStart) return results;
         
         // this isn't an "else" you can be working and draw SS
         if(MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
             currentDate, null, "processing social security check"));
         var ssResult = ProcessSocialSecurityCheck(
-            person, currentDate, accounts, ledger, spend, simParams);
+            person, currentDate, accounts, ledger, spend, model);
         results.accounts = ssResult.accounts;
         results.ledger = ssResult.ledger;
         results.spend = ssResult.spend;
@@ -510,7 +510,7 @@ public static class Simulation
     }
     
     public static  (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunAndAnxiety(
-        McModel simParams, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats,
+        DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats,
         LifetimeSpend spend, BookOfAccounts accounts)
     {
         // set up the return tuple
@@ -521,7 +521,7 @@ public static class Simulation
         
         var extraFun = 0.0m;
         var requiredSpend = Spend.CalculateMonthlyRequiredSpend(
-            simParams, person, currentDate, accounts)
+            model, person, currentDate, accounts)
             .TotalSpend;
         
         if (person.IsBankrupt) extraFun += ModelConstants.FunPenaltyBankruptcy;
@@ -574,10 +574,10 @@ public static class Simulation
     }
     
     public static (bool isRetired, PgPerson person) SetIsRetiredFlagIfNeeded(
-        LocalDateTime currentDate, PgPerson person, McModel simParams)
+        LocalDateTime currentDate, PgPerson person, DataTypes.MonteCarlo.Model model)
     {
         if (person.IsRetired) return (true, person);
-        if (currentDate < simParams.RetirementDate) return (false, person);
+        if (currentDate < model.RetirementDate) return (false, person);
         
         // this is the day. copy the person, set the flag, and return 
         var personCopy = Person.CopyPerson(person, true);

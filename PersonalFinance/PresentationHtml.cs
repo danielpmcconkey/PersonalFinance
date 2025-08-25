@@ -3,18 +3,16 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Lib.DataTypes.Presentation;
 
 namespace PersonalFinance
 {
     internal class PresentationHtml
     {
-        private PresentationBuilder _builder;
-        internal PresentationHtml(PresentationBuilder builder)
+        
+        internal string GetHtml(string financialSummary, string budgetSummary)
         {
-            _builder = builder;
-        }
-        internal string GetHTML()
-        {
+            
             string html = $"""
                 <!doctype html>
                 <html lang="en">
@@ -25,11 +23,17 @@ namespace PersonalFinance
                         <title>McConkey family finance summary</title>
 
                         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-                        {_builder.GetChartsHead()}
-                        {_builder.GetCss()}
+                        {
+                            //_builder.GetChartsHead()
+                            ""
+                        }
+                        {Html.GetCss()}
                     </head>
                     <body>
-                        <h1 id="content" class="bd-title">McConkey family finance summary as of {_builder.GetEffectiveDate().ToString("MMMM dd, yyyy")}</h1>
+                        <h1 id="content" class="bd-title">McConkey family finance summary as of {
+                            //_builder.GetEffectiveDate().ToDateTimeUnspecified():MMMM dd, yyyy
+                            DateTime.Now
+                        }</h1>
                         
                         <div class=bd-content">
                             <ul class="nav nav-tabs" id="myTab" role="tablist">
@@ -48,7 +52,7 @@ namespace PersonalFinance
                                 <div class="tab-pane fade show active" id="wealth-tab-pane" role="tabpanel" aria-labelledby="wealth-tab" tabindex="0">
                                     <div class="border rounded-3">
                                         <div class="chartSpace">
-                                            {_builder.GetFinancialSummary()}
+                                            {financialSummary}
                                         </div>
                                     </div>
                                 </div><!--end wealth-tab-pane -->
@@ -56,7 +60,7 @@ namespace PersonalFinance
                                 <div class="tab-pane fade" id="spend-tab-pane" role="tabpanel" aria-labelledby="spend-tab" tabindex="1">
                                     <div class="border rounded-3">
                                         <div class="chartSpace">
-                                            {_builder.GetBudgetSummary()}
+                                            {budgetSummary}
                                         </div>
                                     </div>
                                 </div><!--end spend-tab-pane -->
@@ -64,7 +68,10 @@ namespace PersonalFinance
                                 <div class="tab-pane fade" id="chart-tab-pane" role="tabpanel" aria-labelledby="chart-tab" tabindex="2">
                                     <div class="border rounded-3">
                                         <div class="chartSpace">
-                                            {_builder.GetCharts()}
+                                            {
+                                                //_builder.GetCharts()
+                                                ""
+                                            }
                                         </div>
                                     </div>                           
                                 </div><!--end chart-tab-pane -->
@@ -77,6 +84,7 @@ namespace PersonalFinance
                 """;
 
             return html;
+
         }
     }
 }

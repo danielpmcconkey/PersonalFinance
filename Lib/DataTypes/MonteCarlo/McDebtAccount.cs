@@ -8,6 +8,9 @@ using System.Threading.Tasks;
 
 namespace Lib.DataTypes.MonteCarlo
 {
+    /// <summary>
+    /// this class is neeeded so that the context doesn't try to save simulated data back to the database
+    /// </summary>
     [Table("DebtAccount")]
     [PrimaryKey(nameof(Id))]
     public record McDebtAccount

@@ -4,6 +4,7 @@ using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
@@ -11,9 +12,9 @@ public class SpendTests
 {
     private readonly LocalDateTime _baseDate = new(2025, 1, 1, 0, 0);
 
-    private McModel CreateTestModel()
+    private Model CreateTestModel()
     {
-        return new McModel
+        return new Model
         {
             RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0),
             DesiredMonthlySpendPreRetirement = 5000m,
@@ -76,7 +77,7 @@ public class SpendTests
          * functions anyway
          */
         // Arrange
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         var person = CreateTestPerson();
         var months = 3;
         // create an empty book of accounts
@@ -86,10 +87,10 @@ public class SpendTests
         );
 
         // Act
-        var result = Spend.CalculateCashNeedForNMonths(simParams, person, accounts, _baseDate, months);
+        var result = Spend.CalculateCashNeedForNMonths(model, person, accounts, _baseDate, months);
 
         // Assert
-        var expectedMonthlyTotal = simParams.DesiredMonthlySpendPreRetirement + person.RequiredMonthlySpend;
+        var expectedMonthlyTotal = model.DesiredMonthlySpendPreRetirement + person.RequiredMonthlySpend;
         Assert.Equal(expectedMonthlyTotal * months, result);
     }
 
@@ -133,13 +134,13 @@ public class SpendTests
     public void CalculateMonthlyFunSpend_AgeAffectsSpending(int currentYear, decimal expectedSpend)
     {
         // Arrange
-        var simParams = CreateTestModel();
-        simParams.DesiredMonthlySpendPreRetirement = 5000m;
-        simParams.DesiredMonthlySpendPostRetirement = 6000m;
+        var model = CreateTestModel();
+        model.DesiredMonthlySpendPreRetirement = 5000m;
+        model.DesiredMonthlySpendPostRetirement = 6000m;
         var currentDate = new LocalDateTime(currentYear, 1, 1, 0, 0);
 
         // Act
-        var result = Spend.CalculateMonthlyFunSpend(simParams, CreateTestPerson(), currentDate);
+        var result = Spend.CalculateMonthlyFunSpend(model, CreateTestPerson(), currentDate);
 
         // Assert
         Assert.Equal(expectedSpend, result, 0);
@@ -163,13 +164,13 @@ public class SpendTests
     public void CalculateMonthlyHealthSpend_AgeAffectsHealthCosts(int currentYear, decimal expectedSpend)
     {
         // Arrange
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         var person = CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 3000m;
         var currentDate = new LocalDateTime(currentYear, 1, 1, 0, 0);
 
         // Act
-        var result = Spend.CalculateMonthlyHealthSpend(simParams, person, currentDate);
+        var result = Spend.CalculateMonthlyHealthSpend(model, person, currentDate);
 
         // Assert
         Assert.Equal(expectedSpend, result, 0);
@@ -181,7 +182,7 @@ public class SpendTests
         // this is a weak test, but the health spend individual test is quite rigorous and required spend never changes
         
         // Arrange
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         var currentDate = _baseDate.PlusYears(13); // Age 63, full health costs
         var person = CreateTestPerson();
         
@@ -193,7 +194,7 @@ public class SpendTests
 
         // Act
         var result = Spend.CalculateMonthlyRequiredSpend(
-            simParams, CreateTestPerson(), currentDate, accounts).TotalSpend;
+            model, CreateTestPerson(), currentDate, accounts).TotalSpend;
 
         // Assert
         var expectedTotal = person.RequiredMonthlySpend + person.RequiredMonthlySpendHealthCare;
@@ -209,7 +210,7 @@ public class SpendTests
         bool inRecession, bool inExtremeAusterity, bool livinLarge, decimal expectedRatio)
     {
         // Arrange
-        var simParams = CreateTestModel();
+        var model = CreateTestModel();
         
         var recessionStats = new RecessionStats
         {
@@ -220,7 +221,7 @@ public class SpendTests
         var standardAmount = 1000m;
 
         // Act
-        var result = Spend.CalculateSpendOverride(simParams, standardAmount, recessionStats);
+        var result = Spend.CalculateSpendOverride(model, standardAmount, recessionStats);
 
         // Assert
         Assert.Equal(standardAmount * expectedRatio, result);

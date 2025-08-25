@@ -8,6 +8,7 @@ using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.MonteCarlo.TaxForms.Federal;
 using Lib.StaticConfig;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
 namespace Lib.MonteCarlo;
 
@@ -29,7 +30,7 @@ public class LifeSimulator
     /// <summary>
     /// this houses all of our simulation data: history and current state
     /// </summary>
-    private MonteCarloSim _sim;
+    private SimData _simData;
 
     private ReconciliationLedger _reconciliationLedger = new();
     private bool _isReconcilingTime = false;
@@ -40,18 +41,18 @@ public class LifeSimulator
     private int _lifeNum;
 
     public LifeSimulator(
-        Logger logger, McModel simParams, PgPerson person, List<McInvestmentAccount> investmentAccounts,
+        Logger logger, Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
         List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices, int lifeNum)
     {
 #if PERFORMANCEPROFILING
         // set up a run that will last
-        simParams.DesiredMonthlySpendPostRetirement = 500m;
-        simParams.DesiredMonthlySpendPreRetirement = 500m;
-        simParams.NumMonthsCashOnHand = 12;
-        simParams.NumMonthsMidBucketOnHand = 12;
-        simParams.AusterityRatio = 0.5m;
-        simParams.ExtremeAusterityRatio = 0.5m;
-        simParams.ExtremeAusterityNetWorthTrigger = 1000000m;
+        model.DesiredMonthlySpendPostRetirement = 500m;
+        model.DesiredMonthlySpendPreRetirement = 500m;
+        model.NumMonthsCashOnHand = 12;
+        model.NumMonthsMidBucketOnHand = 12;
+        model.AusterityRatio = 0.5m;
+        model.ExtremeAusterityRatio = 0.5m;
+        model.ExtremeAusterityNetWorthTrigger = 1000000m;
 #endif 
         // need to create a book of accounts before you can normalize positions
         var accounts = Account.CreateBookOfAccounts(
@@ -62,26 +63,26 @@ public class LifeSimulator
         accounts = Investment.NormalizeInvestmentPositions(accounts, prices);
         // set up the monthly social security wage, add it to both person and ledger
         var monthlySocialSecurityWage = Person.CalculateMonthlySocialSecurityWage(person,
-            simParams.SocialSecurityStart);
+            model.SocialSecurityStart);
         var copiedPerson = Person.CopyPerson(person, false);
         copiedPerson.AnnualSocialSecurityWage =
             monthlySocialSecurityWage * 12; 
-        copiedPerson.Annual401KPreTax = copiedPerson.Annual401KContribution * simParams.Percent401KTraditional;
+        copiedPerson.Annual401KPreTax = copiedPerson.Annual401KContribution * model.Percent401KTraditional;
         copiedPerson.Annual401KPostTax = Math.Max(
             0, copiedPerson.Annual401KContribution - copiedPerson.Annual401KPreTax);
         copiedPerson.IsBankrupt = false;
         copiedPerson.IsRetired = false;
         var ledger = new TaxLedger();
         ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
-        ledger.SocialSecurityElectionStartDate = simParams.SocialSecurityStart;
+        ledger.SocialSecurityElectionStartDate = model.SocialSecurityStart;
         
         _lifeNum = lifeNum;
 
         // set up the sim struct to be used to keep track of all the sim data
-        _sim = new MonteCarloSim()
+        _simData = new SimData()
         {
             Log = logger,
-            SimParameters = simParams,
+            Model = model,
             BookOfAccounts = accounts,
             PgPerson = copiedPerson,
             CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
@@ -98,11 +99,11 @@ public class LifeSimulator
     {
         try
         {
-            _sim.Log.Debug($"Beginning lifetime {_lifeNum}.");
-            NormalizeDates(_sim.PgPerson, _sim.SimParameters);
+            _simData.Log.Debug($"Beginning lifetime {_lifeNum}.");
+            NormalizeDates(_simData.PgPerson, _simData.Model);
             
             
-            while (_sim.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
+            while (_simData.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
             {
                 SetReconClutch();
                     
@@ -114,11 +115,11 @@ public class LifeSimulator
                 if (MonteCarloConfig.DebugMode)
                 {
                     _reconciliationLedger.AddFullReconLine(
-                        _sim, $"Starting new month: {_sim.CurrentDateInSim}");
-                    _sim.Log.Debug($"Starting new month: {_sim.CurrentDateInSim}");
+                        _simData, $"Starting new month: {_simData.CurrentDateInSim}");
+                    _simData.Log.Debug($"Starting new month: {_simData.CurrentDateInSim}");
                 }
 
-                if (!_sim.PgPerson.IsBankrupt)
+                if (!_simData.PgPerson.IsBankrupt)
                 {
                     // net worth is still positive. keep calculating stuff
                     SetGrowthAndPrices();
@@ -130,13 +131,13 @@ public class LifeSimulator
                     RebalancePortfolio();
                     PayForStuff();
 
-                    if (_sim.CurrentDateInSim.Month == 1)
+                    if (_simData.CurrentDateInSim.Month == 1)
                     {
                         CleanUpAccounts();
                         PayTax();
                     }
 
-                    if (_sim.CurrentDateInSim.Month == 12)
+                    if (_simData.CurrentDateInSim.Month == 12)
                     {
                         MeetRmdRequirements();
                     }
@@ -148,26 +149,26 @@ public class LifeSimulator
 
                 CreateMonthEndReport();
                 
-                if (MonteCarloConfig.DebugMode && _sim.CurrentDateInSim.Month == 12)
+                if (MonteCarloConfig.DebugMode && _simData.CurrentDateInSim.Month == 12)
                     ReconcileEoy();
                 
-                _sim.CurrentDateInSim = _sim.CurrentDateInSim.PlusMonths(1);
+                _simData.CurrentDateInSim = _simData.CurrentDateInSim.PlusMonths(1);
             }
 
-            _sim.Log.Debug($"Done with lifetime {_lifeNum}.");
+            _simData.Log.Debug($"Done with lifetime {_lifeNum}.");
             if (!MonteCarloConfig.DebugMode) return _snapshots;
             
-            _sim.Log.Debug("Writing reconciliation data to spreadsheet");
+            _simData.Log.Debug("Writing reconciliation data to spreadsheet");
             _reconciliationLedger.ExportToSpreadsheet();
-            _sim.Log.Debug(_sim.Log.FormatHeading("End of simulated lifetime"));
+            _simData.Log.Debug(_simData.Log.FormatHeading("End of simulated lifetime"));
             return _snapshots;
         }
         catch (Exception e)
         {
-            _sim.Log.Error(_sim.Log.FormatHeading($"Error in Run({_lifeNum})"));
-            _sim.Log.Error($"Model ID: {_sim.SimParameters.Id}");
-            _sim.Log.Error($"Life num: {_lifeNum}");
-            _sim.Log.Error(e.ToString());
+            _simData.Log.Error(_simData.Log.FormatHeading($"Error in Run({_lifeNum})"));
+            _simData.Log.Error($"Model ID: {_simData.Model.Id}");
+            _simData.Log.Error($"Life num: {_lifeNum}");
+            _simData.Log.Error(e.ToString());
             _reconciliationLedger.ExportToSpreadsheet();
             throw;
         }
@@ -184,16 +185,16 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        if (_sim.PgPerson.IsBankrupt) return;
+        if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileInterestAccrual && _isReconcilingTime)
         {
-            _reconciliationLedger.AddFullReconLine(_sim, "Accruing interest");
+            _reconciliationLedger.AddFullReconLine(_simData, "Accruing interest");
         }
 
         var result = AccountInterestAccrual.AccrueInterest(
-            _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.LifetimeSpend);
-        _sim.BookOfAccounts = result.newAccounts;
-        _sim.LifetimeSpend = result.newSpend;
+            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices, _simData.LifetimeSpend);
+        _simData.BookOfAccounts = result.newAccounts;
+        _simData.LifetimeSpend = result.newSpend;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -203,7 +204,7 @@ public class LifeSimulator
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileInterestAccrual || !_isReconcilingTime) return;
 
         _reconciliationLedger.AddMessages(result.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Accrued interest");
+        _reconciliationLedger.AddFullReconLine(_simData, "Accrued interest");
     }
 
     private void CheckForRetirement()
@@ -213,17 +214,17 @@ public class LifeSimulator
         stopwatch.Start();
 #endif 
         // if already retired, no need to check again
-        if (_sim.PgPerson.IsRetired) return;
+        if (_simData.PgPerson.IsRetired) return;
 
         // if not retired, check if we're retiring
         var result = Simulation.SetIsRetiredFlagIfNeeded(
-            _sim.CurrentDateInSim, _sim.PgPerson, _sim.SimParameters);
+            _simData.CurrentDateInSim, _simData.PgPerson, _simData.Model);
 
         // if result is still false, just return
         if (!result.isRetired) return;
 
         // retirement day; update the person object and log the event
-        _sim.PgPerson = result.person;
+        _simData.PgPerson = result.person;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -231,7 +232,7 @@ public class LifeSimulator
 #endif 
         
         if (!MonteCarloConfig.DebugMode || !_isReconcilingTime) return;
-        _reconciliationLedger.AddFullReconLine(_sim, "Retirement day!");
+        _reconciliationLedger.AddFullReconLine(_simData, "Retirement day!");
     }
 
     private void CleanUpAccounts()
@@ -240,14 +241,14 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        if (_sim.PgPerson.IsBankrupt) return;
+        if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileInterestAccrual && _isReconcilingTime)
         {
-            _reconciliationLedger.AddFullReconLine(_sim, "Cleaning up accounts");
+            _reconciliationLedger.AddFullReconLine(_simData, "Cleaning up accounts");
         }
 
-        _sim.BookOfAccounts =
-            AccountCleanup.CleanUpAccounts(_sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices);
+        _simData.BookOfAccounts =
+            AccountCleanup.CleanUpAccounts(_simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices);
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -257,17 +258,17 @@ public class LifeSimulator
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileAccountCleanUp || !_isReconcilingTime)
             return;
 
-        _reconciliationLedger.AddFullReconLine(_sim, "Cleaned up accounts");
+        _reconciliationLedger.AddFullReconLine(_simData, "Cleaned up accounts");
     }
 
     private void CreateMonthEndReport()
     {
         if (MonteCarloConfig.ModelTrainingMode && 
-            _sim.CurrentDateInSim < StaticConfig.MonteCarloConfig.MonteCarloSimEndDate) 
+            _simData.CurrentDateInSim < StaticConfig.MonteCarloConfig.MonteCarloSimEndDate) 
             return; // only log the intra-sim metrics when in single run mode
         
-        var snapshot = Simulation.CreateSimSnapshot(_sim);
-        if (snapshot.NetWorth <= 0 || _sim.PgPerson.IsBankrupt)
+        var snapshot = Simulation.CreateSimSnapshot(_simData);
+        if (snapshot.NetWorth <= 0 || _simData.PgPerson.IsBankrupt)
         {
             // zero it out everything to make reporting cleaner
             snapshot.NetWorth = 0;
@@ -282,15 +283,15 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        _sim.PgPerson.IsBankrupt = true;
+        _simData.PgPerson.IsBankrupt = true;
         // zero out everything to make reporting easier
         List<McInvestmentAccount> emptyInvestAccounts = [];
         List<McDebtAccount> emptyDebtAccounts = [];
-        _sim.BookOfAccounts = Account.CreateBookOfAccounts(emptyInvestAccounts, emptyDebtAccounts);
+        _simData.BookOfAccounts = Account.CreateBookOfAccounts(emptyInvestAccounts, emptyDebtAccounts);
         if (MonteCarloConfig.DebugMode)
         {
-            _reconciliationLedger.AddFullReconLine(_sim, "Bankruptcy declared");
-            _sim.Log.Debug("Bankruptcy declared");
+            _reconciliationLedger.AddFullReconLine(_simData, "Bankruptcy declared");
+            _simData.Log.Debug("Bankruptcy declared");
         }
          
 #if PERFORMANCEPROFILING
@@ -306,14 +307,14 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        _sim.Log.Debug("Rebalancing portfolio");
-        if (_sim.PgPerson.IsBankrupt) return;
+        _simData.Log.Debug("Rebalancing portfolio");
+        if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing && _isReconcilingTime) 
-            _reconciliationLedger.AddFullReconLine(_sim, "Rebalancing portfolio");
+            _reconciliationLedger.AddFullReconLine(_simData, "Rebalancing portfolio");
         
         var results = Rebalance.InvestExcessCash(
-            _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.CurrentPrices, _sim.SimParameters, _sim.PgPerson);
-        _sim.BookOfAccounts = results.newBookOfAccounts;
+            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices, _simData.Model, _simData.PgPerson);
+        _simData.BookOfAccounts = results.newBookOfAccounts;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -322,7 +323,7 @@ public class LifeSimulator
         
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRebalancing || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(results.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Rebalanced portfolio");
+        _reconciliationLedger.AddFullReconLine(_simData, "Rebalanced portfolio");
     }
 
     private void MeetRmdRequirements()
@@ -331,15 +332,15 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        if (_sim.PgPerson.IsBankrupt) return;
+        if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRmd && _isReconcilingTime)
-            _reconciliationLedger.AddFullReconLine(_sim, "Meeting RMD requirements");
+            _reconciliationLedger.AddFullReconLine(_simData, "Meeting RMD requirements");
 
-        var age = _sim.CurrentDateInSim.Year - _sim.PgPerson.BirthDate.Year;
+        var age = _simData.CurrentDateInSim.Year - _simData.PgPerson.BirthDate.Year;
         var result = Tax.MeetRmdRequirements(
-            _sim.TaxLedger, _sim.CurrentDateInSim, _sim.BookOfAccounts, age);
-        _sim.BookOfAccounts = result.newBookOfAccounts;
-        _sim.TaxLedger = result.newLedger;
+            _simData.TaxLedger, _simData.CurrentDateInSim, _simData.BookOfAccounts, age);
+        _simData.BookOfAccounts = result.newBookOfAccounts;
+        _simData.TaxLedger = result.newLedger;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -348,14 +349,14 @@ public class LifeSimulator
         
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRmd || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(result.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "RMD requirements met");
+        _reconciliationLedger.AddFullReconLine(_simData, "RMD requirements met");
     }
     
-    private void NormalizeDates(PgPerson simPgPerson, McModel simSimParameters)
+    private void NormalizeDates(PgPerson simPgPerson, Model simSimParameters)
     {
-        var (newPerson, newModel) = Simulation.NormalizeDates(_sim.PgPerson, _sim.SimParameters);
-        _sim.PgPerson = newPerson;
-        _sim.SimParameters = newModel;
+        var (newPerson, newModel) = Simulation.NormalizeDates(_simData.PgPerson, _simData.Model);
+        _simData.PgPerson = newPerson;
+        _simData.Model = newModel;
     }
 
     private void PayDownLoans()
@@ -364,20 +365,20 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        if (_sim.PgPerson.IsBankrupt)
+        if (_simData.PgPerson.IsBankrupt)
         {
             return;
         }
 
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileLoanPaydown && _isReconcilingTime)
-            _reconciliationLedger.AddFullReconLine(_sim, "Paying down loans");
+            _reconciliationLedger.AddFullReconLine(_simData, "Paying down loans");
 
 
         var paymentResult = AccountDebtPayment.PayDownLoans(
-            _sim.BookOfAccounts, _sim.CurrentDateInSim, _sim.TaxLedger, _sim.LifetimeSpend);
-        _sim.BookOfAccounts = paymentResult.newBookOfAccounts;
-        _sim.TaxLedger = paymentResult.newLedger;
-        _sim.LifetimeSpend = paymentResult.newSpend;
+            _simData.BookOfAccounts, _simData.CurrentDateInSim, _simData.TaxLedger, _simData.LifetimeSpend);
+        _simData.BookOfAccounts = paymentResult.newBookOfAccounts;
+        _simData.TaxLedger = paymentResult.newLedger;
+        _simData.LifetimeSpend = paymentResult.newSpend;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -392,7 +393,7 @@ public class LifeSimulator
 
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileLoanPaydown || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(paymentResult.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Pay down debt completed");
+        _reconciliationLedger.AddFullReconLine(_simData, "Pay down debt completed");
     }
 
     private void PayForStuff()
@@ -401,15 +402,15 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        if (_sim.PgPerson.IsBankrupt) return;
+        if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayingForStuff && _isReconcilingTime)
-            _reconciliationLedger.AddFullReconLine(_sim, "Time to spend the money");
+            _reconciliationLedger.AddFullReconLine(_simData, "Time to spend the money");
 
-        var results = Simulation.PayForStuff(_sim.SimParameters, _sim.PgPerson,
-            _sim.CurrentDateInSim, _sim.RecessionStats, _sim.TaxLedger, _sim.LifetimeSpend, _sim.BookOfAccounts);
-        _sim.BookOfAccounts = results.accounts;
-        _sim.TaxLedger = results.ledger;
-        _sim.LifetimeSpend = results.spend;
+        var results = Simulation.PayForStuff(_simData.Model, _simData.PgPerson,
+            _simData.CurrentDateInSim, _simData.RecessionStats, _simData.TaxLedger, _simData.LifetimeSpend, _simData.BookOfAccounts);
+        _simData.BookOfAccounts = results.accounts;
+        _simData.TaxLedger = results.ledger;
+        _simData.LifetimeSpend = results.spend;
         if (results.isSuccessful == false) DeclareBankruptcy();
         
 #if PERFORMANCEPROFILING
@@ -420,7 +421,7 @@ public class LifeSimulator
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcilePayingForStuff || !_isReconcilingTime)
             return;
         _reconciliationLedger.AddMessages(results.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Monthly spend spent");
+        _reconciliationLedger.AddFullReconLine(_simData, "Monthly spend spent");
     }
 
     private void PayTax()
@@ -429,19 +430,19 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        if (_sim.PgPerson.IsBankrupt) return;
+        if (_simData.PgPerson.IsBankrupt) return;
 
-        var taxYear = _sim.CurrentDateInSim.Year - 1;
-        var newTaxLedger = _sim.TaxLedger;
+        var taxYear = _simData.CurrentDateInSim.Year - 1;
+        var newTaxLedger = _simData.TaxLedger;
 
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileTaxCalcs && _isReconcilingTime)
-            _reconciliationLedger.AddFullReconLine(_sim, $"Paying taxes for tax year {taxYear}");
+            _reconciliationLedger.AddFullReconLine(_simData, $"Paying taxes for tax year {taxYear}");
 
-        var taxResult = Simulation.PayTaxForYear(_sim.PgPerson, _sim.CurrentDateInSim,
-            _sim.TaxLedger, _sim.LifetimeSpend, _sim.BookOfAccounts, _sim.CurrentDateInSim.Year - 1);
-        _sim.BookOfAccounts = taxResult.accounts;
-        _sim.TaxLedger = taxResult.ledger;
-        _sim.LifetimeSpend = taxResult.spend;
+        var taxResult = Simulation.PayTaxForYear(_simData.PgPerson, _simData.CurrentDateInSim,
+            _simData.TaxLedger, _simData.LifetimeSpend, _simData.BookOfAccounts, _simData.CurrentDateInSim.Year - 1);
+        _simData.BookOfAccounts = taxResult.accounts;
+        _simData.TaxLedger = taxResult.ledger;
+        _simData.LifetimeSpend = taxResult.spend;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -450,7 +451,7 @@ public class LifeSimulator
 
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileTaxCalcs || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(taxResult.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Paid taxes");
+        _reconciliationLedger.AddFullReconLine(_simData, "Paid taxes");
     }
 
     private void ProcessPayday()
@@ -460,13 +461,13 @@ public class LifeSimulator
         stopwatch.Start();
 #endif 
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayDay && _isReconcilingTime)
-            _reconciliationLedger.AddFullReconLine(_sim, "processing payday");
+            _reconciliationLedger.AddFullReconLine(_simData, "processing payday");
 
-        var results = Simulation.ProcessPayday(_sim.PgPerson, _sim.CurrentDateInSim,
-            _sim.BookOfAccounts, _sim.TaxLedger, _sim.LifetimeSpend, _sim.SimParameters, _sim.CurrentPrices);
-        _sim.BookOfAccounts = results.accounts;
-        _sim.TaxLedger = results.ledger;
-        _sim.LifetimeSpend = results.spend;
+        var results = Simulation.ProcessPayday(_simData.PgPerson, _simData.CurrentDateInSim,
+            _simData.BookOfAccounts, _simData.TaxLedger, _simData.LifetimeSpend, _simData.Model, _simData.CurrentPrices);
+        _simData.BookOfAccounts = results.accounts;
+        _simData.TaxLedger = results.ledger;
+        _simData.LifetimeSpend = results.spend;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -475,7 +476,7 @@ public class LifeSimulator
         
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcilePayDay || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(results.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "processed payday");
+        _reconciliationLedger.AddFullReconLine(_simData, "processed payday");
     }
 
     private void RebalancePortfolio()
@@ -484,16 +485,16 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        _sim.Log.Debug("Rebalancing portfolio");
-        if (_sim.PgPerson.IsBankrupt) return;
+        _simData.Log.Debug("Rebalancing portfolio");
+        if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing && _isReconcilingTime) 
-            _reconciliationLedger.AddFullReconLine(_sim, "Rebalancing portfolio");
+            _reconciliationLedger.AddFullReconLine(_simData, "Rebalancing portfolio");
         
         var results = Rebalance.RebalancePortfolio(
-            _sim.CurrentDateInSim, _sim.BookOfAccounts, _sim.RecessionStats, _sim.CurrentPrices, _sim.SimParameters,
-            _sim.TaxLedger, _sim.PgPerson);
-        _sim.BookOfAccounts = results.newBookOfAccounts;
-        _sim.TaxLedger = results.newLedger;
+            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.RecessionStats, _simData.CurrentPrices, _simData.Model,
+            _simData.TaxLedger, _simData.PgPerson);
+        _simData.BookOfAccounts = results.newBookOfAccounts;
+        _simData.TaxLedger = results.newLedger;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -502,14 +503,14 @@ public class LifeSimulator
         
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRebalancing || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(results.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Rebalanced portfolio");
+        _reconciliationLedger.AddFullReconLine(_simData, "Rebalanced portfolio");
     }
     
     private void ReconcileEoy()
     {
         if (!MonteCarloConfig.DebugMode) return;
         if (!MonteCarloConfig.ShouldReconcileEOYRecap) return;
-        _reconciliationLedger.AddFullReconLine(_sim, "EOY recap");
+        _reconciliationLedger.AddFullReconLine(_simData, "EOY recap");
     }
 
     private void RecordFunAndAnxiety()
@@ -519,11 +520,11 @@ public class LifeSimulator
         stopwatch.Start();
 #endif 
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayDay && _isReconcilingTime)
-            _reconciliationLedger.AddFullReconLine(_sim, "Recording fun and anxiety");
+            _reconciliationLedger.AddFullReconLine(_simData, "Recording fun and anxiety");
 
-        var results = Simulation.RecordFunAndAnxiety(_sim.SimParameters, _sim.PgPerson, 
-            _sim.CurrentDateInSim, _sim.RecessionStats, _sim.LifetimeSpend, _sim.BookOfAccounts);
-        _sim.LifetimeSpend = results.spend;
+        var results = Simulation.RecordFunAndAnxiety(_simData.Model, _simData.PgPerson, 
+            _simData.CurrentDateInSim, _simData.RecessionStats, _simData.LifetimeSpend, _simData.BookOfAccounts);
+        _simData.LifetimeSpend = results.spend;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -532,7 +533,7 @@ public class LifeSimulator
         
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcilePayDay || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(results.messages);
-        _reconciliationLedger.AddFullReconLine(_sim, "Done recording fund and anxiety");
+        _reconciliationLedger.AddFullReconLine(_simData, "Done recording fund and anxiety");
     }
     private void SetGrowthAndPrices()
     {
@@ -540,12 +541,12 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        _sim.CurrentPrices = Simulation.SetNewPrices(
-            _sim.CurrentPrices, _hypotheticalPrices, _sim.CurrentDateInSim);
+        _simData.CurrentPrices = Simulation.SetNewPrices(
+            _simData.CurrentPrices, _hypotheticalPrices, _simData.CurrentDateInSim);
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePricingGrowth && _isReconcilingTime)
         {
             _reconciliationLedger.AddMessageLine(new ReconciliationMessage(
-                _sim.CurrentDateInSim, _sim.CurrentPrices.CurrentLongTermGrowthRate,
+                _simData.CurrentDateInSim, _simData.CurrentPrices.CurrentLongTermGrowthRate,
                 "Updated prices with new long term growth rate"));
         }
         
@@ -562,7 +563,7 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        _isReconcilingTime = Simulation.IsReconciliationPeriod(_sim.CurrentDateInSim);
+        _isReconcilingTime = Simulation.IsReconciliationPeriod(_simData.CurrentDateInSim);
          
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -580,9 +581,9 @@ public class LifeSimulator
         // do our recession checking every month, regardless of whether
         // it's time to move money around. this gives us a finer grain for
         // determining down years
-        _sim.RecessionStats = Recession.CalculateRecessionStats(
-            _sim.RecessionStats, _sim.CurrentPrices, _sim.SimParameters, _sim.BookOfAccounts,
-            _sim.CurrentDateInSim);
+        _simData.RecessionStats = Recession.CalculateRecessionStats(
+            _simData.RecessionStats, _simData.CurrentPrices, _simData.Model, _simData.BookOfAccounts,
+            _simData.CurrentDateInSim);
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();

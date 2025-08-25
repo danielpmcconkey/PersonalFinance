@@ -6,6 +6,8 @@ using System.Reflection;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
 using NodaTime;
+using Model = Lib.DataTypes.MonteCarlo.Model;
+
 string logDir = ConfigManager.ReadStringSetting("LogDir");
 string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
 string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
@@ -29,7 +31,7 @@ decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
 logger.Info("Running in single model mode");
 
 logger.Info("Pulling model champion from the database");
-McModel champion =DataStage.GetModelChampion(dan);
+Model champion = Lib.MonteCarlo.StaticFunctions.Model.FetchModelChampion();
 
 // over-write the start and end dates from the DB champion model to use what's in the app config
 champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;

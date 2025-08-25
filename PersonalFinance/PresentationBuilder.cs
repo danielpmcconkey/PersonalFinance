@@ -4,49 +4,61 @@ using Lib;
 using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.DataTypes.Postgres;
+using Lib.DataTypes.Presentation;
 using Lib.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
+using Lib.Presentation;
 using Lib.StaticConfig;
+using NodaTime;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
-namespace PersonalFinance
-{
+namespace PersonalFinance;
+
     internal class PresentationBuilder
     {
-        private const string OutputDirectory = "/media/dan/fdrive/codeprojects/PersonalFinance/OutputFiles/";
-        private List<Position> _wealthPositions = [];
-        private List<Position> _cashPositions = [];
-        private List<Position> _debtPositions = [];
-        private List<BudgetPosition> _budgetPositions = [];
-        private List<PgCategory> _budgetCategories = [];
-        private  List<Position> _currentWealthPositions = [];
-        private List<Position> _currentCashPositions = [];
-        private List<Position> _currentDebtPositions = [];
-        private  List<(string MonthAbbreviation, DateTime PositionDate)> _months = [];
-        private  List<string> _taxBuckets = [];
-        private  List<string> _accounts = [];
-        private List<string> _accountGroups = [];
-        private List<string> _stockTypeIndividualVsIndex = [];
-        private List<string> _symbols = [];
+        private List<PgInvestmentAccountGroup> _investmentAccountGroups;
+        private List<PgDebtAccount> _debtAccounts;
+        private List<PgCashAccount> _cashAccounts;
+        
+        // private const string 
+        // private List<PgPosition> _wealthPositions = [];
+        // private List<PgPosition> _cashPositions = [];
+        // private List<PgDebtPosition> _debtPositions = [];
+        // private List<BudgetPosition> _budgetPositions = [];
+        // private List<PgCategory> _budgetCategories = [];
+        // private  List<PgPosition> _currentWealthPositions = [];
+        // private List<PgPosition> _currentCashPositions = [];
+        // private List<PgDebtPosition> _currentDebtPositions = [];
+        // private  List<(string MonthAbbreviation, LocalDateTime PositionDate)> _months = [];
+        // private  List<string> _taxBuckets = [];
+        // private  List<string> _accounts = [];
+        // private List<string> _accountGroups = [];
+        // private List<string> _stockTypeIndividualVsIndex = [];
+        // private List<string> _symbols = [];
         private List<AreaChart> _areaCharts = [];
         private List<MonteCarloResultsChart> _monteCarloResultsCharts = [];
         private SingleModelRunResult? _singleModelRunResult;
+        private string _formattedFinancialSummary;
 
-        private DateTime? _effectiveDate;
-
-        private const string AccountingFormat = "#,##0.00;(#,##0.00);--";
+        internal PresentationBuilder()
+        {
+            _investmentAccountGroups = PresentationDal.FetchInvestAccountGroupsAndChildData();
+            _debtAccounts = PresentationDal.FetchDebtAccountsAndPositions();
+            _cashAccounts = PresentationDal.FetchCashAccountsAndPositions();
+            
+            //_singleModelRunResult = MonteCarloFunctions.RunMonteCarlo();
+            
+            _formattedFinancialSummary = NetWorth.CreateFormattedFinancialSummary(
+                _investmentAccountGroups, _debtAccounts, _cashAccounts);
+        }
 
         internal void BuildPresentation()
         {
-            PullAndPopulateData();
-            DefineAreaCharts();
-            DefineMonteCarloCharts();
-
-            PresentationHtml pHtml = new PresentationHtml(this);
-            
-            string html = pHtml.GetHTML();
+            PresentationHtml pHtml = new PresentationHtml();
+            string html = pHtml.GetHtml(_formattedFinancialSummary, "");
             string timestamp = $".{DateTime.Now.ToString("yyyy.MM.dd.HH.mm.ss")}";
             //timestamp = "";
-            string fullOutputPath = $"{OutputDirectory}PersonalFinanceBreakdown{timestamp}.html";
+            string fullOutputPath = $"{PresentationConfig.PresentationOutputDir}PersonalFinanceBreakdown{timestamp}.html";
             try
             {
                 File.WriteAllText(fullOutputPath, html);
@@ -56,13 +68,16 @@ namespace PersonalFinance
                 Console.WriteLine(e);
                 throw;
             }
-            
         }
-        public DateTime GetEffectiveDate()
+        
+        
+/*
+        
+        public LocalDateTime GetEffectiveDate()
         {
             if(_wealthPositions is null) throw new Exception("Wealth positions not populated");
-            _effectiveDate ??= _wealthPositions.Max(x => x.PositionDate);
-            return (DateTime)_effectiveDate;
+            var maxDate = _wealthPositions.Max(x => x.PositionDate);
+            return maxDate;
         }
         public string GetChartsHead()
         {
@@ -95,60 +110,7 @@ namespace PersonalFinance
             output.AppendLine("    </script>");
             return output.ToString();
         }
-        public string GetCss()
-        {
-            string output = """
-                <style type="text/css">
-                    body { padding:25px; }
-                    h1 { margin:25px; }
-                    #myTab { margin-top:25px; }
-                    .textSpace {
-                        border:solid 3px black;
-                        background:#ffffff;
-                        margin-bottom:40px;
-                        padding:40px;
-                    }
-                    .chartSpace {
-                        margin-bottom:40px;
-                        padding:40px;
-                    }
-                    .chartDescription {
-                        font-size:20px;
-                        width:60%;
-                        margin-left:15%;
-                    }
-                    
-                    .summaryTable tbody th { text-align:left; width:400px;}
-                    .summaryTable tbody td { text-align:right; width:400px; }
-                    .summaryTable tbody th.level0 { padding-left:0px; font-weight:bold; font-size:24px; }
-                    .summaryTable tbody td.level0 { padding-right:0px; font-weight:bold; font-size:24px; }
-                    .summaryTable tbody th.level1 { padding-left:25px; font-weight:bold; }
-                    .summaryTable tbody td.level1 { padding-right:0px; font-weight:bold; }
-                    .summaryTable tbody th.level2 { padding-left:50px; font-weight:normal; }
-                    .summaryTable tbody td.level2 { padding-right:0px; font-weight:normal; }
-                    .summaryTable tbody th.suml0 { border-top:solid 3px black; }
-                    .summaryTable tbody td.suml0 { border-top:solid 3px black; }
-                    .summaryTable tbody th.suml1 { border-top:solid 1px black; }
-                    .summaryTable tbody td.suml1 { border-top:solid 1px black; }
-                    .summaryTable tbody tr.ledgerline { border-bottom:solid 1px #cccccc; }
-                    .summaryTable tbody th.monthHead { text-align:right; }
-                    .tab-content>.tab-pane {
-                        height: 1px;
-                        overflow: hidden;
-                        display: block;
-                        visibility: hidden;
-                    }
-                    .tab-content>.active {
-                        height: auto;
-                        overflow: auto;
-                        visibility: visible;
-                    }
-
-                </style>
-                """;
-            
-            return output;
-        }
+        
         private List<string> GetChildrenCatIds(string catId)
         {
             var output = new List<string>();
@@ -317,49 +279,7 @@ namespace PersonalFinance
 
             return output.ToString();
         }
-        public string GetFinancialSummary()
-        {
-
-            decimal mortgageDebt = _currentDebtPositions
-                .Where(x => x.AccountGroup == "Home loan")
-                .Sum(x => x.ValueAtTime);
-            decimal totalDebt = _currentDebtPositions.Sum(x => x.ValueAtTime);
-            decimal homeEquity = _currentWealthPositions
-                .Where(x => x.AccountGroup == "Home Equity")
-                .Sum(x => x.ValueAtTime);
-            decimal totalWealthPositions = _currentWealthPositions
-                .Where(x => x.AccountGroup != "Home Equity")
-                .Sum(x => x.ValueAtTime);
-            decimal homeValue = homeEquity;// + mortgageDebt; no longer need to add the mortgage debt
-            decimal totalCash = _currentCashPositions.Sum(x => x.ValueAtTime);
-            decimal totalNetWorth = totalWealthPositions + homeValue - totalDebt + totalCash;
-
-            var investmentAssetsSummary = GetInvestmentAssestsSummary(totalWealthPositions);
-            var cashAssetsSummary = GetCashAssestsSummary(totalCash);
-            var propertyAssetsSummary = GetPropertyAssestsSummary(homeValue);
-            var debtLiabilitiesSummary = GetDebtLiabilitiesSummary(totalDebt);
-
-
-            StringBuilder output = new StringBuilder();
-            output.AppendLine($"""
-                    <table class="summaryTable">
-                        <tr>
-                            <th class="level0">Net worth:</th>
-                            <td class="level0"></td>
-                        </tr>
-                {investmentAssetsSummary}
-                {cashAssetsSummary}
-                {propertyAssetsSummary}
-                {debtLiabilitiesSummary}
-                        <tr>
-                            <th class="level0 suml0">Total net worth:</th>
-                            <td class="level0 suml0">$&nbsp;&nbsp;&nbsp;&nbsp;{totalNetWorth.ToString(AccountingFormat)}</td>
-                        </tr>
-                    </table>
-                """);
-
-            return output.ToString();
-        }
+        
         public string GetCharts()
         {
             StringBuilder output = new StringBuilder();
@@ -388,10 +308,11 @@ namespace PersonalFinance
             var from = firstDayThisMonth.AddMonths(-12);
             
             var context = new PgContext();
-            _wealthPositions = PostgresDal.GetWealthPositions();
-            _cashPositions = PostgresDal.GetCashPositions();
-            _debtPositions = PostgresDal.GetDebtPositions();
-            _budgetPositions = PostgresDal.GetBudgetPositions(from, to);
+            _wealthPositions = PresentationDal.FetchWealthPositions();
+            _cashPositions = PresentationDal.FetchCashPositions();
+            _debtPositions = PresentationDal.FetchDebtPositions();
+            _budgetPositions = PresentationDal.FetchBudgetPositions(from, to);
+            _taxBuckets = PresentationDal.FetchTaxBuckets();
             //_budgetCategories = PostgresDAL.GetCategories();
             _budgetCategories = context.PgCategories
                 .Where(x => x.ShowInReport)
@@ -413,14 +334,14 @@ namespace PersonalFinance
 
             // get distinct month values
             _months = _wealthPositions
-                .Select(p => (p.MonthAbbreviation, p.PositionDate))
+                .Select(p => (
+                    $"{p.PositionDate.Month:00}-{p.PositionDate.Year}",
+                    p.PositionDate))
                 .Distinct()
                 .OrderBy(p => p.PositionDate)
                 .ToList();
 
-            // get distinct tax buckets
-            _taxBuckets = _wealthPositions.Select(p => p.TaxBucket).Distinct().ToList();
-
+            
             // get distinct accounts
             _accounts = _wealthPositions
                 .Select(p => (p.AccountId, p.AccountName))
@@ -449,44 +370,7 @@ namespace PersonalFinance
             _singleModelRunResult = PopulateMonteCarloData();
         }
 
-        private SingleModelRunResult PopulateMonteCarloData()
-        {
-            string logDir = ConfigManager.ReadStringSetting("LogDir");
-            string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
-            string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
-            var logger = new Logger(
-                Lib.StaticConfig.MonteCarloConfig.LogLevel,
-                logFilePath
-            );
-
-            logger.Info("Pulling person from the database");
-            var danId = ConfigManager.ReadStringSetting("DanId");
-            Guid danIdGuid = Guid.Parse(danId);
-            var dan = Person.GetPersonById(danIdGuid);
-            var investmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(danIdGuid);
-            var debtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(danIdGuid);
-
-
-            logger.Info("Pulling historical pricing data");
-            decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
-            
-            logger.Info("Running in single model mode");
-    
-            logger.Info("Pulling model champion from the database");
-            McModel champion = DataStage.GetModelChampion(dan);
-    
-            // over-write the start and end dates from the DB champion model to use what's in the app config
-            champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
-            champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
-    
-            logger.Info(logger.FormatBarSeparator('*'));
-            logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
-            logger.Info(logger.FormatBarSeparator('*'));
-            var results = SimulationTrigger.RunSingleModelSession(
-                logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
-            logger.Info("Single model simulation of all lives completed");
-            return results;
-        }
+        
 
         private void DefineAreaCharts()
         {
@@ -758,112 +642,8 @@ namespace PersonalFinance
                 IsBar = true,
             });
         } 
-        private string GetInvestmentAssestsSummary(decimal totalWealthPositions)
-        {
-            var wealthGroups = from p in _currentWealthPositions.Where(x => x.AccountGroup != "Home Equity")
-                               group p by p.AccountGroup into accountGroup
-                               select accountGroup;
-            StringBuilder wealthGroupsRows = new StringBuilder();
-            foreach (var g in wealthGroups)
-            {
-                decimal totalValue = g.Sum(x => x.ValueAtTime);
-                wealthGroupsRows.AppendLine("<tr>");
-                wealthGroupsRows.AppendLine($"<th class=\"level2\">{g.Key}:</th>");
-                wealthGroupsRows.AppendLine($"<td class=\"level2\">{totalValue.ToString(AccountingFormat)}</td>");
-                wealthGroupsRows.AppendLine("</tr>");
-            }
-
-            StringBuilder output = new StringBuilder();
-            output.AppendLine($"""
-                        <tr>
-                            <th class="level1">Investment assets:</th>
-                            <td class="level1"></td>
-                        </tr>
-                            {wealthGroupsRows}
-                        <tr>
-                            <th class="level1 suml1">Total investments:</th>
-                            <td class="level1 suml1">{totalWealthPositions.ToString(AccountingFormat)}</td>
-                        </tr>
-                """);
-
-            return output.ToString();
-
-        }
-        private string GetCashAssestsSummary(decimal totalCash)
-        {
-            StringBuilder rows = new StringBuilder();
-            foreach (var r in _currentCashPositions)
-            {
-                rows.AppendLine("<tr>");
-                rows.AppendLine($"<th class=\"level2\">{r.AccountName}:</th>");
-                rows.AppendLine($"<td class=\"level2\">{r.ValueAtTime.ToString(AccountingFormat)}</td>");
-                rows.AppendLine("</tr>");
-            }
-
-            StringBuilder output = new StringBuilder();
-            output.AppendLine($"""
-                        <tr>
-                            <th class="level1">Cash assets:</td>
-                            <td class="level1"></td>
-                        </tr>
-                            {rows}
-                        <tr>
-                            <th class="level1 suml1">Total cash:</th>
-                            <td class="level1 suml1">{totalCash.ToString(AccountingFormat)}</td>
-                        </tr>
-                """);
-
-            return output.ToString();
-
-        }
-        private string GetPropertyAssestsSummary(decimal totalProperty)
-        {
-            StringBuilder output = new StringBuilder();
-            output.AppendLine($"""
-                        <tr>
-                            <th class="level1">Property assets:</td>
-                            <td class="level1"></td>
-                        </tr>
-                        <tr>
-                            <th class="level2">Value of house on Logan Circle</th>
-                            <td class="level2">{totalProperty.ToString(AccountingFormat)}</td>
-                        </tr>
-                        <tr>
-                            <th class="level1 suml1">Total property:</th>
-                            <td class="level1 suml1">{totalProperty.ToString(AccountingFormat)}</td>
-                        </tr>
-                """);
-
-            return output.ToString();
-
-        }
-        private string GetDebtLiabilitiesSummary(decimal totalDebt)
-        {
-            StringBuilder rows = new StringBuilder();
-            foreach (var r in _currentDebtPositions)
-            {
-                rows.AppendLine("<tr>");
-                rows.AppendLine($"<th class=\"level2\">{r.AccountName}:</th>");
-                rows.AppendLine($"<td class=\"level2\">{(r.ValueAtTime * -1.0M).ToString(AccountingFormat)}</td>");
-                rows.AppendLine("</tr>");
-            }
-
-            StringBuilder output = new StringBuilder();
-            output.AppendLine($"""
-                        <tr>
-                            <th class="level1">Debt liabilities:</td>
-                            <td class="level1"></td>
-                        </tr>
-                            {rows}
-                        <tr>
-                            <th class="level1 suml1">Total debt:</th>
-                            <td class="level1 suml1">{(totalDebt * -1M).ToString(AccountingFormat)}</td>
-                        </tr>
-                """);
-
-            return output.ToString();
-
-        }       
+        
+             
         private string GetAreaChartFunction(AreaChart c)
         {
             StringBuilder output = new StringBuilder();
@@ -1028,4 +808,5 @@ namespace PersonalFinance
         }
 
     }
+    */
 }

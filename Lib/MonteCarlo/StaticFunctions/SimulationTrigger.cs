@@ -17,7 +17,7 @@ public class SimulationTrigger
 {
     #region DB functions
 
-    public static void SaveModelToDb(McModel model)
+    public static void SaveModelToDb(DataTypes.MonteCarlo.Model model)
     {
         using var context = new PgContext();
         context.McModels.Add(model);
@@ -37,7 +37,7 @@ public class SimulationTrigger
     /// </summary>
     /// <returns>an array of SimSnapshot lists. Each element in the array represents one simulated life</returns>
     public static List<SimSnapshot>[] ExecuteSingleModelAllLives(Logger logger,
-        McModel model, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
+        DataTypes.MonteCarlo.Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
         Dictionary<LocalDateTime, decimal>[] allPricingDicts)
     {
         int numLivesPerModelRun = MonteCarloConfig.NumLivesPerModelRun;
@@ -62,7 +62,7 @@ public class SimulationTrigger
     /// Trigger the simulator for a single run after you've created all the default accounts, parameters and pricing.
     /// Can be used by RunSingle and Train.
     /// </summary>
-    public static List<SimSnapshot> ExecuteSingleModelSingleLife(Logger logger, McModel model, PgPerson person, 
+    public static List<SimSnapshot> ExecuteSingleModelSingleLife(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
         List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
         Dictionary<LocalDateTime, Decimal> hypotheticalPrices)
     {
@@ -79,7 +79,7 @@ public class SimulationTrigger
     /// set of price simulations
     /// </summary>
     public static SingleModelRunResult RunSingleModelSession(
-        Logger logger, McModel simParams, PgPerson person, List<McInvestmentAccount> investmentAccounts,
+        Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
         List<McDebtAccount> debtAccounts, decimal[] historicalPrices)
     {   
         Stopwatch stopwatch = Stopwatch.StartNew();
@@ -102,14 +102,14 @@ public class SimulationTrigger
          * run all sim lives
          */
         var allLivesRuns = ExecuteSingleModelAllLives(
-            logger, simParams, person, investmentAccounts, debtAccounts, hypotheticalPrices);
+            logger, model, person, investmentAccounts, debtAccounts, hypotheticalPrices);
         
         stopwatch.Stop();
         logger.Info(logger.FormatTimespanDisplay("Ran all lives for a single model", duration));
         
         logger.Info("Batching up the results into something meaningful");
         
-        var results = Simulation.InterpretSimulationResults(simParams, allLivesRuns);
+        var results = Simulation.InterpretSimulationResults(model, allLivesRuns);
         
         return results;
     }
@@ -148,7 +148,7 @@ public class SimulationTrigger
         /*
          * breed and run
          */
-        //List<(McModel simParams, SingleModelRunResult result)> results = [];
+        //List<(McModel model, SingleModelRunResult result)> results = [];
         for(int i1 = 0; i1 < allModels.Count; i1++)
         {
             for (int i2 = 0; i2 < allModels.Count; i2++)
@@ -212,7 +212,7 @@ where id in (select id from childless)");
         
     }
 
-    public static List<McModel> FetchModelsForTrainingByVersion(PgPerson person, int majorVersion, int minorVersion)
+    public static List<DataTypes.MonteCarlo.Model> FetchModelsForTrainingByVersion(PgPerson person, int majorVersion, int minorVersion)
     {
         var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
         using var context = new PgContext();
@@ -254,7 +254,7 @@ where id in (select id from childless)");
             (latestResult.MajorVersion, latestResult.MinorVersion);
     }
 
-    public static List<McModel> FetchOrCreateModelsForTraining(PgPerson person)
+    public static List<DataTypes.MonteCarlo.Model> FetchOrCreateModelsForTraining(PgPerson person)
     {
         
         var currentChamps = FetchModelsForTrainingByVersion(

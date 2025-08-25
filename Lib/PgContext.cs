@@ -22,7 +22,7 @@ namespace Lib
         public DbSet<PgPosition> PgPositions { get; set; }
         public DbSet<PgTaxBucket> PgTaxBuckets { get; set; }
         public DbSet<PgTransaction> PgTransactions { get; set; }
-        public DbSet<DataTypes.MonteCarlo.McModel> McModels { get; set; }
+        public DbSet<DataTypes.MonteCarlo.Model> McModels { get; set; }
         public DbSet<SingleModelRunResult> SingleModelRunResults { get; set; }
         
         
@@ -74,7 +74,7 @@ namespace Lib
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<McModel>(e =>
+            modelBuilder.Entity<Model>(e =>
             {
                 e.HasKey(m => m.Id);
                 e.HasOne(m => m.ParentA)
@@ -141,6 +141,9 @@ namespace Lib
                 e.HasOne(f => f.FundType5)
                     .WithMany(ft => ft.FundsOfType5)
                     .HasForeignKey(f => f.FundType5Id);
+                e.HasMany(f => f.Positions)
+                    .WithOne(p => p.Fund)
+                    .HasForeignKey(p => p.Symbol);
             });
             modelBuilder.Entity<PgFundType>(e =>
             {
@@ -192,6 +195,9 @@ namespace Lib
                 e.HasOne(p => p.InvestmentAccount)
                     .WithMany(ia => ia.Positions)
                     .HasForeignKey(p => p.InvestmentAccountId);
+                e.HasOne(p => p.Fund)
+                    .WithMany(f => f.Positions)
+                    .HasForeignKey(p => p.Symbol);
             });
             modelBuilder.Entity<PgTaxBucket>(e =>
             {

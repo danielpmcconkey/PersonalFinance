@@ -1,4 +1,4 @@
-namespace Lib.DataTypes;
+namespace Lib.DataTypes.Presentation;
 
 public record BudgetPosition()
 {

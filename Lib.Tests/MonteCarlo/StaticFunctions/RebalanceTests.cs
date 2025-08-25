@@ -4,6 +4,7 @@ using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.Tests;
+using Model = Lib.DataTypes.MonteCarlo.Model;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
@@ -12,7 +13,7 @@ public class RebalanceTests
     private readonly LocalDateTime _baseDate = new(2025, 1, 1, 0, 0);
     private readonly LocalDateTime _retirementDate = new(2030, 1, 1, 0, 0);
 
-    private McModel CreateTestModel(RebalanceFrequency frequency = RebalanceFrequency.MONTHLY)
+    private Model CreateTestModel(RebalanceFrequency frequency = RebalanceFrequency.MONTHLY)
     {
         var model = TestDataManager.CreateTestModel();
         model.RetirementDate = _retirementDate;
@@ -88,11 +89,11 @@ public class RebalanceTests
         RebalanceFrequency frequency, int month, bool expectedResult)
     {
         // Arrange
-        var simParams = CreateTestModel(frequency);
+        var model = CreateTestModel(frequency);
         var currentDate = new LocalDateTime(2029, month, 1, 0, 0); // Within rebalance window
 
         // Act
-        var result = Rebalance.CalculateWhetherItsBucketRebalanceTime(currentDate, simParams);
+        var result = Rebalance.CalculateWhetherItsBucketRebalanceTime(currentDate, model);
 
         // Assert
         Assert.Equal(expectedResult, result);
@@ -144,9 +145,9 @@ public class RebalanceTests
         {
             CurrentLongTermInvestmentPrice = 100m
         };
-        var simParams = CreateTestModel();
-        simParams.RetirementDate = _baseDate.PlusYears(27);
-        simParams.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
+        var model = CreateTestModel();
+        model.RetirementDate = _baseDate.PlusYears(27);
+        model.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
         var person = CreateTestPerson();
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 1500;
@@ -162,7 +163,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.InvestExcessCash(
-            _baseDate, accounts, currentPrices, simParams, person).newBookOfAccounts;
+            _baseDate, accounts, currentPrices, model, person).newBookOfAccounts;
         var actualLongTermInvestmentBalance = AccountCalculation.CalculateLongBucketTotalBalance(result);
         var actualBrokerageBalance = AccountCalculation.CalculateInvestmentAccountTotalValue(result.Brokerage);
 
@@ -193,28 +194,28 @@ public class RebalanceTests
         {
             CurrentLongTermInvestmentPrice = 100m
         };
-        var simParams = CreateTestModel();
-        simParams.RetirementDate = _baseDate.PlusYears(1);
-        simParams.NumMonthsPriorToRetirementToBeginRebalance = 18; // close enough
-        simParams.NumMonthsCashOnHand = 15;
+        var model = CreateTestModel();
+        model.RetirementDate = _baseDate.PlusYears(1);
+        model.NumMonthsPriorToRetirementToBeginRebalance = 18; // close enough
+        model.NumMonthsCashOnHand = 15;
         var person = CreateTestPerson();
         person.BirthDate = _baseDate.PlusYears(-60); // age is 60, so no medicare anytime soon
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 1500;
-        simParams.DesiredMonthlySpendPostRetirement = 700;
-        simParams.DesiredMonthlySpendPreRetirement = 600; // same number to make it easier
-        var spanUntilRetirement = (simParams.RetirementDate - _baseDate);
+        model.DesiredMonthlySpendPostRetirement = 700;
+        model.DesiredMonthlySpendPreRetirement = 600; // same number to make it easier
+        var spanUntilRetirement = (model.RetirementDate - _baseDate);
         var numMonthsUntilRetirement = (spanUntilRetirement.Years * 12) + spanUntilRetirement.Months;
-        var requiredSpend = (person.RequiredMonthlySpend * simParams.NumMonthsCashOnHand);
+        var requiredSpend = (person.RequiredMonthlySpend * model.NumMonthsCashOnHand);
         var requiredSpendHealthCare =  (person.RequiredMonthlySpendHealthCare *
-                                       (simParams.NumMonthsCashOnHand - numMonthsUntilRetirement));
-        var desiredSpendPre = (simParams.DesiredMonthlySpendPreRetirement * numMonthsUntilRetirement);
-        var desiredSpendPost = (simParams.DesiredMonthlySpendPostRetirement *
-                                (simParams.NumMonthsCashOnHand - numMonthsUntilRetirement));
+                                       (model.NumMonthsCashOnHand - numMonthsUntilRetirement));
+        var desiredSpendPre = (model.DesiredMonthlySpendPreRetirement * numMonthsUntilRetirement);
+        var desiredSpendPost = (model.DesiredMonthlySpendPostRetirement *
+                                (model.NumMonthsCashOnHand - numMonthsUntilRetirement));
         var expectedCashReserve = 0m
             + requiredSpend
             + requiredSpendHealthCare
-            + (debtPayment1 * simParams.NumMonthsCashOnHand)
+            + (debtPayment1 * model.NumMonthsCashOnHand)
             + desiredSpendPre
             + desiredSpendPost
             ;
@@ -228,7 +229,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.InvestExcessCash(
-            _baseDate, accounts, currentPrices, simParams, person).newBookOfAccounts;
+            _baseDate, accounts, currentPrices, model, person).newBookOfAccounts;
         var actualLongTermInvestmentBalance = AccountCalculation.CalculateLongBucketTotalBalance(result);
         var actualBrokerageBalance = AccountCalculation.CalculateInvestmentAccountTotalValue(result.Brokerage);
 
@@ -260,9 +261,9 @@ public class RebalanceTests
         {
             CurrentLongTermInvestmentPrice = 100m
         };
-        var simParams = CreateTestModel();
-        simParams.RetirementDate = _baseDate.PlusYears(27);
-        simParams.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
+        var model = CreateTestModel();
+        model.RetirementDate = _baseDate.PlusYears(27);
+        model.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
         var person = CreateTestPerson();
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 1500;
@@ -278,7 +279,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.InvestExcessCash(
-            _baseDate, accounts, currentPrices, simParams, person).newBookOfAccounts;
+            _baseDate, accounts, currentPrices, model, person).newBookOfAccounts;
         var actualCash = AccountCalculation.CalculateCashBalance(result);
 
         // Assert
@@ -288,22 +289,22 @@ public class RebalanceTests
     [Fact]
     public void RebalanceLongToMid_DuringRecession_DoesNotRebalance()
     {
-        var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var model = CreateTestModel(RebalanceFrequency.MONTHLY);
         var person = CreateTestPerson();
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
-        simParams.NumMonthsCashOnHand = 8;
-        simParams.NumMonthsMidBucketOnHand = 6;
-        simParams.DesiredMonthlySpendPostRetirement = 1000;
+        model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        model.NumMonthsCashOnHand = 8;
+        model.NumMonthsMidBucketOnHand = 6;
+        model.DesiredMonthlySpendPostRetirement = 1000;
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 500;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var currentDate = simParams.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement, pre-medicare
+        var currentDate = model.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement, pre-medicare
         var recessionStats = new RecessionStats();
         recessionStats.AreWeInARecession = true;
         
-        var totalMidAmountNeeded = Spend.CalculateCashNeedForNMonths(simParams, person, accounts,
-            currentDate, simParams.NumMonthsMidBucketOnHand);
+        var totalMidAmountNeeded = Spend.CalculateCashNeedForNMonths(model, person, accounts,
+            currentDate, model.NumMonthsMidBucketOnHand);
         
         var desiredTraditional = 5000m; // well under our total mid needed line; trad should move first
         var desiredRoth = 2000m; // still under our total mid needed line; roth shouldn't get touched
@@ -353,7 +354,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.RebalanceLongToMid(
-            currentDate, accounts, recessionStats, new CurrentPrices(), simParams, new TaxLedger(), person);
+            currentDate, accounts, recessionStats, new CurrentPrices(), model, new TaxLedger(), person);
 
         var actualTradMidBalance = result.newBookOfAccounts.Traditional401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
@@ -392,20 +393,20 @@ public class RebalanceTests
     [Fact]
     public void RebalanceLongToMid_MovesFromTaxDeferredAccountsFirst()
     {
-        var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var model = CreateTestModel(RebalanceFrequency.MONTHLY);
         var person = CreateTestPerson();
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
-        simParams.NumMonthsCashOnHand = 8;
-        simParams.NumMonthsMidBucketOnHand = 6;
-        simParams.DesiredMonthlySpendPostRetirement = 1000;
+        model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        model.NumMonthsCashOnHand = 8;
+        model.NumMonthsMidBucketOnHand = 6;
+        model.DesiredMonthlySpendPostRetirement = 1000;
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 500;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
-        var currentDate = simParams.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement, pre-medicare
+        var currentDate = model.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement, pre-medicare
         
-        var totalMidAmountNeeded = Spend.CalculateCashNeedForNMonths(simParams, person, accounts,
-            currentDate, simParams.NumMonthsMidBucketOnHand);
+        var totalMidAmountNeeded = Spend.CalculateCashNeedForNMonths(model, person, accounts,
+            currentDate, model.NumMonthsMidBucketOnHand);
         
         var desiredTraditional = 5000m; // well under our total mid needed line; trad should move first
         var desiredRoth = 2000m; // still under our total mid needed line; roth shouldn't get touched
@@ -455,7 +456,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.RebalanceLongToMid(
-            currentDate, accounts, new RecessionStats(), new CurrentPrices(), simParams, new TaxLedger(), person);
+            currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
 
         var actualTradMidBalance = result.newBookOfAccounts.Traditional401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
@@ -507,15 +508,15 @@ public class RebalanceTests
          */
         // Arrange
         
-        var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var model = CreateTestModel(RebalanceFrequency.MONTHLY);
         var person = CreateTestPerson();
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
-        simParams.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
-        var currentDate = simParams.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement
+        model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        var currentDate = model.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement
         var fiveYearsAgo = currentDate.PlusYears(-5);
-        simParams.NumMonthsCashOnHand = 18;
-        simParams.NumMonthsMidBucketOnHand = 24;
-        simParams.DesiredMonthlySpendPostRetirement = 1000;
+        model.NumMonthsCashOnHand = 18;
+        model.NumMonthsMidBucketOnHand = 24;
+        model.DesiredMonthlySpendPostRetirement = 1000;
         person.RequiredMonthlySpend = 1000;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         // we'll need 36k in cash and 48k in mid. start out with 100k in long and see where that takes you
@@ -526,9 +527,9 @@ public class RebalanceTests
         accounts.Brokerage.Positions.Add(position);
         
         var cashNeededTotal = Spend.CalculateCashNeedForNMonths(
-            simParams, person, accounts, currentDate, simParams.NumMonthsCashOnHand);
+            model, person, accounts, currentDate, model.NumMonthsCashOnHand);
         var midNeededTotal = Spend.CalculateCashNeedForNMonths(
-            simParams, person, accounts, currentDate, simParams.NumMonthsMidBucketOnHand);
+            model, person, accounts, currentDate, model.NumMonthsMidBucketOnHand);
         
         
         var expectedCashBalance = cashNeededTotal;
@@ -542,7 +543,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.RebalancePortfolio(
-            currentDate, accounts, new RecessionStats(), new CurrentPrices(), simParams, new TaxLedger(), person);
+            currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
         
         var actualCashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
         var actualMidBalance = AccountCalculation.CalculateMidBucketTotalBalance(result.newBookOfAccounts);
@@ -562,11 +563,11 @@ public class RebalanceTests
     public void RebalancePortfolio_DoesntChangeNetWorth()
     {
         // just set up enough to make sure that we have crap in long, nothing in mid or cash so that we'll move both
-        var simParams = CreateTestModel(RebalanceFrequency.MONTHLY);
+        var model = CreateTestModel(RebalanceFrequency.MONTHLY);
         var person = CreateTestPerson();
-        simParams.NumMonthsCashOnHand = 18;
-        simParams.NumMonthsMidBucketOnHand = 24;
-        simParams.DesiredMonthlySpendPostRetirement = 1000;
+        model.NumMonthsCashOnHand = 18;
+        model.NumMonthsMidBucketOnHand = 24;
+        model.DesiredMonthlySpendPostRetirement = 1000;
         person.RequiredMonthlySpend = 1000;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         // we'll need 36k in cash and 48k in mid
@@ -590,7 +591,7 @@ public class RebalanceTests
 
         // Act
         var result = Rebalance.RebalancePortfolio(
-            currentDate, accounts, new RecessionStats(), new CurrentPrices(), simParams, new TaxLedger(), person);
+            currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
         
         var actualNetWorth = AccountCalculation.CalculateNetWorth(result.newBookOfAccounts);
 

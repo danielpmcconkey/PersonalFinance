@@ -10,15 +10,15 @@ public static class Rebalance
 {
     #region Calculation functions
     
-    public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, McModel simParams)
+    public static bool CalculateWhetherItsBucketRebalanceTime(LocalDateTime currentDate, DataTypes.MonteCarlo.Model model)
     {
         // check whether our frequency aligns to the calendar
         // monthly is a free-bee
-        if(simParams.RebalanceFrequency == RebalanceFrequency.MONTHLY) return true;
+        if(model.RebalanceFrequency == RebalanceFrequency.MONTHLY) return true;
         // quarterly and yearly need to be determined
         var currentMonthNum = currentDate.Month - 1; // we want it zero-indexed to make the modulus easier
         
-        var modulus = simParams.RebalanceFrequency switch
+        var modulus = model.RebalanceFrequency switch
         {
             RebalanceFrequency.MONTHLY => 1, // we already met this case
             RebalanceFrequency.QUARTERLY => 3,
@@ -28,11 +28,11 @@ public static class Rebalance
         return currentMonthNum % modulus == 0;
     }
     
-    public static bool CalculateWhetherItsCloseEnoughToRetirementToRebalance(LocalDateTime currentDate, McModel simParams)
+    public static bool CalculateWhetherItsCloseEnoughToRetirementToRebalance(LocalDateTime currentDate, DataTypes.MonteCarlo.Model model)
     {
         // check whether it's close enough to retirement to think about rebalancing
-        var rebalanceBegin = simParams.RetirementDate
-            .PlusMonths(-1 * simParams.NumMonthsPriorToRetirementToBeginRebalance);
+        var rebalanceBegin = model.RetirementDate
+            .PlusMonths(-1 * model.NumMonthsPriorToRetirementToBeginRebalance);
         return currentDate >= rebalanceBegin;
     }
 
@@ -143,13 +143,13 @@ public static class Rebalance
     /// </summary>
     public static (BookOfAccounts newBookOfAccounts, List<ReconciliationMessage> messages)
         InvestExcessCash(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, CurrentPrices currentPrices,
-            McModel simParams, PgPerson person)
+            DataTypes.MonteCarlo.Model model, PgPerson person)
     {
         var reserveCashNeeded = 0m;
-        if (CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, simParams))
+        if (CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))
         {
             reserveCashNeeded = Spend.CalculateCashNeedForNMonths(
-                simParams, person, bookOfAccounts, currentDate, simParams.NumMonthsCashOnHand);
+                model, person, bookOfAccounts, currentDate, model.NumMonthsCashOnHand);
         }
         else
         {
@@ -200,7 +200,7 @@ public static class Rebalance
     
     public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages)
         RebalanceLongToMid(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
-            CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
+            CurrentPrices currentPrices, DataTypes.MonteCarlo.Model model, TaxLedger taxLedger, PgPerson person)
     {
         // if it's been a good year, sell long-term growth assets and top-up mid-term.
         // if it's been a bad year, sit tight and hope the recession doesn't
@@ -220,13 +220,13 @@ public static class Rebalance
             return (bookOfAccounts, taxLedger, messages);
         }
         
-        var numMonths = simParams.NumMonthsMidBucketOnHand; 
+        var numMonths = model.NumMonthsMidBucketOnHand; 
         if (numMonths <= 0) return (bookOfAccounts, taxLedger, messages);
         
        
         // figure out how much we want to have in the mid-bucket
         decimal amountOnHand = AccountCalculation.CalculateMidBucketTotalBalance(bookOfAccounts);
-        var totalAmountNeeded = Spend.CalculateCashNeedForNMonths(simParams, person, bookOfAccounts,
+        var totalAmountNeeded = Spend.CalculateCashNeedForNMonths(model, person, bookOfAccounts,
             currentDate, numMonths);
         decimal amountNeededToMove = totalAmountNeeded - amountOnHand;
         
@@ -292,7 +292,7 @@ public static class Rebalance
     
     public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages)
         RebalanceMidOrLongToCash(LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-            RecessionStats recessionStats, CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger,
+            RecessionStats recessionStats, CurrentPrices currentPrices, DataTypes.MonteCarlo.Model model, TaxLedger taxLedger,
             decimal totalCashNeeded) 
     {
         /*
@@ -356,15 +356,15 @@ public static class Rebalance
     /// </summary>
     public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
         RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, RecessionStats recessionStats,
-            CurrentPrices currentPrices, McModel simParams, TaxLedger taxLedger, PgPerson person)
+            CurrentPrices currentPrices, DataTypes.MonteCarlo.Model model, TaxLedger taxLedger, PgPerson person)
     {
-        if (!CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, simParams))
+        if (!CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))
         {
             if (!MonteCarloConfig.DebugMode) return (bookOfAccounts, taxLedger, []);
             return (bookOfAccounts, taxLedger, [new ReconciliationMessage(
                 currentDate, null, "Not close enough to retirement yet to rebalance")]);
         };
-        if (!CalculateWhetherItsBucketRebalanceTime(currentDate, simParams))
+        if (!CalculateWhetherItsBucketRebalanceTime(currentDate, model))
         {
             if (!MonteCarloConfig.DebugMode) return (bookOfAccounts, taxLedger, []);
             return (bookOfAccounts, taxLedger, [new ReconciliationMessage(
@@ -381,14 +381,14 @@ public static class Rebalance
         }
         
         var cashNeededOnHand =
-            Spend.CalculateCashNeedForNMonths(simParams, person, results.newBookOfAccounts, currentDate,
-                simParams.NumMonthsCashOnHand);
+            Spend.CalculateCashNeedForNMonths(model, person, results.newBookOfAccounts, currentDate,
+                model.NumMonthsCashOnHand);
 
         if (cashNeededOnHand > 0)
         {
             // top up your cash bucket by moving from mid or long, depending on recession stats 
             var rebalanceCashResults = RebalanceMidOrLongToCash(
-                currentDate, results.newBookOfAccounts, recessionStats, currentPrices, simParams, results.newLedger,
+                currentDate, results.newBookOfAccounts, recessionStats, currentPrices, model, results.newLedger,
                 cashNeededOnHand);
             results.newBookOfAccounts = rebalanceCashResults.newBookOfAccounts;
             results.newLedger = rebalanceCashResults.newLedger;
@@ -397,7 +397,7 @@ public static class Rebalance
 
         // now move from long to mid, depending on recession stats
         var rebalanceMidResults = RebalanceLongToMid(
-            currentDate, results.newBookOfAccounts, recessionStats, currentPrices, simParams, results.newLedger,
+            currentDate, results.newBookOfAccounts, recessionStats, currentPrices, model, results.newLedger,
             person);
         results.newBookOfAccounts = rebalanceMidResults.newBookOfAccounts;
         results.newLedger = rebalanceMidResults.newLedger;

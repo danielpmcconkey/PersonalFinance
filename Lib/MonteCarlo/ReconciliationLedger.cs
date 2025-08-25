@@ -51,10 +51,10 @@ public class ReconciliationLedger
         SpreadsheetWriter writer = new SpreadsheetWriter(filePath, "Reconciliation", columns);
         writer.CreateSpreadsheet(_reconciliationLineItems);
     }
-    public void AddFullReconLine(MonteCarloSim sim, string description)
+    public void AddFullReconLine(SimData simData, string description)
     {
         if (_debugMode == false) return;
-        var line = CreateFullReconLine(sim, description);
+        var line = CreateFullReconLine(simData, description);
         if (line is null) throw new InvalidDataException("line is null in AddReconLine");
         _reconciliationLineItems.Add(line);
     }
@@ -95,45 +95,45 @@ public class ReconciliationLedger
     {
         foreach (var message in messages) AddMessageLine(message);
     }
-    private ReconciliationLineItem? CreateFullReconLine(MonteCarloSim sim, string description)
+    private ReconciliationLineItem? CreateFullReconLine(SimData simData, string description)
     {
         if (_debugMode == false) return null;
-        if (sim.PgPerson is null)
+        if (simData.PgPerson is null)
         {
             throw new InvalidDataException("Person is null in AddReconLine");
         }
 
-        var ageTimeSpan = (sim.CurrentDateInSim - sim.PgPerson.BirthDate);
+        var ageTimeSpan = (simData.CurrentDateInSim - simData.PgPerson.BirthDate);
         var yearsOld = ageTimeSpan.Years;
         var monthsOld = ageTimeSpan.Months;
         var daysOld = ageTimeSpan.Days;
         var age = yearsOld + (monthsOld / 12.0M) + (daysOld / 365.25M);
         var line = new ReconciliationLineItem(
             ++_ordinal, 
-            sim.CurrentDateInSim,
+            simData.CurrentDateInSim,
             age,
             null,
             description,
-            sim.CurrentPrices.CurrentLongTermGrowthRate,
-            sim.CurrentPrices.CurrentLongTermInvestmentPrice,
-            AccountCalculation.CalculateNetWorth(sim.BookOfAccounts),
-            AccountCalculation.CalculateLongBucketTotalBalance(sim.BookOfAccounts),
-            AccountCalculation.CalculateMidBucketTotalBalance(sim.BookOfAccounts),
-            AccountCalculation.CalculateShortBucketTotalBalance(sim.BookOfAccounts),
-            AccountCalculation.CalculateCashBalance(sim.BookOfAccounts),
-            AccountCalculation.CalculateDebtTotal(sim.BookOfAccounts),
-            sim.LifetimeSpend.TotalSpendLifetime,
-            sim.LifetimeSpend.TotalInvestmentAccrualLifetime,
-            sim.LifetimeSpend.TotalDebtAccrualLifetime,
-            sim.LifetimeSpend.TotalSocialSecurityWageLifetime,
-            sim.LifetimeSpend.TotalDebtPaidLifetime,
-            sim.CurrentDateInSim >= sim.SimParameters.RetirementDate,
-            sim.PgPerson.IsBankrupt,
-            sim.RecessionStats.AreWeInARecession,
-            sim.RecessionStats.AreWeInExtremeAusterityMeasures,
-            sim.LifetimeSpend.TotalFunPointsLifetime,
-            sim.LifetimeSpend.TotalLifetimeHealthCareSpend,
-            sim.TaxLedger.TotalTaxPaidLifetime
+            simData.CurrentPrices.CurrentLongTermGrowthRate,
+            simData.CurrentPrices.CurrentLongTermInvestmentPrice,
+            AccountCalculation.CalculateNetWorth(simData.BookOfAccounts),
+            AccountCalculation.CalculateLongBucketTotalBalance(simData.BookOfAccounts),
+            AccountCalculation.CalculateMidBucketTotalBalance(simData.BookOfAccounts),
+            AccountCalculation.CalculateShortBucketTotalBalance(simData.BookOfAccounts),
+            AccountCalculation.CalculateCashBalance(simData.BookOfAccounts),
+            AccountCalculation.CalculateDebtTotal(simData.BookOfAccounts),
+            simData.LifetimeSpend.TotalSpendLifetime,
+            simData.LifetimeSpend.TotalInvestmentAccrualLifetime,
+            simData.LifetimeSpend.TotalDebtAccrualLifetime,
+            simData.LifetimeSpend.TotalSocialSecurityWageLifetime,
+            simData.LifetimeSpend.TotalDebtPaidLifetime,
+            simData.CurrentDateInSim >= simData.Model.RetirementDate,
+            simData.PgPerson.IsBankrupt,
+            simData.RecessionStats.AreWeInARecession,
+            simData.RecessionStats.AreWeInExtremeAusterityMeasures,
+            simData.LifetimeSpend.TotalFunPointsLifetime,
+            simData.LifetimeSpend.TotalLifetimeHealthCareSpend,
+            simData.TaxLedger.TotalTaxPaidLifetime
         );
         return line;
     }

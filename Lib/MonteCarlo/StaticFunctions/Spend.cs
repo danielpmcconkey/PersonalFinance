@@ -13,15 +13,15 @@ public static class Spend
     /// <summary>
     /// used for rebalancing functions to determine how much cash should be on hand. This is always based on current age
     /// </summary>
-    public static decimal CalculateCashNeedForNMonths(McModel simParams, PgPerson person, BookOfAccounts accounts,
+    public static decimal CalculateCashNeedForNMonths(DataTypes.MonteCarlo.Model model, PgPerson person, BookOfAccounts accounts,
         LocalDateTime currentDate, int nMonths)
     {
         var cashNeeded = 0m;
         for (var i = 0; i < nMonths; i++)
         {
             var futureDate = currentDate.PlusMonths(i);
-            var fun = CalculateMonthlyFunSpend(simParams, person, futureDate);
-            var required = CalculateMonthlyRequiredSpend(simParams, person, futureDate, accounts);
+            var fun = CalculateMonthlyFunSpend(model, person, futureDate);
+            var required = CalculateMonthlyRequiredSpend(model, person, futureDate, accounts);
             var totalThisMonth = fun + required.TotalSpend;
             cashNeeded += totalThisMonth;
                           
@@ -56,7 +56,7 @@ public static class Spend
         funPoints = Math.Min(funPoints, maxFunPoints); // no extra bucks for being younger than 50
         return funPoints;
     }
-    public static decimal CalculateMonthlyFunSpend(McModel simParams, PgPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyFunSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate)
     {
         /*
          * pre-retirement, just use the DesiredMonthlySpendPreRetirement value.
@@ -64,15 +64,15 @@ public static class Spend
          * post-retirment, we'll start out with the full amount until age 66. Then, for every year, we'll decline our
          * spending until, at age 88, we've reached 0, because we're in assisted living and our fun time is over.
          */
-        if (currentDate < simParams.RetirementDate)
+        if (currentDate < model.RetirementDate)
         {
-            return simParams.DesiredMonthlySpendPreRetirement;
+            return model.DesiredMonthlySpendPreRetirement;
         }
         
         var age = currentDate.Year - person.BirthDate.Year;
         if (age < 66)
         {
-            return simParams.DesiredMonthlySpendPostRetirement;
+            return model.DesiredMonthlySpendPostRetirement;
         }
 
         if (age >= 88)
@@ -80,12 +80,12 @@ public static class Spend
             return 0;
         }
         
-        var declineAmountPerYear = simParams.DesiredMonthlySpendPostRetirement / (88 - 65); 
+        var declineAmountPerYear = model.DesiredMonthlySpendPostRetirement / (88 - 65); 
         var howManyYearsAbove65 = age - 65;
         var declineAmount = declineAmountPerYear * howManyYearsAbove65;
-        return simParams.DesiredMonthlySpendPostRetirement - declineAmount;
+        return model.DesiredMonthlySpendPostRetirement - declineAmount;
     }
-    public static decimal CalculateMonthlyHealthSpend(McModel simParams, PgPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyHealthSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate)
     {
         /*
          * if we're not yet retired, Dan's primary employer will provide healthcare, so we can return immediately
@@ -117,7 +117,7 @@ public static class Spend
          */
         
         // before retirement, primary employmentt will fund healthcare and doesn't need to be tracked separately
-        if (currentDate < simParams.RetirementDate) return 0; 
+        if (currentDate < model.RetirementDate) return 0; 
         
         // before age 65 (if retired), we have no medicare and need to pay for everything out of pocket
         var age = currentDate.Year - person.BirthDate.Year;
@@ -154,11 +154,11 @@ public static class Spend
         
         return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
     }
-    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpend(McModel simParams, PgPerson person, LocalDateTime currentDate
+    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate
         , BookOfAccounts accounts)
     {
         var standardSpend = person.RequiredMonthlySpend;
-        var healthCareSpend = CalculateMonthlyHealthSpend(simParams, person, currentDate);
+        var healthCareSpend = CalculateMonthlyHealthSpend(model, person, currentDate);
         var debtSpend = accounts.DebtAccounts
             .SelectMany(x => x.Positions
                 .Where(y => y.IsOpen))
@@ -171,7 +171,7 @@ public static class Spend
     /// the required spend without debt payments. this is here in support of the Simulation.PayForStuff method that only
     /// wants the actual required spend, assuming that PayDownDebt will be taking care of the debt payment
     /// </summary>
-    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpendWithoutDebt(McModel simParams, PgPerson person,
+    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpendWithoutDebt(DataTypes.MonteCarlo.Model model, PgPerson person,
         LocalDateTime currentDate)
     {
         // create an empty book of accounts
@@ -179,7 +179,7 @@ public static class Spend
             [], 
             [new McDebtAccount(){Id = Guid.NewGuid(), Name = "empty", Positions = []}]
             );
-        return CalculateMonthlyRequiredSpend(simParams, person, currentDate, accounts);
+        return CalculateMonthlyRequiredSpend(model, person, currentDate, accounts);
     }
 
     /// <summary>
@@ -187,7 +187,7 @@ public static class Spend
     /// go nuts
     /// </summary>
     public static decimal CalculateSpendOverride(
-        McModel simParameters, decimal standardSpendAmount, RecessionStats recessionStats)
+        DataTypes.MonteCarlo.Model simParameters, decimal standardSpendAmount, RecessionStats recessionStats)
     {
         // if we livin' large, it doesn't matter if we're in a recession or not. we livin' LARGE
         if (recessionStats.AreWeInLivinLargeMode) return standardSpendAmount * simParameters.LivinLargeRatio;
