@@ -64,6 +64,11 @@ public static class MonteCarloConfig
     public static LocalDateTime ReconciliationSimEndDate;
     public static string ChampionModelId;
     
+    /// <summary>
+    /// When enabled, the model breeder will be way less drastic in its randomization
+    /// </summary>
+    public static bool IsNudgeModeOn;
+    
 
     static MonteCarloConfig()
     {
@@ -92,6 +97,7 @@ public static class MonteCarloConfig
         NumberOfModelsToPull = ConfigManager.ReadIntSetting("NumberOfModelsToPull");
         RunTrainingInLoop = ConfigManager.ReadBoolSetting("RunTrainingInLoop");
         ChampionModelId = ConfigManager.ReadStringSetting("ChampionModelId");
+        IsNudgeModeOn = ConfigManager.ReadBoolSetting("IsNudgeModeOn");
         
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }

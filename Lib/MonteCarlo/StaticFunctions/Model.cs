@@ -1,5 +1,6 @@
 using Lib.DataTypes.MonteCarlo;
 using Lib.StaticConfig;
+using Lib.Utils;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -55,92 +56,61 @@ public class Model
                 candidate = propertySelector(parentB);
                 break;
             default:
-                candidate = GenerateRandomBetween(minValue, maxValue);
+                if(MonteCarloConfig.IsNudgeModeOn) candidate = GenerateNudgeValue(
+                    minValue, maxValue, propertySelector(parentA), propertySelector(parentB));
+                else candidate = MathFunc.GenerateRandomBetween(minValue, maxValue);
                 break;
         }
 
         // Ensure the resulting value always falls within [minValue, maxValue]. This is because we sometimes change the
         // min and max between training sessions and what was previously allowed might not be anymore.
-        return ClampInclusive(candidate, minValue, maxValue);
+        return MathFunc.ClampInclusive(candidate, minValue, maxValue);
     }
     
+    
     /// <summary>
-    /// Helper for generating a random value in [minValue, maxValue] for supported types.
+    /// this method was written by Claude. It returns a nudge handler of type T to help make the code for nudging values
+    /// during model mating more DRY compliant
     /// </summary>
-    private static T GenerateRandomBetween<T>(T minValue, T maxValue) where T : IComparable<T>
+    private static INudgeHandler<T> GetNudgeHandler<T>() where T : IComparable<T>
     {
-        // Normalize bounds if they were provided in reverse order.
-        if (Comparer<T>.Default.Compare(minValue, maxValue) > 0)
-        {
-            (minValue, maxValue) = (maxValue, minValue);
-        }
-
         if (typeof(T) == typeof(int))
-        {
-            var result = GetUnSeededRandomInt((int)(object)minValue, (int)(object)maxValue);
-            return (T)(object)result;
-        }
-
+            return (INudgeHandler<T>)new IntNudgeHandler();
         if (typeof(T) == typeof(decimal))
-        {
-            var result = GetUnSeededRandomDecimal((decimal)(object)minValue, (decimal)(object)maxValue);
-            return (T)(object)result;
-        }
-
+            return (INudgeHandler<T>)new DecimalNudgeHandler();
         if (typeof(T).FullName == "NodaTime.LocalDateTime")
-        {
-            var result = GetUnSeededRandomDate((NodaTime.LocalDateTime)(object)minValue, (NodaTime.LocalDateTime)(object)maxValue);
-            return (T)(object)result;
-        }
+            return (INudgeHandler<T>)new LocalDateTimeNudgeHandler();
 
-        throw new NotSupportedException($"Type {typeof(T)} is not supported for random generation in MateNumericProperty.");
+        throw new NotSupportedException($"Type {typeof(T)} is not supported for nudge generation.");
     }
+
+
     /// <summary>
-    ///  Generic inclusive clamp used for ints, decimals, and LocalDateTime.
+    /// Claude wrote this method. It returns a "nudged" value based on type. I used Claude to help make the
+    /// code for nudging values during model mating more DRY compliant. Generally, the returned value should be half-way
+    /// between ParentA's and ParentB's. If they're the same, then move 1 significant unit either up or down. For int
+    /// values, that significant unit is 1. For decimals, it's 1% of the distance between min and max. For LocalDateTime
+    /// values, it's 1 month.
     /// </summary>
-    private static T ClampInclusive<T>(T value, T minValue, T maxValue) where T : IComparable<T>
+    public static T GenerateNudgeValue<T>(T minValue, T maxValue, T parentAValue, T parentBValue)
+        where T : IComparable<T>
     {
-        // Normalize bounds if they were provided in reverse order.
-        if (Comparer<T>.Default.Compare(minValue, maxValue) > 0)
-        {
-            (minValue, maxValue) = (maxValue, minValue);
-        }
-
-        if (Comparer<T>.Default.Compare(value, minValue) < 0) return minValue;
-        if (Comparer<T>.Default.Compare(value, maxValue) > 0) return maxValue;
-        return value;
+        var handler = GetNudgeHandler<T>();
+        return handler.GenerateNudge(minValue, maxValue, parentAValue, parentBValue);
     }
 
+    
 
     
     public static HereditarySource GetHereditarySource()
     {
-        var diceRoll = GetUnSeededRandomInt(1, 10);
+        var diceRoll = MathFunc.GetUnSeededRandomInt(1, 10);
         return diceRoll switch
         {
             1 or 2 or 3 or 4  => HereditarySource.ParentA,
             5 or 6 or 7 or 8 => HereditarySource.ParentB,
             _ => HereditarySource.Random
         };
-    }
-    
-    public static int GetUnSeededRandomInt(int minInclusive, int maxInclusive)
-    {
-        var rand = new Random();
-        return rand.Next(minInclusive, maxInclusive + 1);
-    }
-    public static decimal GetUnSeededRandomDecimal(decimal minInclusive, decimal maxInclusive)
-    {
-        var rand = new Random();
-        return (decimal)rand.NextDouble() * (maxInclusive - minInclusive) + minInclusive;
-    }
-    public static LocalDateTime GetUnSeededRandomDate(LocalDateTime min, LocalDateTime max)
-    {
-        var span = max - min;
-        var totalMonths = span.Months + (12 * span.Years);
-        var addlMonthsOverMin = GetUnSeededRandomInt(0, totalMonths);
-        var newDate = min.PlusMonths(addlMonthsOverMin);
-        return newDate;
     }
     
     
@@ -165,7 +135,7 @@ public class Model
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = MonteCarloConfig.MonteCarloSimStartDate,
             SimEndDate = MonteCarloConfig.MonteCarloSimEndDate,
-            RetirementDate = Model.GetUnSeededRandomDate(
+            RetirementDate = MathFunc.GetUnSeededRandomDate(
                 birthdate
                     .PlusYears(ModelConstants.RetirementAgeMin.years)
                     .PlusMonths(ModelConstants.RetirementAgeMin.months), 
@@ -173,7 +143,7 @@ public class Model
                     .PlusYears(ModelConstants.RetirementAgeMax.years)
                     .PlusMonths(ModelConstants.RetirementAgeMax.months)
                 ),
-            SocialSecurityStart = Model.GetUnSeededRandomDate(
+            SocialSecurityStart = MathFunc.GetUnSeededRandomDate(
                 birthdate
                     .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
                     .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months), 
@@ -181,37 +151,37 @@ public class Model
                     .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
                     .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months)
             ),
-            AusterityRatio = Model.GetUnSeededRandomDecimal(
+            AusterityRatio = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.AusterityRatioMin, ModelConstants.AusterityRatioMax),
-            ExtremeAusterityRatio = Model.GetUnSeededRandomDecimal(
+            ExtremeAusterityRatio = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.ExtremeAusterityRatioMin, ModelConstants.ExtremeAusterityRatioMax),
-            ExtremeAusterityNetWorthTrigger = Model.GetUnSeededRandomDecimal(
+            ExtremeAusterityNetWorthTrigger = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.ExtremeAusterityNetWorthTriggerMin, ModelConstants.ExtremeAusterityNetWorthTriggerMax),
-            RebalanceFrequency = GetUnSeededRandomInt(0, 3000) switch
+            RebalanceFrequency = MathFunc.GetUnSeededRandomInt(0, 3000) switch
             {
                 < 1000 => RebalanceFrequency.MONTHLY,
                 < 2000 => RebalanceFrequency.QUARTERLY,
                 _ => RebalanceFrequency.YEARLY
             },
-            NumMonthsCashOnHand = Model.GetUnSeededRandomInt(
+            NumMonthsCashOnHand = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.NumMonthsCashOnHandMin, ModelConstants.NumMonthsCashOnHandMax),
-            NumMonthsMidBucketOnHand = Model.GetUnSeededRandomInt(
+            NumMonthsMidBucketOnHand = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.NumMonthsMidBucketOnHandMin, ModelConstants.NumMonthsMidBucketOnHandMax),
-            NumMonthsPriorToRetirementToBeginRebalance = Model.GetUnSeededRandomInt(
+            NumMonthsPriorToRetirementToBeginRebalance = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin, ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax),
-            RecessionCheckLookBackMonths = Model.GetUnSeededRandomInt(
+            RecessionCheckLookBackMonths = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.RecessionCheckLookBackMonthsMin, ModelConstants.RecessionCheckLookBackMonthsMax),
-            RecessionRecoveryPointModifier = Model.GetUnSeededRandomDecimal(
+            RecessionRecoveryPointModifier = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.RecessionRecoveryPointModifierMin, ModelConstants.RecessionRecoveryPointModifierMax),
-            DesiredMonthlySpendPreRetirement = Model.GetUnSeededRandomDecimal(
+            DesiredMonthlySpendPreRetirement = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.DesiredMonthlySpendPreRetirementMin, ModelConstants.DesiredMonthlySpendPreRetirementMax),
-            DesiredMonthlySpendPostRetirement = Model.GetUnSeededRandomDecimal(
+            DesiredMonthlySpendPostRetirement = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.DesiredMonthlySpendPostRetirementMin, ModelConstants.DesiredMonthlySpendPostRetirementMax),
-            Percent401KTraditional = Model.GetUnSeededRandomDecimal(
+            Percent401KTraditional = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.Percent401KTraditionalMin, ModelConstants.Percent401KTraditionalMax),
-            LivinLargeRatio = GetUnSeededRandomDecimal(
+            LivinLargeRatio = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.LivinLargeRatioMin, ModelConstants.LivinLargeRatioMax),
-            LivinLargeNetWorthTrigger = GetUnSeededRandomDecimal(
+            LivinLargeNetWorthTrigger = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.LivinLargeNetWorthTriggerMin, ModelConstants.LivinLargeNetWorthTriggerMax),
             Generation = 1,
         };
@@ -346,7 +316,7 @@ public class Model
             model => model.RebalanceFrequency,
             () =>
             {
-                var randomInt = GetUnSeededRandomInt(0, 3000);
+                var randomInt = MathFunc.GetUnSeededRandomInt(0, 3000);
                 return randomInt switch
                 {
                     < 1000 => RebalanceFrequency.MONTHLY,

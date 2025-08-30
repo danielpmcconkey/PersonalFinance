@@ -12,9 +12,11 @@ public record PgFundType
     [Column("name", TypeName = "varchar(200)")]
     public required string Name { get; init; }
 
-    public List<PgFund>? FundsOfType1 { get; init; } = [];
-    public List<PgFund>? FundsOfType2 { get; init; } = [];
-    public List<PgFund>? FundsOfType3 { get; init; } = [];
-    public List<PgFund>? FundsOfType4 { get; init; } = [];
-    public List<PgFund>? FundsOfType5 { get; init; } = [];
+    public List<PgFund>? FundsOfInvestmentType { get; init; } = [];
+    public List<PgFund>? FundsOfSizeType { get; init; } = [];
+    public List<PgFund>? FundsOfIndexOrIndividualType { get; init; } = [];
+    public List<PgFund>? FundsOfSectorType { get; init; } = [];
+    public List<PgFund>? FundsOfRegionType { get; init; } = [];
+    
+    public List<PgFund>? FundsOfObjectiveType { get; init; } = [];
 }

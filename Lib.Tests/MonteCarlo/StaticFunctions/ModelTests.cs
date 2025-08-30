@@ -2,6 +2,7 @@
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
+using Lib.Utils;
 using NodaTime;
 using Xunit;
 using Model = Lib.MonteCarlo.StaticFunctions.Model;
@@ -52,7 +53,7 @@ public class ModelTests
         // Act
         for (int i = 0; i < numTries; i++)
         {
-            var result = Model.GetUnSeededRandomDate(min, max);
+            var result = MathFunc.GetUnSeededRandomDate(min, max);
             if(result == min) countMin++;
             if(result == max) countMax++;
         }
@@ -87,7 +88,7 @@ public class ModelTests
         // Act
         for (int i = 0; i < totalChecks; i++)
         {
-            var result = Model.GetUnSeededRandomDecimal(min, max);
+            var result = MathFunc.GetUnSeededRandomDecimal(min, max);
             var rounded = (int)(Math.Round(result / divisor, 0));
             if(rounded == batch) count++;
         }
@@ -357,6 +358,308 @@ public class ModelTests
             Assert.InRange(dateResult, minDate, maxDate);
             Assert.InRange(spendResult, minSpend, maxSpend);
         }
+    }
+    
+    
+    [Fact]
+    public void GetNudgeHandler_WithIntPropertyAndSignificantDiff_ReturnsMiddleValue()
+    {
+        // Arrange
+        var valueA = 8;
+        var valueB = 4;
+        var min = 2;
+        var max = 10;
+        var expected = 6;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithIntPropertyAndSameAtMax_ReturnsOneLessThanMax()
+    {
+        // Arrange
+        var valueA = 10;
+        var valueB = 10;
+        var min = 2;
+        var max = 10;
+        var expected = 9;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithIntPropertyAndSameAboveMax_ReturnsOneLessThanMax()
+    {
+        // Arrange
+        var valueA = 12;
+        var valueB = 12;
+        var min = 2;
+        var max = 10;
+        var expected = 9;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithIntPropertyAndSameAtMin_ReturnsOneMoreThanMin()
+    {
+        // Arrange
+        var valueA = 2;
+        var valueB = 2;
+        var min = 2;
+        var max = 10;
+        var expected = 3;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithIntPropertyAndSameInMiddle_ReturnsOneMoreOrOneLessThanA()
+    {
+        // Arrange
+        var valueA = 6;
+        var valueB = 6;
+        var min = 2;
+        var max = 10;
+        var count5 = 0;
+        var count7 = 0;
+        var expectedA = 7;
+        var expectedB = 5;
+        var numTests = 1000;
+        var maxDiff = 1000 / 4;
+
+        // Act
+        for (int i = 0; i < numTests; i++)
+        {
+            var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+            if(actual == expectedA) count5++;
+            else if(actual == expectedB) count7++;
+            else Assert.True(false); // this ain't right
+        }
+        var actualDiff = Math.Abs(count5 - count7);
+
+        // Assert
+        Assert.True(actualDiff < maxDiff);
+    }
+    
+    
+    
+    
+    [Fact]
+    public void GetNudgeHandler_WithDecPropertyAndSignificantDiff_ReturnsMiddleValue()
+    {
+        // Arrange
+        var valueA = 8m;
+        var valueB = 4m;
+        var min = 2m;
+        var max = 10m;
+        var expected = 6m;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDecPropertyAndSameAtMax_ReturnsOneLessThanMax()
+    {
+        // Arrange
+        var valueA = 10m;
+        var valueB = 10m;
+        var min = 2m;
+        var max = 10m;
+        var significance = (max - min) / 100m; // 1%
+        var expected = max - significance;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDecPropertyAndSameAboveMax_ReturnsOneLessThanMax()
+    {
+        // Arrange
+        var valueA = 12m;
+        var valueB = 12m;
+        var min = 2m;
+        var max = 10m;
+        var significance = (max - min) / 100m; // 1%
+        var expected = max - significance;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDecPropertyAndSameAtMin_ReturnsOneMoreThanMin()
+    {
+        // Arrange
+        var valueA = 2m;
+        var valueB = 2m;
+        var min = 2m;
+        var max = 10m;
+        var significance = (max - min) / 100m; // 1%
+        var expected = min + significance;
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDecPropertyAndSameInMiddle_ReturnsOneMoreOrOneLessThanA()
+    {
+        // Arrange
+        var valueA = 6m;
+        var valueB = 6m;
+        var min = 2m;
+        var max = 10m;
+        var significance = (max - min) / 100m; // 1%
+        var countLower = 0;
+        var countHigher = 0;
+        var expectedA = Math.Round(valueA + significance, 2);
+        var expectedB = Math.Round(valueA - significance, 2);
+        var numTests = 1000;
+        var maxDiff = 1000 / 4;
+
+        // Act
+        for (int i = 0; i < numTests; i++)
+        {
+            var actual = Math.Round(Model.GenerateNudgeValue(min, max, valueA, valueB), 2);
+            if(actual == expectedA) countLower++;
+            else if(actual == expectedB) countHigher++;
+            else Assert.True(false); // this ain't right
+        }
+        var actualDiff = Math.Abs(countLower - countHigher);
+
+        // Assert
+        Assert.True(actualDiff < maxDiff);
+    }
+    
+    
+    
+    
+    [Fact]
+    public void GetNudgeHandler_WithDatePropertyAndSignificantDiff_ReturnsMiddleValue()
+    {
+        // Arrange
+        var valueA = new LocalDateTime(2025, 3, 1, 0, 0);
+        var valueB = new LocalDateTime(2026, 3, 1, 0, 0);
+        var min = new LocalDateTime(2024, 3, 1, 0, 0);
+        var max = new LocalDateTime(2027, 3, 1, 0, 0);
+        var expected = new LocalDateTime(2025, 9, 1, 0, 0);
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDatePropertyAndSameAtMax_ReturnsOneLessThanMax()
+    {
+        // Arrange
+        var valueA = new LocalDateTime(2027, 3, 1, 0, 0);
+        var valueB = new LocalDateTime(2027, 3, 1, 0, 0);
+        var min = new LocalDateTime(2024, 3, 1, 0, 0);
+        var max = new LocalDateTime(2027, 3, 1, 0, 0);
+        var expected = max.PlusMonths(-1);
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDatePropertyAndSameAboveMax_ReturnsOneLessThanMax()
+    {
+        // Arrange
+        var valueA = new LocalDateTime(2029, 3, 1, 0, 0);
+        var valueB = new LocalDateTime(2029, 3, 1, 0, 0);
+        var min = new LocalDateTime(2024, 3, 1, 0, 0);
+        var max = new LocalDateTime(2027, 3, 1, 0, 0);
+        var expected = max.PlusMonths(-1);
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDatePropertyAndSameAtMin_ReturnsOneMoreThanMin()
+    {
+        // Arrange
+        var valueA = new LocalDateTime(2024, 3, 1, 0, 0);
+        var valueB = new LocalDateTime(2024, 3, 1, 0, 0);
+        var min = new LocalDateTime(2024, 3, 1, 0, 0);
+        var max = new LocalDateTime(2027, 3, 1, 0, 0);
+        var expected = min.PlusMonths(1);
+
+        // Act
+        var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);;
+
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+    
+    [Fact]
+    public void GetNudgeHandler_WithDatePropertyAndSameInMiddle_ReturnsOneMoreOrOneLessThanA()
+    {
+        // Arrange
+        var valueA = new LocalDateTime(2025, 3, 1, 0, 0);
+        var valueB = new LocalDateTime(2025, 3, 1, 0, 0);
+        var min = new LocalDateTime(2024, 3, 1, 0, 0);
+        var max = new LocalDateTime(2027, 3, 1, 0, 0);
+        var countLower = 0;
+        var countHigher = 0;
+        var expectedA = valueA.PlusMonths(1);
+        var expectedB = valueA.PlusMonths(-1);
+        var numTests = 1000;
+        var maxDiff = 1000 / 4;
+
+        // Act
+        for (int i = 0; i < numTests; i++)
+        {
+            var actual = Model.GenerateNudgeValue(min, max, valueA, valueB);
+            if(actual == expectedA) countLower++;
+            else if(actual == expectedB) countHigher++;
+            else Assert.True(false); // this ain't right
+        }
+        var actualDiff = Math.Abs(countLower - countHigher);
+
+        // Assert
+        Assert.True(actualDiff < maxDiff);
     }
 
     #endregion

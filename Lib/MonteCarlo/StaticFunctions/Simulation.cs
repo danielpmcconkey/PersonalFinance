@@ -3,6 +3,7 @@ using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.DataTypes.Postgres;
 using Lib.StaticConfig;
+using Lib.Utils;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -307,29 +308,15 @@ public static class Simulation
         return true;
     }
 
-    /// <summary>
-    /// reads any LocalDateTime and returns the first of the month closest to it
-    /// </summary>
-    public static LocalDateTime NormalizeDate(LocalDateTime providedDate)
-    {
-        var firstOfThisMonth = new LocalDateTime(providedDate.Year, providedDate.Month, 1, 0, 0);
-        var firstOfNextMonth = firstOfThisMonth.PlusMonths(1);
-        var timeSpanToThisFirst = providedDate - firstOfThisMonth;
-        var timeSpanToNextFirst = firstOfNextMonth - providedDate;
-        return (timeSpanToThisFirst.Days <= timeSpanToNextFirst.Days) ?
-            firstOfThisMonth : // t2 is longer, return this first
-            firstOfNextMonth; // t1 is longer than t2, return next first
-    }
-
     public static (PgPerson person, DataTypes.MonteCarlo.Model model) NormalizeDates(PgPerson person, DataTypes.MonteCarlo.Model model)
     {
         // set up the return tuple
         (PgPerson newPerson, DataTypes.MonteCarlo.Model newModel) result = (Person.CopyPerson(person, true), model);
-        result.newPerson.BirthDate = NormalizeDate(person.BirthDate);
-        result.newModel.RetirementDate = NormalizeDate(model.RetirementDate);
-        result.newModel.SocialSecurityStart = NormalizeDate(model.SocialSecurityStart);
-        result.newModel.SimEndDate = NormalizeDate(model.SimEndDate);
-        result.newModel.SimStartDate = NormalizeDate(model.SimStartDate);
+        result.newPerson.BirthDate = DateFunc.NormalizeDate(person.BirthDate);
+        result.newModel.RetirementDate = DateFunc.NormalizeDate(model.RetirementDate);
+        result.newModel.SocialSecurityStart = DateFunc.NormalizeDate(model.SocialSecurityStart);
+        result.newModel.SimEndDate = DateFunc.NormalizeDate(model.SimEndDate);
+        result.newModel.SimStartDate = DateFunc.NormalizeDate(model.SimStartDate);
         return result;
     }
 

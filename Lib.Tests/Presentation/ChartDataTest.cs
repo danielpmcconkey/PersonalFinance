@@ -10,8 +10,9 @@ public class ChartDataTest
     public void GetEndOfMonthPositionsBySymbol_ShouldReturnAccurateList()
     {
         // Arrange
-        var fxaix = new PgFund(){Symbol = "FXAIX", Name = "FXAIX", Positions = []};
-        var schd = new PgFund(){Symbol = "SCHD", Name = "SCHD", Positions = []};
+        using var context = new PgContext();
+        var fxaix = context.PgFunds.First(x => x.Symbol == "FXAIX");
+        var schd = context.PgFunds.First(x => x.Symbol == "SCHD");
         
         var account = new PgInvestmentAccount()
         {
