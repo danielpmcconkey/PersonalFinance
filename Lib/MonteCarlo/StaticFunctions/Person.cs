@@ -99,6 +99,9 @@ public static class Person
             PostTaxInsuranceDeductions = originalPerson.PostTaxInsuranceDeductions,
             RequiredMonthlySpend = originalPerson.RequiredMonthlySpend,
             RequiredMonthlySpendHealthCare = originalPerson.RequiredMonthlySpendHealthCare,
+            ThisYearsIncomePreSimStart = originalPerson.ThisYearsIncomePreSimStart,
+            ThisYearsFederalTaxWithholdingPreSimStart = originalPerson.ThisYearsFederalTaxWithholdingPreSimStart,
+            ThisYearsStateTaxWithholdingPreSimStart = originalPerson.ThisYearsStateTaxWithholdingPreSimStart,
             // calculated fields
             IsRetired = shouldCopyCalculatedFields ? originalPerson.IsRetired : false,
             IsBankrupt = shouldCopyCalculatedFields ? originalPerson.IsBankrupt : false,

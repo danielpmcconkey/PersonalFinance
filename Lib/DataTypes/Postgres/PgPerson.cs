@@ -54,7 +54,8 @@ namespace Lib.DataTypes.Postgres
         public required decimal PostTaxInsuranceDeductions { get; set; }
         
         /// <summary>
-        /// the amount you have to pay on basic things like groceries, bills, property tax. does not include any debt payments
+        /// the amount you have to pay on basic things like groceries, bills, property tax. does not include any debt
+        /// payments
         /// </summary>
         [Column("requiredmonthlyspend")]
         public required decimal RequiredMonthlySpend { get; set; }
@@ -64,6 +65,27 @@ namespace Lib.DataTypes.Postgres
         /// </summary>
         [Column("requiredmonthlyspendhealthcare")]
         public required decimal RequiredMonthlySpendHealthCare { get; set; }
+        
+        /// <summary>
+        /// The amount of taxable W3 income you have already received in the calendar year of the sim start, but prior
+        /// to the start date. This makes EOY taxes more realistic when you start the sim mid-year and pre-retirement 
+        /// </summary>
+        [Column("thisyearsincomepresimstart")]
+        public required decimal ThisYearsIncomePreSimStart { get; init; }
+        
+        /// <summary>
+        /// The amount of federal tax you have already had withheld in the calendar year of the sim start, but prior
+        /// to the start date. This makes EOY taxes more realistic when you start the sim mid-year and pre-retirement 
+        /// </summary>
+        [Column("thisyearsfederaltaxwithholdingpresimstart")]
+        public required decimal ThisYearsFederalTaxWithholdingPreSimStart { get; init; }
+        
+        /// <summary>
+        /// The amount of federal tax you have already had withheld in the calendar year of the sim start, but prior
+        /// to the start date. This makes EOY taxes more realistic when you start the sim mid-year and pre-retirement 
+        /// </summary>
+        [Column("thisyearsstatetaxwithholdingpresimstart")]
+        public required decimal ThisYearsStateTaxWithholdingPreSimStart { get; init; }
         
         #region Calculated and reference fields
 

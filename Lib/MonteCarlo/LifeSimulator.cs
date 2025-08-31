@@ -38,7 +38,7 @@ public class LifeSimulator
     /// <summary>
     /// which run within the grander model run this is
     /// </summary>
-    private int _lifeNum;
+    private readonly int _lifeNum;
 
     public LifeSimulator(
         Logger logger, Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
@@ -75,6 +75,13 @@ public class LifeSimulator
         var ledger = new TaxLedger();
         ledger.SocialSecurityWageMonthly = monthlySocialSecurityWage;
         ledger.SocialSecurityElectionStartDate = model.SocialSecurityStart;
+        // add the pre-sim income and tax withholding to make the first year's tax filing more realistic
+        ledger.W2Income.Add(
+            (model.SimStartDate, copiedPerson.ThisYearsIncomePreSimStart));
+        ledger.FederalWithholdings.Add(
+            (model.SimStartDate, copiedPerson.ThisYearsFederalTaxWithholdingPreSimStart));
+        ledger.StateWithholdings.Add(
+            (model.SimStartDate, copiedPerson.ThisYearsStateTaxWithholdingPreSimStart));
         
         _lifeNum = lifeNum;
 
@@ -85,7 +92,7 @@ public class LifeSimulator
             Model = model,
             BookOfAccounts = accounts,
             PgPerson = copiedPerson,
-            CurrentDateInSim = StaticConfig.MonteCarloConfig.MonteCarloSimStartDate,
+            CurrentDateInSim = MonteCarloConfig.MonteCarloSimStartDate,
             CurrentPrices = prices,
             RecessionStats = new RecessionStats(),
             TaxLedger = ledger,
@@ -103,14 +110,9 @@ public class LifeSimulator
             NormalizeDates(_simData.PgPerson, _simData.Model);
             
             
-            while (_simData.CurrentDateInSim <= StaticConfig.MonteCarloConfig.MonteCarloSimEndDate)
+            while (_simData.CurrentDateInSim <= MonteCarloConfig.MonteCarloSimEndDate)
             {
                 SetReconClutch();
-                    
-                     
-                
-                 // todo: you want to implement a "how much have we already earned and had withheld" ability to make the first
-                 // year's tax payment more realistic
                 
                 if (MonteCarloConfig.DebugMode)
                 {

@@ -170,25 +170,45 @@ public class SimulationTrigger
     public static void CleanUpModelAndRunResultsData()
     {
         using var context = new PgContext();
+        
+        var childless = context.McModels.FromSqlRaw($"""
+                                        select
+                                          p.*
+                                        from
+                                          personalfinance.montecarlomodel p 
+                                          left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+                                          left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+                                        where p.modelcreateddate <= CURRENT_TIMESTAMP - interval '6 hours'
+                                        group by
+                                          p.id
+                                        having
+                                          count(c1.id) = 0 and count(c2.id) = 0
+                                        order by p.modelcreateddate desc
+                                        """);
+        foreach (var parent in childless)
+            context.McModels.Remove(parent);
+        context.SaveChanges();
         // delete the run results
-        context.Database.ExecuteSql($@"
-with childless as (
-	select
-	  p.id,
-	  count(c1.id) as num_sons,
-	  count(c2.id) as num_daughters
-	from
-	  personalfinance.montecarlomodel p 
-	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
-	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
-	  where p.modelcreateddate <= CURRENT_DATE - 1
-	group by
-	  p.id
-	having
-	  count(c1.id) = 0 and count(c2.id) = 0
-)
-delete from personalfinance.singlemodelrunresult
-where modelid in (select id from childless)");
+        context.Database.ExecuteSql($"""
+
+                                     with childless as (
+                                     	select
+                                     	  p.id,
+                                     	  count(c1.id) as num_sons,
+                                     	  count(c2.id) as num_daughters
+                                     	from
+                                     	  personalfinance.montecarlomodel p 
+                                     	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
+                                     	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
+                                     	  where p.modelcreateddate <= CURRENT_DATE - 1
+                                     	group by
+                                     	  p.id
+                                     	having
+                                     	  count(c1.id) = 0 and count(c2.id) = 0
+                                     )
+                                     delete from personalfinance.singlemodelrunresult
+                                     where modelid in (select id from childless)
+                                     """);
         
         // delete the models
         context.Database.ExecuteSql($@"
@@ -217,26 +237,37 @@ where id in (select id from childless)");
         var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
         using var context = new PgContext();
 
-        var query = " select m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate," +
-                    " retirementdate, socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger," +
-                    " extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand," +
-                    " nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance," +
-                    " recessionchecklookbackmonths, recessionrecoverypointmodifier, desiredmonthlyspendpreretirement" +
-                    ", desiredmonthlyspendpostretirement, percent401ktraditional, generation " +
-                    "from personalfinance.singlemodelrunresult r " +
-                    "left join personalfinance.montecarlomodel m on r.modelid = m.id" +
-                    " where m.id is not null " +
-                    $"and majorversion = {majorVersion} " +
-                    $" and minorversion = {minorVersion} " +
-                    $"and r.bankruptcyrateatendofsim <= 0.1 " +
-                    "group by m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate" +
-                    ", retirementdate, socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger" +
-                    ", extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand" +
-                    ", nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance" +
-                    ", recessionchecklookbackmonths, recessionrecoverypointmodifier" +
-                    ", desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, percent401ktraditional, generation " +
-                    "order by max(r.funpointsatendofsim50) desc, min(r.bankruptcyrateatendofsim) asc " +
-                    $"limit {maxFromDb}";
+        var query = 
+            $"""
+
+             select 
+                 m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate, retirementdate,
+                 socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger,
+                 extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand,
+                 nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths,
+                 recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
+                 percent401ktraditional, generation 
+             from personalfinance.singlemodelrunresult r 
+                 left join personalfinance.montecarlomodel m on r.modelid = m.id 
+             where m.id is not null 
+               and majorversion = {majorVersion}  
+               and minorversion = {minorVersion} 
+               and r.bankruptcyrateatendofsim <= 0.1 
+             group by 
+                 m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate, retirementdate,
+                 socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger,
+                 extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand, 
+                 nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths, 
+                 recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
+                  percent401ktraditional, generation 
+             order by 
+                 max(r.funpointsatendofsim50) desc, 
+                 min(r.bankruptcyrateatendofsim) asc, 
+                 max(r.networthatendofsim50) desc, 
+                 max(r.funpointsatendofsim90) desc,
+                 max(networthatendofsim90) desc 
+                                 limit {maxFromDb}
+            """;
         return context.McModels.FromSqlRaw(query).ToList();
     }
     public static (int majorVersion, int minorVersion) FetchLatestVersionOfTrainingRuns()

@@ -66,6 +66,9 @@ public class SpendTests
             PostTaxInsuranceDeductions = 13,
             RequiredMonthlySpend = 3000m,
             RequiredMonthlySpendHealthCare = 1500m,
+            ThisYearsIncomePreSimStart = 0,
+            ThisYearsFederalTaxWithholdingPreSimStart = 0,
+            ThisYearsStateTaxWithholdingPreSimStart = 0,
         };
     }
 

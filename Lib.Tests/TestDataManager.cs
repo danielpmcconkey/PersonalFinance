@@ -163,6 +163,9 @@ internal static class TestDataManager
             PostTaxInsuranceDeductions = 13,
             RequiredMonthlySpend = 14,
             RequiredMonthlySpendHealthCare = 15,
+            ThisYearsIncomePreSimStart = 0,
+            ThisYearsFederalTaxWithholdingPreSimStart = 0,
+            ThisYearsStateTaxWithholdingPreSimStart = 0,
         };
     }
     internal static Model CreateTestModel()

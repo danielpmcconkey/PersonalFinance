@@ -43,6 +43,9 @@ public class RebalanceTests
             PostTaxInsuranceDeductions = 13,
             RequiredMonthlySpend = 14,
             RequiredMonthlySpendHealthCare = 15,
+            ThisYearsIncomePreSimStart = 0,
+            ThisYearsFederalTaxWithholdingPreSimStart = 0,
+            ThisYearsStateTaxWithholdingPreSimStart = 0,
         };
     }
 

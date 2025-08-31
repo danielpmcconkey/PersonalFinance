@@ -90,14 +90,17 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 9
+and minorversion = 10
 --and patchversion = 1
 and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc, r.bankruptcyrateatendofsim asc
 limit 100
 
 /*
-select * from personalfinance.singlemodelrunresult
+select 
+networthatendofsim50
+* 
+from personalfinance.singlemodelrunresult
 order by rundate desc
 limit 20;
 
@@ -112,7 +115,7 @@ select generation, count(id)
 from personalfinance.montecarlomodel
 group by generation
 order by generation desc
-limit 100
+limit 1000
 
 select
 	  p.id,
