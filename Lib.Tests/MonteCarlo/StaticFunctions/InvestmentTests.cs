@@ -3,6 +3,7 @@ using NodaTime;
 using Lib.DataTypes.MonteCarlo;
 using System.Collections.Generic;
 using Lib.MonteCarlo.StaticFunctions;
+using Microsoft.EntityFrameworkCore;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
@@ -55,11 +56,20 @@ public class InvestmentTests
 
     [Theory]
     [InlineData("SCHD", McInvestmentPositionType.MID_TERM)]
-    [InlineData("OTHER", McInvestmentPositionType.LONG_TERM)]
+    [InlineData("FXAIX", McInvestmentPositionType.LONG_TERM)]
     public void GetInvestmentPositionType_ReturnsCorrectType(string symbol, McInvestmentPositionType expectedType)
     {
+        // Arrange
+        using var context = new PgContext();
+        var position = context.PgPositions
+            .Where(x => x.Symbol == symbol)
+            .Include(x => x.Fund)
+            .ThenInclude(f => f.Objective)
+            .FirstOrDefault();
+        Assert.NotNull(position);
+        
         // Act
-        var result = Investment.GetInvestmentPositionType(symbol);
+        var result = Investment.GetInvestmentPositionType(position.Fund.Objective);
 
         // Assert
         Assert.Equal(expectedType, result);

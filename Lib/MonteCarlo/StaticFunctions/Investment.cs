@@ -1,4 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.DataTypes.Postgres;
 using Lib.StaticConfig;
 using NodaTime;
 
@@ -7,11 +8,15 @@ namespace Lib.MonteCarlo.StaticFunctions;
 public static class Investment
 {
     
-    public static McInvestmentPositionType GetInvestmentPositionType(string symbol)
+    public static McInvestmentPositionType GetInvestmentPositionType(PgFundType objectiveFundType)
     {
-        // todo: change GetInvestmentPositionType to read type from the DB
-        if (symbol == "SCHD") return McInvestmentPositionType.MID_TERM;
-        return McInvestmentPositionType.LONG_TERM;
+        var posType = objectiveFundType.Name switch
+        {
+            "Growth" => McInvestmentPositionType.LONG_TERM,
+            "A place to live" or "Diversification" or "Target date" or "Safety" or "Dividend" => McInvestmentPositionType.MID_TERM,
+            _ => McInvestmentPositionType.SHORT_TERM
+        };
+        return posType;
     }
     
     /// <summary>

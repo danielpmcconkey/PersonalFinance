@@ -55,11 +55,13 @@ public class Model
             case HereditarySource.ParentB:
                 candidate = propertySelector(parentB);
                 break;
-            default:
+            case HereditarySource.Random:
                 if(MonteCarloConfig.IsNudgeModeOn) candidate = GenerateNudgeValue(
                     minValue, maxValue, propertySelector(parentA), propertySelector(parentB));
                 else candidate = MathFunc.GenerateRandomBetween(minValue, maxValue);
                 break;
+            default:
+                throw new InvalidDataException("Invalid HereditarySource");
         }
 
         // Ensure the resulting value always falls within [minValue, maxValue]. This is because we sometimes change the

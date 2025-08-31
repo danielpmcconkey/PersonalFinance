@@ -1,4 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -165,6 +166,8 @@ public static class AccountDbRead
                         x.PositionDate == maxDate.maxdate &&
                         x.InvestmentAccountId == accountId &&
                         x.Symbol == maxDate.Key)
+                    .Include(x => x.Fund)
+                    .ThenInclude(f => f.Objective)
                     .OrderBy(x => x.TotalQuantity)
                     .FirstOrDefault()
                 ?? throw new InvalidDataException();
@@ -176,7 +179,7 @@ public static class AccountDbRead
                     IsOpen = true,
                     Name = $"Position {maxDate.Key}",
                     Entry = positionAtMaxDate.PositionDate,
-                    InvestmentPositionType = Investment.GetInvestmentPositionType(maxDate.Key),
+                    InvestmentPositionType = Investment.GetInvestmentPositionType(positionAtMaxDate.Fund.Objective),
                     InitialCost = positionAtMaxDate.CostBasis,
                     Quantity = positionAtMaxDate.TotalQuantity,
                     Price = positionAtMaxDate.Price,
