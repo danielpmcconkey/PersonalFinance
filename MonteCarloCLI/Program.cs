@@ -31,7 +31,7 @@ decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
 logger.Info("Running in single model mode");
 
 logger.Info("Pulling model champion from the database");
-Model champion = Lib.MonteCarlo.StaticFunctions.Model.FetchModelChampion();
+Model champion = ModelFunc.FetchModelChampion();
 
 // over-write the start and end dates from the DB champion model to use what's in the app config
 champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;

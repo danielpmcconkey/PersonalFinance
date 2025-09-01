@@ -154,7 +154,7 @@ public class SimulationTrigger
             for (int i2 = 0; i2 < allModels.Count; i2++)
             {
                 logger.Info($"running {i1} bred with {i2}");
-                var offspring = Model.MateModels(allModels[i1], allModels[i2], person.BirthDate);
+                var offspring = ModelFunc.MateModels(allModels[i1], allModels[i2], person.BirthDate);
                 offspring.SimStartDate = startDate;
                 offspring.SimEndDate = endDate;
                 SaveModelToDb(offspring);
@@ -306,7 +306,7 @@ where id in (select id from childless)");
         var allModels = currentChamps.ToList();
         for (int i = 0; i < numNew; i++)
         {
-            var newModel = Model.CreateRandomModel(person.BirthDate);
+            var newModel = ModelFunc.CreateRandomModel(person.BirthDate);
             allModels.Add(newModel);
             context.McModels.Add(newModel);
         }
