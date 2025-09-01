@@ -1,6 +1,7 @@
 // #define PERFORMANCEPROFILING
 using System.Diagnostics;
 using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo.WithdrawalStrategy;
 using Lib.StaticConfig;
 using NodaTime;
 
@@ -8,12 +9,22 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class InvestmentSales
 {
+    public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)
+    {
+        return strategy switch {
+            WithdrawalStrategyType.BasicBuckets => new BasicBuckets(),
+            _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null)
+        };
+    }
     public static (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToDollarAmount(
             BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell,
             (McInvestmentPositionType positionType, McInvestmentAccountType accountType)[]? typeOrder = null,
             LocalDateTime? minDateExclusive = null, LocalDateTime? maxDateInclusive = null)
     {
+        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        if (accounts.InvestmentAccounts.Count == 0) return (0, accounts, ledger, []);
+        
         (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger,
             List<ReconciliationMessage> messages) results = (
                 0, 
@@ -153,113 +164,69 @@ public static class InvestmentSales
     }
    
 
-    /// <summary>
-    /// sells enough positions of the provided position type to reach the amountToSell. It does this strategically
-    /// by first selling tax deferred positions until you've reached the annual income head room to avoid going into
-    /// higher tax brackets. It deposits proceeds into the cash account.
-    /// </summary>
-    /// <returns>the exact amount sold, a new book of accounts, and a new ledger</returns>
-    public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
-        SellInvestmentsToDollarAmountByPositionType(decimal amountNeeded, McInvestmentPositionType positionType,
-            BookOfAccounts bookOfAccounts, TaxLedger taxLedger, LocalDateTime currentDate)
-    {
-        if (bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
-        if (bookOfAccounts.InvestmentAccounts.Count == 0) return (0, bookOfAccounts, taxLedger, []);
-        
-        var oneYearAgo = currentDate.PlusYears(-1);
-        
-        // set up the return tuple
-        (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, 
-            List<ReconciliationMessage> messages) results = (
-            0M, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
-        
-        // calculate the amount of income room we have so we can sell tax deferred account positions first
-        var incomeRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, currentDate);
-
-        if (incomeRoom > 0)
-        {
-            // we have income room. sell tax deferred positions, up to the incomeRoom amount
-            List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrderWithRoom = [];
-            foreach (var accountType in InvestmentConfig.SalesOrderWithRoom)
-            {
-                salesOrderWithRoom.Add((positionType, accountType));
-            }
-            var amountToSell = Math.Min(amountNeeded, incomeRoom);
-            var withRoomResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
-                results.newLedger, currentDate, amountToSell, salesOrderWithRoom.ToArray(), null, 
-                oneYearAgo);
-            results.amountSold += withRoomResult.amountSold;
-            results.newBookOfAccounts = withRoomResult.accounts;
-            results.newLedger = withRoomResult.ledger;
-            results.messages.AddRange(withRoomResult.messages);
-        }
-        if (results.amountSold >= amountNeeded) return results;
-        
-        // we don't have any more income room and we still have sellin to do. sell taxed and tax-free positions, up to
-        // the amountNeeded
-        List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrderWithNoRoom = [];
-        foreach (var accountType in InvestmentConfig.SalesOrderWithNoRoom)
-        {
-            salesOrderWithNoRoom.Add((positionType, accountType));
-        }
-        var noRoomResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
-            results.newLedger, currentDate, amountNeeded - results.amountSold, salesOrderWithNoRoom.ToArray(),
-            null, oneYearAgo);
-        results.amountSold += noRoomResult.amountSold;
-        results.newBookOfAccounts = noRoomResult.accounts;
-        results.newLedger = noRoomResult.ledger;
-        
-        if (!MonteCarloConfig.DebugMode) return results;
-        results.messages.AddRange(noRoomResult.messages);
-        results.messages.Add(new ReconciliationMessage(
-            currentDate, results.amountSold, $"Amount sold in investment accounts"));
-
-        return results;
-    }
+    // /// <summary>
+    // /// sells enough positions of the provided position type to reach the amountToSell. It does this strategically
+    // /// by first selling tax deferred positions until you've reached the annual income head room to avoid going into
+    // /// higher tax brackets. It deposits proceeds into the cash account.
+    // /// </summary>
+    // /// <returns>the exact amount sold, a new book of accounts, and a new ledger</returns>
+    // public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
+    //     SellInvestmentsToDollarAmountByPositionType(decimal amountNeeded, McInvestmentPositionType positionType,
+    //         BookOfAccounts bookOfAccounts, TaxLedger taxLedger, LocalDateTime currentDate)
+    // {
+    //     if (bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+    //     if (bookOfAccounts.InvestmentAccounts.Count == 0) return (0, bookOfAccounts, taxLedger, []);
+    //     
+    //     var oneYearAgo = currentDate.PlusYears(-1);
+    //     
+    //     // set up the return tuple
+    //     (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, 
+    //         List<ReconciliationMessage> messages) results = (
+    //         0M, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
+    //     
+    //     // calculate the amount of income room we have so we can sell tax deferred account positions first
+    //     var incomeRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, currentDate);
+    //
+    //     if (incomeRoom > 0)
+    //     {
+    //         // we have income room. sell tax deferred positions, up to the incomeRoom amount
+    //         List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrderWithRoom = [];
+    //         foreach (var accountType in InvestmentConfig.SalesOrderWithRoom)
+    //         {
+    //             salesOrderWithRoom.Add((positionType, accountType));
+    //         }
+    //         var amountToSell = Math.Min(amountNeeded, incomeRoom);
+    //         var withRoomResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
+    //             results.newLedger, currentDate, amountToSell, salesOrderWithRoom.ToArray(), null, 
+    //             oneYearAgo);
+    //         results.amountSold += withRoomResult.amountSold;
+    //         results.newBookOfAccounts = withRoomResult.accounts;
+    //         results.newLedger = withRoomResult.ledger;
+    //         results.messages.AddRange(withRoomResult.messages);
+    //     }
+    //     if (results.amountSold >= amountNeeded) return results;
+    //     
+    //     // we don't have any more income room and we still have sellin to do. sell taxed and tax-free positions, up to
+    //     // the amountNeeded
+    //     List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrderWithNoRoom = [];
+    //     foreach (var accountType in InvestmentConfig.SalesOrderWithNoRoom)
+    //     {
+    //         salesOrderWithNoRoom.Add((positionType, accountType));
+    //     }
+    //     var noRoomResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
+    //         results.newLedger, currentDate, amountNeeded - results.amountSold, salesOrderWithNoRoom.ToArray(),
+    //         null, oneYearAgo);
+    //     results.amountSold += noRoomResult.amountSold;
+    //     results.newBookOfAccounts = noRoomResult.accounts;
+    //     results.newLedger = noRoomResult.ledger;
+    //     
+    //     if (!MonteCarloConfig.DebugMode) return results;
+    //     results.messages.AddRange(noRoomResult.messages);
+    //     results.messages.Add(new ReconciliationMessage(
+    //         currentDate, results.amountSold, $"Amount sold in investment accounts"));
+    //
+    //     return results;
+    // }
     
-    /// <summary>
-    /// sells enough full positions of the provided position type to reach the amountToSell, but specifically in the RMD
-    /// sales account order. It ignores the income "head room". It deposits proceeds into the cash account.
-    /// </summary>
-    /// <returns>the exact amount sold, a new book of accounts, and a new ledger</returns>
-    public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
-        SellInvestmentsToRmdAmount(decimal amountNeeded, BookOfAccounts bookOfAccounts, TaxLedger taxLedger, 
-            LocalDateTime currentDate)
-    {
-        if (bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
-        if (bookOfAccounts.InvestmentAccounts.Count == 0) return (0, bookOfAccounts, taxLedger, []);
-        
-        var oneYearAgo = currentDate.PlusYears(-1);
-        
-        // set up the return tuple
-        (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger,
-            List<ReconciliationMessage> messages)  results = (
-            0m, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
-
-        List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrder = [];
-        foreach (var accountType in InvestmentConfig.SalesOrderRmd)
-        {
-            salesOrder.Add((McInvestmentPositionType.LONG_TERM, accountType));
-        }
-        foreach (var accountType in InvestmentConfig.SalesOrderRmd)
-        {
-            salesOrder.Add((McInvestmentPositionType.MID_TERM, accountType));
-        }
-        
-        var salesResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
-            results.newLedger, currentDate, amountNeeded - results.amountSold, salesOrder.ToArray(),
-            null, oneYearAgo);
-        
-        results.amountSold += salesResult.amountSold;
-        results.newBookOfAccounts = salesResult.accounts;
-        results.newLedger = salesResult.ledger;
-        results.messages.AddRange(salesResult.messages);
-        if (results.amountSold >= amountNeeded) return results;
-        if (Math.Abs(results.amountSold - amountNeeded) < 1m) return results; // call it a wash due to floating point math
-        
-        
-        
-        // nothing's left to try. not sure how we got here
-        throw new InvalidDataException("RMD: Nothing left to try. Not sure how we got here");
-    }
+    
 }

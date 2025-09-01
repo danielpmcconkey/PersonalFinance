@@ -1,6 +1,7 @@
 using Lib.DataTypes.Postgres;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
+using Lib.MonteCarlo.WithdrawalStrategy;
 using NodaTime;
 using Model = Lib.DataTypes.MonteCarlo.Model;
 
@@ -170,31 +171,33 @@ internal static class TestDataManager
     }
     internal static Model CreateTestModel()
     {
-        return new Model
-        {
-            RetirementDate = new LocalDateTime(2045,2,1,0,0),
-            NumMonthsCashOnHand = 12,
-            NumMonthsMidBucketOnHand = 24,
-            NumMonthsPriorToRetirementToBeginRebalance = 60,
-            RebalanceFrequency = RebalanceFrequency.MONTHLY,
+        return new Model(){
+        
             Id = Guid.Empty,
             PersonId = Guid.Empty,
             ParentAId = Guid.Empty,
-            ParentBId = Guid.Empty, AusterityRatio = 0m,
-            DesiredMonthlySpendPostRetirement = 0,
-            DesiredMonthlySpendPreRetirement = 0,
-            ExtremeAusterityNetWorthTrigger = 0,
-            ExtremeAusterityRatio = 0,
-            ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            Percent401KTraditional = 0,
-            RecessionCheckLookBackMonths = 0,
-            RecessionRecoveryPointModifier = 0,
-            SimEndDate = new LocalDateTime(2025, 1, 1, 0, 0),
+            ParentBId = Guid.Empty,
+            ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
+            SimEndDate = new LocalDateTime(2025, 1, 1, 0, 0),
+            RetirementDate = new LocalDateTime(2045,2,1,0,0),
             SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
+            AusterityRatio = 0m,
+            ExtremeAusterityRatio = 0,
+            ExtremeAusterityNetWorthTrigger = 0,
             LivinLargeRatio = 1.0m,
             LivinLargeNetWorthTrigger = 4000000m,
+            RebalanceFrequency = RebalanceFrequency.MONTHLY,
+            NumMonthsCashOnHand = 12,
+            NumMonthsMidBucketOnHand = 24,
+            NumMonthsPriorToRetirementToBeginRebalance = 60,
+            RecessionCheckLookBackMonths = 0,
+            RecessionRecoveryPointModifier = 0,
+            DesiredMonthlySpendPostRetirement = 0,
+            DesiredMonthlySpendPreRetirement = 0,
+            Percent401KTraditional = 0,
             Generation = -1,
+            WithdrawalStrategyType = WithdrawalStrategyType.BasicBuckets
         };
     }
 

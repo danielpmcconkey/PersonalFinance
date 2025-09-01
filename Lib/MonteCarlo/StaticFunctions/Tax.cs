@@ -142,7 +142,8 @@ public static class Tax
    
     
     public static (BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
-        MeetRmdRequirements(TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, int age)
+        MeetRmdRequirements(TaxLedger ledger, LocalDateTime currentDate, BookOfAccounts accounts, int age,
+            Lib.DataTypes.MonteCarlo.Model model)
     {
         if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
         
@@ -167,7 +168,7 @@ public static class Tax
         results.newBookOfAccounts = AccountCopy.CopyBookOfAccounts(accounts);
         results.newLedger = Tax.CopyTaxLedger(ledger);
 
-        var localResult = InvestmentSales.SellInvestmentsToRmdAmount(
+        var localResult = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
             amountLeft, results.newBookOfAccounts, results.newLedger, currentDate);
         
         results.newBookOfAccounts = localResult.newBookOfAccounts;

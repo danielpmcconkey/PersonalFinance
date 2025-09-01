@@ -329,6 +329,7 @@ public class TaxTests
         // Arrange
         var ledger = CreateTestLedger();
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var model = TestDataManager.CreateTestModel();
         // we want $500k in tax deferred accounts
         for (int i = 0; i < 250; i++)
         {
@@ -354,7 +355,7 @@ public class TaxTests
         int age = year - 1975;
 
         // Act
-        var result = Tax.MeetRmdRequirements(ledger, currentDate, accounts, age);
+        var result = Tax.MeetRmdRequirements(ledger, currentDate, accounts, age, model);
         var amountLeft = Math.Round(
             AccountCalculation.CalculateLongBucketTotalBalance(result.newBookOfAccounts), 2);
         
@@ -370,6 +371,7 @@ public class TaxTests
         var year = 2057;
         var ledger = CreateTestLedger();
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var model = TestDataManager.CreateTestModel();
         // we want $500k in tax deferred accounts
         for (int i = 0; i < 250; i++)
         {
@@ -400,7 +402,7 @@ public class TaxTests
         
 
         // Act
-        var result = Tax.MeetRmdRequirements(ledger, currentDate, accounts, age);
+        var result = Tax.MeetRmdRequirements(ledger, currentDate, accounts, age, model);
         var actualNetWorth = AccountCalculation.CalculateNetWorth(result.newBookOfAccounts);
 
         // Assert

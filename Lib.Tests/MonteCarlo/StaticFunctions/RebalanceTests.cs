@@ -112,13 +112,14 @@ public class RebalanceTests
             new List<McInvestmentPosition> { position },
             McInvestmentAccountType.TAXABLE_BROKERAGE));
         var taxLedger = new TaxLedger();
+        var model = TestDataManager.CreateTestModel();
 
         var expectedSale = 50m;
 
         // Act
         var result = Rebalance.MoveFromInvestmentToCash(
-            accounts, 50m, McInvestmentPositionType.LONG_TERM, _baseDate, taxLedger);
-        var newCashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
+            accounts, 50m, McInvestmentPositionType.LONG_TERM, _baseDate, taxLedger, model);
+        var newCashBalance = AccountCalculation.CalculateCashBalance(result.accounts);
 
         // Assert
         Assert.Equal(expectedSale, result.amountMoved);
@@ -359,27 +360,27 @@ public class RebalanceTests
         var result = Rebalance.RebalanceLongToMid(
             currentDate, accounts, recessionStats, new CurrentPrices(), model, new TaxLedger(), person);
 
-        var actualTradMidBalance = result.newBookOfAccounts.Traditional401K.Positions
+        var actualTradMidBalance = result.accounts.Traditional401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
             .Sum(x => x.CurrentValue);
-        var actualTradLongBalance = result.newBookOfAccounts.Traditional401K.Positions
+        var actualTradLongBalance = result.accounts.Traditional401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
             .Sum(x => x.CurrentValue);
-        var actualRothMidBalance = result.newBookOfAccounts.Roth401K.Positions
+        var actualRothMidBalance = result.accounts.Roth401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
             .Sum(x => x.CurrentValue);
-        var actualRothLongBalance = result.newBookOfAccounts.Roth401K.Positions
+        var actualRothLongBalance = result.accounts.Roth401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
             .Sum(x => x.CurrentValue);
-        var actualBrokerageMidBalance = result.newBookOfAccounts.Brokerage.Positions
+        var actualBrokerageMidBalance = result.accounts.Brokerage.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
             .Sum(x => x.CurrentValue);
-        var actualBrokerageLongBalance = result.newBookOfAccounts.Brokerage.Positions
+        var actualBrokerageLongBalance = result.accounts.Brokerage.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
             .Sum(x => x.CurrentValue);
-        var actualIraDistributions = result.newLedger.TaxableIraDistribution
+        var actualIraDistributions = result.ledger.TaxableIraDistribution
             .Sum(x => x.amount);;
-        var actualCapitalGains = result.newLedger.LongTermCapitalGains
+        var actualCapitalGains = result.ledger.LongTermCapitalGains
             .Sum(x => x.amount);;
 
         // Assert
@@ -461,27 +462,27 @@ public class RebalanceTests
         var result = Rebalance.RebalanceLongToMid(
             currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
 
-        var actualTradMidBalance = result.newBookOfAccounts.Traditional401K.Positions
+        var actualTradMidBalance = result.accounts.Traditional401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
             .Sum(x => x.CurrentValue);
-        var actualTradLongBalance = result.newBookOfAccounts.Traditional401K.Positions
+        var actualTradLongBalance = result.accounts.Traditional401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
             .Sum(x => x.CurrentValue);
-        var actualRothMidBalance = result.newBookOfAccounts.Roth401K.Positions
+        var actualRothMidBalance = result.accounts.Roth401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
             .Sum(x => x.CurrentValue);
-        var actualRothLongBalance = result.newBookOfAccounts.Roth401K.Positions
+        var actualRothLongBalance = result.accounts.Roth401K.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
             .Sum(x => x.CurrentValue);
-        var actualBrokerageMidBalance = result.newBookOfAccounts.Brokerage.Positions
+        var actualBrokerageMidBalance = result.accounts.Brokerage.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.MID_TERM)
             .Sum(x => x.CurrentValue);
-        var actualBrokerageLongBalance = result.newBookOfAccounts.Brokerage.Positions
+        var actualBrokerageLongBalance = result.accounts.Brokerage.Positions
             .Where(x => x.InvestmentPositionType == McInvestmentPositionType.LONG_TERM)
             .Sum(x => x.CurrentValue);
-        var actualIraDistributions = result.newLedger.TaxableIraDistribution
+        var actualIraDistributions = result.ledger.TaxableIraDistribution
             .Sum(x => x.amount);;
-        var actualCapitalGains = result.newLedger.LongTermCapitalGains
+        var actualCapitalGains = result.ledger.LongTermCapitalGains
             .Sum(x => x.amount);;
 
         // Assert
@@ -548,10 +549,10 @@ public class RebalanceTests
         var result = Rebalance.RebalancePortfolio(
             currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
         
-        var actualCashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
-        var actualMidBalance = AccountCalculation.CalculateMidBucketTotalBalance(result.newBookOfAccounts);
-        var actualLongBalance = AccountCalculation.CalculateLongBucketTotalBalance(result.newBookOfAccounts);
-        var actualCapitalGains = result.newLedger.LongTermCapitalGains
+        var actualCashBalance = AccountCalculation.CalculateCashBalance(result.accounts);
+        var actualMidBalance = AccountCalculation.CalculateMidBucketTotalBalance(result.accounts);
+        var actualLongBalance = AccountCalculation.CalculateLongBucketTotalBalance(result.accounts);
+        var actualCapitalGains = result.ledger.LongTermCapitalGains
             .Where(x => x.earnedDate.Year == currentDate.Year)
             .Sum(x => x.amount);
 
@@ -596,7 +597,7 @@ public class RebalanceTests
         var result = Rebalance.RebalancePortfolio(
             currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
         
-        var actualNetWorth = AccountCalculation.CalculateNetWorth(result.newBookOfAccounts);
+        var actualNetWorth = AccountCalculation.CalculateNetWorth(result.accounts);
 
         // Assert
         Assert.Equal(Math.Round(expectedNetWorth  ,2),  Math.Round(actualNetWorth, 2));
@@ -619,10 +620,12 @@ public class RebalanceTests
         accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount(
             new List<McInvestmentPosition> { position1, position2, position3, position4 },
             McInvestmentAccountType.TAXABLE_BROKERAGE));
+        var model = TestDataManager.CreateTestModel();
         var pullOrder = new[] { McInvestmentPositionType.LONG_TERM, McInvestmentPositionType.MID_TERM };
 
         // Act
-        var result = Rebalance.SellInOrder(300m, pullOrder, accounts, new TaxLedger(), _baseDate);
+        var result = Rebalance.SellInOrder(
+            300m, pullOrder, accounts, new TaxLedger(), _baseDate, model);
         var actualMidBucketBalance = AccountCalculation.CalculateMidBucketTotalBalance(result.newAccounts);
         var actualLongBucketBalance = AccountCalculation.CalculateLongBucketTotalBalance(result.newAccounts);
         

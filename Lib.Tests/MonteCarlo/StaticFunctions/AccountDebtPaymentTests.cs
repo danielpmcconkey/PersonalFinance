@@ -146,10 +146,11 @@ public class AccountDebtPaymentTests
 
         var taxLedger = new TaxLedger();
         var lifetimeSpend = new LifetimeSpend();
+        var model = TestDataManager.CreateTestModel();
         
         // Act
         var result = AccountDebtPayment.PayDownLoans(
-            accounts, _testDate, taxLedger, lifetimeSpend);
+            accounts, _testDate, taxLedger, lifetimeSpend, model);
         var newCashBalance = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
 
         // Assert
@@ -176,6 +177,8 @@ public class AccountDebtPaymentTests
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts.DebtAccounts = [ debtAccount ];
         accounts = AccountCashManagement.DepositCash(accounts, 100m, _testDate).accounts;
+        
+        var model = TestDataManager.CreateTestModel();
          
 
         var taxLedger = new TaxLedger();
@@ -183,7 +186,7 @@ public class AccountDebtPaymentTests
 
         // Act
         var result = AccountDebtPayment.PayDownLoans(
-            accounts, _testDate, taxLedger, lifetimeSpend);
+            accounts, _testDate, taxLedger, lifetimeSpend, model);
 
         // Assert
         Assert.False(result.isSuccessful);

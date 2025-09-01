@@ -1,4 +1,5 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.MonteCarlo.WithdrawalStrategy;
 using Lib.StaticConfig;
 using Lib.Utils;
 using NodaTime;
@@ -128,27 +129,26 @@ public class Model
     
     public static DataTypes.MonteCarlo.Model CreateRandomModel(LocalDateTime birthdate)
     {
-        return new DataTypes.MonteCarlo.Model
-        {
+        return new DataTypes.MonteCarlo.Model(){
             Id = Guid.NewGuid(),
+            PersonId = Guid.Empty,
             ParentAId = Guid.Empty,
             ParentBId = Guid.Empty,
-            PersonId = Guid.NewGuid(),
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = MonteCarloConfig.MonteCarloSimStartDate,
             SimEndDate = MonteCarloConfig.MonteCarloSimEndDate,
-            RetirementDate = MathFunc.GetUnSeededRandomDate(
+            RetirementDate = MathFunc.GetUnSeededRandomDate( 
                 birthdate
                     .PlusYears(ModelConstants.RetirementAgeMin.years)
-                    .PlusMonths(ModelConstants.RetirementAgeMin.months), 
+                    .PlusMonths(ModelConstants.RetirementAgeMin.months),
                 birthdate
                     .PlusYears(ModelConstants.RetirementAgeMax.years)
                     .PlusMonths(ModelConstants.RetirementAgeMax.months)
-                ),
+            ),
             SocialSecurityStart = MathFunc.GetUnSeededRandomDate(
                 birthdate
                     .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
-                    .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months), 
+                    .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months),
                 birthdate
                     .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
                     .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months)
@@ -159,18 +159,18 @@ public class Model
                 ModelConstants.ExtremeAusterityRatioMin, ModelConstants.ExtremeAusterityRatioMax),
             ExtremeAusterityNetWorthTrigger = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.ExtremeAusterityNetWorthTriggerMin, ModelConstants.ExtremeAusterityNetWorthTriggerMax),
-            RebalanceFrequency = MathFunc.GetUnSeededRandomInt(0, 3000) switch
-            {
-                < 1000 => RebalanceFrequency.MONTHLY,
-                < 2000 => RebalanceFrequency.QUARTERLY,
-                _ => RebalanceFrequency.YEARLY
-            },
+            LivinLargeRatio = MathFunc.GetUnSeededRandomDecimal(
+                ModelConstants.LivinLargeRatioMin, ModelConstants.LivinLargeRatioMax),
+            LivinLargeNetWorthTrigger = MathFunc.GetUnSeededRandomDecimal(
+                ModelConstants.LivinLargeNetWorthTriggerMin, ModelConstants.LivinLargeNetWorthTriggerMax),
+            RebalanceFrequency = GetRandomRebalanceFrequency(),
             NumMonthsCashOnHand = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.NumMonthsCashOnHandMin, ModelConstants.NumMonthsCashOnHandMax),
             NumMonthsMidBucketOnHand = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.NumMonthsMidBucketOnHandMin, ModelConstants.NumMonthsMidBucketOnHandMax),
             NumMonthsPriorToRetirementToBeginRebalance = MathFunc.GetUnSeededRandomInt(
-                ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin, ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax),
+                ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin, 
+                ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax),
             RecessionCheckLookBackMonths = MathFunc.GetUnSeededRandomInt(
                 ModelConstants.RecessionCheckLookBackMonthsMin, ModelConstants.RecessionCheckLookBackMonthsMax),
             RecessionRecoveryPointModifier = MathFunc.GetUnSeededRandomDecimal(
@@ -178,14 +178,12 @@ public class Model
             DesiredMonthlySpendPreRetirement = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.DesiredMonthlySpendPreRetirementMin, ModelConstants.DesiredMonthlySpendPreRetirementMax),
             DesiredMonthlySpendPostRetirement = MathFunc.GetUnSeededRandomDecimal(
-                ModelConstants.DesiredMonthlySpendPostRetirementMin, ModelConstants.DesiredMonthlySpendPostRetirementMax),
+                ModelConstants.DesiredMonthlySpendPostRetirementMin, 
+                ModelConstants.DesiredMonthlySpendPostRetirementMax),
             Percent401KTraditional = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.Percent401KTraditionalMin, ModelConstants.Percent401KTraditionalMax),
-            LivinLargeRatio = MathFunc.GetUnSeededRandomDecimal(
-                ModelConstants.LivinLargeRatioMin, ModelConstants.LivinLargeRatioMax),
-            LivinLargeNetWorthTrigger = MathFunc.GetUnSeededRandomDecimal(
-                ModelConstants.LivinLargeNetWorthTriggerMin, ModelConstants.LivinLargeNetWorthTriggerMax),
             Generation = 1,
+            WithdrawalStrategyType = WithdrawalStrategyType.BasicBuckets // todo: randomize WithdrawalStrategyType
         };
     }
     
@@ -201,12 +199,17 @@ public class Model
     
     public static DataTypes.MonteCarlo.Model MateModels(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b, LocalDateTime birthDate)
     {
-        return new DataTypes.MonteCarlo.Model()
-        {
+        var newGuid = Guid.NewGuid();
+        return new DataTypes.MonteCarlo.Model(){
+        
             Id = Guid.NewGuid(),
             PersonId = a.PersonId,
             ParentAId = a.Id,
+            ParentA = a,
+            ChildrenA = a.ChildrenA,
             ParentBId = b.Id,
+            ParentB = b,
+            ChildrenB = b.ChildrenB,
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = a.SimStartDate,
             SimEndDate = a.SimEndDate,
@@ -215,6 +218,8 @@ public class Model
             AusterityRatio = MateAusterityRatio(a, b),
             ExtremeAusterityRatio = MateExtremeAusterityRatio(a, b),
             ExtremeAusterityNetWorthTrigger = MateExtremeAusterityNetWorthTrigger(a, b),
+            LivinLargeRatio = MateLivinLargeRatio(a, b),
+            LivinLargeNetWorthTrigger = MateLivinLargeNetWorthTrigger(a, b),
             RebalanceFrequency = MateRebalanceFrequency(a, b),
             NumMonthsCashOnHand = MateNumMonthsCashOnHand(a, b),
             NumMonthsMidBucketOnHand = MateNumMonthsMidBucketOnHand(a, b),
@@ -224,9 +229,8 @@ public class Model
             DesiredMonthlySpendPreRetirement = MateDesiredMonthlySpendPreRetirement(a, b),
             DesiredMonthlySpendPostRetirement = MateDesiredMonthlySpendPostRetirement(a, b),
             Percent401KTraditional = MatePercent401KTraditional(a, b),
-            LivinLargeRatio = MateLivinLargeRatio(a, b),
-            LivinLargeNetWorthTrigger = MateLivinLargeNetWorthTrigger(a, b),
             Generation = Math.Max(a.Generation, b.Generation) + 1,
+            WithdrawalStrategyType = MateWithdrawalStrategyType(a, b)
         };
     }
     
@@ -365,9 +369,35 @@ public class Model
                 .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
                 .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months)
             );
+    public static WithdrawalStrategyType MateWithdrawalStrategyType(DataTypes.MonteCarlo.Model a, DataTypes.MonteCarlo.Model b) =>
+        MateProperty(
+            a, b,
+            model => model.WithdrawalStrategyType,
+            () =>
+            {
+                // todo: implement MateWithdrawalStrategyType
+                var randomInt = MathFunc.GetUnSeededRandomInt(0, 3000);
+                return randomInt switch
+                {
+                    < 1000 => WithdrawalStrategyType.BasicBuckets,
+                    < 2000 => WithdrawalStrategyType.BasicBuckets,
+                    _ => WithdrawalStrategyType.BasicBuckets
+                };
+            });
         
 
     #endregion
+
+
+    private static  RebalanceFrequency GetRandomRebalanceFrequency()
+    {
+        return MathFunc.GetUnSeededRandomInt(0, 3000) switch
+        {
+            < 1000 => RebalanceFrequency.MONTHLY,
+            < 2000 => RebalanceFrequency.QUARTERLY,
+            _ => RebalanceFrequency.YEARLY
+        };
+    }
     
     
     

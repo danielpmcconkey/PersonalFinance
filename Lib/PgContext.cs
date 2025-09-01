@@ -83,6 +83,8 @@ namespace Lib
                 e.HasOne(m => m.ParentB)
                     .WithMany(mm => mm.ChildrenB)
                     .HasForeignKey(m => m.ParentBId);
+                e.Property(m => m.WithdrawalStrategyType).HasConversion<int>();
+
             });
             modelBuilder.Entity<PgCashAccount>(e =>
             {

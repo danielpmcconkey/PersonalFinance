@@ -73,7 +73,8 @@ public static class AccountDebtPayment
 
     public static (bool isSuccessful, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, LifetimeSpend newSpend, List<ReconciliationMessage> messages) 
         PayDownLoans(
-            BookOfAccounts accounts, LocalDateTime currentDate, TaxLedger taxLedger, LifetimeSpend lifetimeSpend)
+            BookOfAccounts accounts, LocalDateTime currentDate, TaxLedger taxLedger, LifetimeSpend lifetimeSpend, 
+            Lib.DataTypes.MonteCarlo.Model model)
     {
         if (accounts.DebtAccounts is null) throw new InvalidDataException("DebtAccounts is null");
         
@@ -92,9 +93,9 @@ public static class AccountDebtPayment
         
         // withdraw the cash first; this keeps us from needing to pass the book of accounts around
         var cashWithdrawalResult = AccountCashManagement.WithdrawCash(
-            result.newBookOfAccounts, totalDebtPayment, currentDate, result.newLedger);
-        result.newBookOfAccounts = cashWithdrawalResult.newAccounts;
-        result.newLedger = cashWithdrawalResult.newLedger;
+            result.newBookOfAccounts, totalDebtPayment, currentDate, result.newLedger, model);
+        result.newBookOfAccounts = cashWithdrawalResult.accounts;
+        result.newLedger = cashWithdrawalResult.ledger;
         result.messages.AddRange(cashWithdrawalResult.messages);
         if (cashWithdrawalResult.isSuccessful == false)
         {

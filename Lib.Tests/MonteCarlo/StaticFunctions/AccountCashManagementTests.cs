@@ -121,10 +121,11 @@ public class AccountCashManagementTests
         var withdrawAmount = 500m;
         var accounts = CreateTestAccounts(initialBalance);
         var taxLedger = new TaxLedger();
+        var model = TestDataManager.CreateTestModel();
 
         // Act
         var (isSuccessful, newAccounts, newLedger, messages) = 
-            AccountCashManagement.WithdrawCash(accounts, withdrawAmount, _testDate, taxLedger);
+            AccountCashManagement.WithdrawCash(accounts, withdrawAmount, _testDate, taxLedger, model);
 
         // Assert
         Assert.True(isSuccessful);
@@ -172,10 +173,11 @@ public class AccountCashManagementTests
             ;
         var taxLedger = new TaxLedger();
         var expectedCapitalGains = 2000m;
+        var model = TestDataManager.CreateTestModel();
 
         // Act
         var (isSuccessful, newAccounts, newLedger, messages) = 
-            AccountCashManagement.WithdrawCash(accounts, withdrawAmount, _testDate, taxLedger);
+            AccountCashManagement.WithdrawCash(accounts, withdrawAmount, _testDate, taxLedger, model);
         var newCashBalance = AccountCalculation.CalculateCashBalance(newAccounts);
         var newMidBalance = AccountCalculation.CalculateTotalBalanceByBucketType(
             newAccounts, McInvestmentPositionType.MID_TERM);

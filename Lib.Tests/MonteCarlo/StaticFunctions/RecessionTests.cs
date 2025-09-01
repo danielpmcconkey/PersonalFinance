@@ -15,32 +15,7 @@ public class RecessionTests
     };
     private Model CreateTestModel()
     {
-        return new Model
-        {
-            RecessionRecoveryPointModifier = 1.05m,
-            RecessionCheckLookBackMonths = 12,
-            RetirementDate = new LocalDateTime(2037, 3, 1, 0, 0),
-            NumMonthsCashOnHand = 12,
-            NumMonthsMidBucketOnHand = 24,
-            NumMonthsPriorToRetirementToBeginRebalance = 60,
-            RebalanceFrequency = RebalanceFrequency.QUARTERLY,
-            Id = Guid.Empty,
-            PersonId = Guid.Empty,
-            ParentAId = Guid.Empty,
-            ParentBId = Guid.Empty, AusterityRatio = 0m,
-            DesiredMonthlySpendPostRetirement = 0,
-            DesiredMonthlySpendPreRetirement = 0,
-            ExtremeAusterityNetWorthTrigger = 0,
-            ExtremeAusterityRatio = 0,
-            ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            Percent401KTraditional = 0,
-            SimEndDate = new LocalDateTime(2066, 3, 1, 0, 0),
-            SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
-            LivinLargeRatio = 1.0m,
-            LivinLargeNetWorthTrigger = 4000000m,
-            Generation = -1,
-        };
+        return TestDataManager.CreateTestModel();
     }
 
     private CurrentPrices CreateTestPrices(decimal currentPrice, List<decimal>? history = null)
@@ -635,6 +610,7 @@ public class RecessionTests
         };
         var currentPrices = CreateTestPrices(104m); // Below 105m (100 * 1.05)
         var model = CreateTestModel();
+        model.RecessionRecoveryPointModifier = 1.05m;
 
         // Act
         var result = Recession.CalculateRecessionStats(

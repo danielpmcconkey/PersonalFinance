@@ -499,10 +499,11 @@ public class SimulationTests
         var spendAmount = 500m;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, initialBalance, _testDate).accounts;
+        var model = TestDataManager.CreateTestModel();
 
         // Act
         var result = Simulation.SpendCash(
-            spendAmount, true, accounts, _testDate, _ledger, _spend, _testPerson);
+            spendAmount, true, accounts, _testDate, _ledger, _spend, _testPerson, model);
 
         // Assert
         Assert.True(result.isSuccessful);
@@ -516,10 +517,11 @@ public class SimulationTests
         var spendAmount = 5000m;
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, initialBalance, _testDate).accounts;
+        var model = TestDataManager.CreateTestModel();
 
         // Act
         var result = Simulation.SpendCash(
-            spendAmount, true, accounts, _testDate, _ledger, _spend, _testPerson);
+            spendAmount, true, accounts, _testDate, _ledger, _spend, _testPerson, model);
 
         // Assert
         Assert.False(result.isSuccessful);
@@ -536,10 +538,11 @@ public class SimulationTests
         var position = TestDataManager.CreateTestInvestmentPosition(
             100m, 50m, McInvestmentPositionType.LONG_TERM, true);
         accounts.Brokerage.Positions.Add(position);
+        var model = TestDataManager.CreateTestModel();
 
         // Act
         var result = Simulation.SpendCash(
-            spendAmount, true, accounts, _testDate, _ledger, _spend, _testPerson);
+            spendAmount, true, accounts, _testDate, _ledger, _spend, _testPerson, model);
 
         // Assert
         Assert.True(result.isSuccessful);
@@ -556,6 +559,7 @@ public class SimulationTests
         var spend = TestDataManager.CreateEmptySpend();
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, totalIncome, currentDate).accounts;
+        var model = TestDataManager.CreateTestModel();
         var taxYear = currentDate.Year - 1;
         var form1040 = new Form1040(ledger, taxYear);
         var expectedFederalLiability = form1040.CalculateTaxLiability();
@@ -566,7 +570,7 @@ public class SimulationTests
         
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear, model);
         var actualCash = AccountCalculation.CalculateCashBalance(newAccounts);
             
         // Assert
@@ -583,6 +587,7 @@ public class SimulationTests
         var spend = TestDataManager.CreateEmptySpend();
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, totalIncome, currentDate).accounts;
+        var model = TestDataManager.CreateTestModel();
         var taxYear = currentDate.Year - 1;
         var form1040 = new Form1040(ledger, taxYear);
         var expectedFederalLiability = form1040.CalculateTaxLiability();
@@ -593,7 +598,7 @@ public class SimulationTests
         
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear, model);
         var recordedPayment = newLedger.TotalTaxPaidLifetime;
             
         // Assert
@@ -610,11 +615,12 @@ public class SimulationTests
         var spend = TestDataManager.CreateEmptySpend();
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, 4.99m, currentDate).accounts;
+        var model = TestDataManager.CreateTestModel();
         var taxYear = currentDate.Year - 1;
         
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear, model);
             
         // Assert
         Assert.False(isSuccessful);
@@ -630,11 +636,12 @@ public class SimulationTests
         var spend = TestDataManager.CreateEmptySpend();
         var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         accounts = AccountCashManagement.DepositCash(accounts, totalIncome, currentDate).accounts;
+        var model = TestDataManager.CreateTestModel();
         var taxYear = currentDate.Year - 1;
         
         // Act
         var (isSuccessful, newAccounts, newLedger, newSpend, messages) =
-            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear);
+            Simulation.PayTaxForYear(person, currentDate, ledger, spend, accounts, taxYear, model);
             
         // Assert
         Assert.True(isSuccessful);

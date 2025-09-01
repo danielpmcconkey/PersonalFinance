@@ -322,9 +322,9 @@ public static class Simulation
 
     // todo: write a UT to make sure that PayForStuff records the health spend
     public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
-        List<ReconciliationMessage> messages) PayForStuff(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate,
-            RecessionStats recessionStats, TaxLedger ledger,
-        LifetimeSpend spend, BookOfAccounts accounts)
+        List<ReconciliationMessage> messages) PayForStuff(DataTypes.MonteCarlo.Model model, PgPerson person, 
+            LocalDateTime currentDate, RecessionStats recessionStats, TaxLedger ledger, LifetimeSpend spend, 
+            BookOfAccounts accounts)
     {
         var funSpend = Spend.CalculateMonthlyFunSpend(model, person, currentDate);
         var requiredSpendResults = Spend.CalculateMonthlyRequiredSpendWithoutDebt(model, person, currentDate);
@@ -347,18 +347,18 @@ public static class Simulation
         
         // first try the not-fun spend
         var notFunResult = SpendCash(
-            notFunSpend, false, accounts, currentDate, ledger, spend, person);
-        results.accounts = notFunResult.newAccounts;
-        results.ledger = notFunResult.newLedger;
+            notFunSpend, false, accounts, currentDate, ledger, spend, person, model);
+        results.accounts = notFunResult.accounts;
+        results.ledger = notFunResult.ledger;
         results.spend = notFunResult.spend;
         results.messages.AddRange(notFunResult.messages);
         if (!notFunResult.isSuccessful) return results;
             
         // now try the fun spend
         var funResult = SpendCash(
-            funSpend, true, results.accounts, currentDate, results.ledger, results.spend, person);
-        results.accounts = funResult.newAccounts;
-        results.ledger = funResult.newLedger;
+            funSpend, true, results.accounts, currentDate, results.ledger, results.spend, person, model);
+        results.accounts = funResult.accounts;
+        results.ledger = funResult.ledger;
         results.spend = funResult.spend;
         results.messages.AddRange(funResult.messages);
         if (!funResult.isSuccessful) return results;
@@ -384,7 +384,8 @@ public static class Simulation
     
     public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
         List<ReconciliationMessage> messages) PayTaxForYear(PgPerson person, LocalDateTime currentDate, 
-            TaxLedger ledger, LifetimeSpend spend, BookOfAccounts accounts, int taxYear)
+            TaxLedger ledger, LifetimeSpend spend, BookOfAccounts accounts, int taxYear,
+            Lib.DataTypes.MonteCarlo.Model model)
     {
         // set up the return tuple
         (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
@@ -414,9 +415,9 @@ public static class Simulation
         else
         {
             var notFunResult = SpendCash(
-                taxLiability, false, results.accounts, currentDate, results.ledger, results.spend, person);
-            results.accounts = notFunResult.newAccounts;
-            results.ledger = notFunResult.newLedger;
+                taxLiability, false, results.accounts, currentDate, results.ledger, results.spend, person, model);
+            results.accounts = notFunResult.accounts;
+            results.ledger = notFunResult.ledger;
             results.spend = notFunResult.spend;
             results.messages.AddRange(notFunResult.messages);
             if (!notFunResult.isSuccessful) return results;
@@ -573,21 +574,21 @@ public static class Simulation
         
     }
     
-    public static (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend,
-        List<ReconciliationMessage> messages) SpendCash(decimal amount, bool isFun, BookOfAccounts accounts, 
-            LocalDateTime currentDate, TaxLedger ledger, LifetimeSpend spend, PgPerson person)
+    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) SpendCash(decimal amount, bool isFun, BookOfAccounts accounts, 
+            LocalDateTime currentDate, TaxLedger ledger, LifetimeSpend spend, PgPerson person,
+            Lib.DataTypes.MonteCarlo.Model model)
     {
         // set up the return tuple
-        (bool isSuccessful, BookOfAccounts newAccounts, TaxLedger newLedger, LifetimeSpend spend,
+        (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
             List<ReconciliationMessage> messages) results = (
             false, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger),
             Spend.CopyLifetimeSpend(spend), []);
         
         // try to withdraw the money
         var withdrawalResults = AccountCashManagement.WithdrawCash(
-            results.newAccounts, amount, currentDate, results.newLedger);
-        results.newAccounts = withdrawalResults.newAccounts;
-        results.newLedger = withdrawalResults.newLedger;
+            results.accounts, amount, currentDate, results.ledger, model);
+        results.accounts = withdrawalResults.accounts;
+        results.ledger = withdrawalResults.ledger;
         results.messages.AddRange(withdrawalResults.messages);
         if (!withdrawalResults.isSuccessful)
         {

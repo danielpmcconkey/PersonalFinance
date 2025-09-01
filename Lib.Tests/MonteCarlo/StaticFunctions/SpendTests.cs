@@ -14,33 +14,7 @@ public class SpendTests
 
     private Model CreateTestModel()
     {
-        return new Model
-        {
-            RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0),
-            DesiredMonthlySpendPreRetirement = 5000m,
-            DesiredMonthlySpendPostRetirement = 5000m,
-            AusterityRatio = 0.8m,
-            ExtremeAusterityRatio = 0.6m,
-            RecessionRecoveryPointModifier = 1.05m,
-            RecessionCheckLookBackMonths = 12,
-            NumMonthsCashOnHand = 12,
-            NumMonthsMidBucketOnHand = 24,
-            NumMonthsPriorToRetirementToBeginRebalance = 60,
-            RebalanceFrequency = RebalanceFrequency.QUARTERLY,
-            Id = Guid.Empty,
-            PersonId = Guid.Empty,
-            ParentAId = Guid.Empty,
-            ParentBId = Guid.Empty, 
-            ExtremeAusterityNetWorthTrigger = 0,
-            ModelCreatedDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            Percent401KTraditional = 0,
-            SimEndDate = new LocalDateTime(2066, 3, 1, 0, 0),
-            SimStartDate = new LocalDateTime(2025, 1, 1, 0, 0),
-            SocialSecurityStart = new LocalDateTime(2025, 1, 1, 0, 0),
-            LivinLargeRatio = 1.5m,
-            LivinLargeNetWorthTrigger = 4000000m,
-            Generation = -1,
-        };
+        return TestDataManager.CreateTestModel();
     }
 
     private PgPerson CreateTestPerson()
@@ -140,6 +114,7 @@ public class SpendTests
         var model = CreateTestModel();
         model.DesiredMonthlySpendPreRetirement = 5000m;
         model.DesiredMonthlySpendPostRetirement = 6000m;
+        model.RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0);
         var currentDate = new LocalDateTime(currentYear, 1, 1, 0, 0);
 
         // Act
@@ -168,6 +143,7 @@ public class SpendTests
     {
         // Arrange
         var model = CreateTestModel();
+        model.RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0);
         var person = CreateTestPerson();
         person.RequiredMonthlySpendHealthCare = 3000m;
         var currentDate = new LocalDateTime(currentYear, 1, 1, 0, 0);
@@ -186,6 +162,7 @@ public class SpendTests
         
         // Arrange
         var model = CreateTestModel();
+        model.RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0);
         var currentDate = _baseDate.PlusYears(13); // Age 63, full health costs
         var person = CreateTestPerson();
         
@@ -214,6 +191,10 @@ public class SpendTests
     {
         // Arrange
         var model = CreateTestModel();
+        model.RetirementDate = new LocalDateTime(2030, 1, 1, 0, 0);
+        model.AusterityRatio = 0.8m;
+        model.ExtremeAusterityRatio = 0.6m;
+        model.LivinLargeRatio = 1.5m;
         
         var recessionStats = new RecessionStats
         {

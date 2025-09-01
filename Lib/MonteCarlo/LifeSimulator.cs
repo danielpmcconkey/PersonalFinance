@@ -340,7 +340,7 @@ public class LifeSimulator
 
         var age = _simData.CurrentDateInSim.Year - _simData.PgPerson.BirthDate.Year;
         var result = Tax.MeetRmdRequirements(
-            _simData.TaxLedger, _simData.CurrentDateInSim, _simData.BookOfAccounts, age);
+            _simData.TaxLedger, _simData.CurrentDateInSim, _simData.BookOfAccounts, age, _simData.Model);
         _simData.BookOfAccounts = result.newBookOfAccounts;
         _simData.TaxLedger = result.newLedger;
         
@@ -377,7 +377,8 @@ public class LifeSimulator
 
 
         var paymentResult = AccountDebtPayment.PayDownLoans(
-            _simData.BookOfAccounts, _simData.CurrentDateInSim, _simData.TaxLedger, _simData.LifetimeSpend);
+            _simData.BookOfAccounts, _simData.CurrentDateInSim, _simData.TaxLedger, _simData.LifetimeSpend,
+            _simData.Model);
         _simData.BookOfAccounts = paymentResult.newBookOfAccounts;
         _simData.TaxLedger = paymentResult.newLedger;
         _simData.LifetimeSpend = paymentResult.newSpend;
@@ -440,8 +441,9 @@ public class LifeSimulator
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileTaxCalcs && _isReconcilingTime)
             _reconciliationLedger.AddFullReconLine(_simData, $"Paying taxes for tax year {taxYear}");
 
-        var taxResult = Simulation.PayTaxForYear(_simData.PgPerson, _simData.CurrentDateInSim,
-            _simData.TaxLedger, _simData.LifetimeSpend, _simData.BookOfAccounts, _simData.CurrentDateInSim.Year - 1);
+        var taxResult = Simulation.PayTaxForYear(
+            _simData.PgPerson, _simData.CurrentDateInSim, _simData.TaxLedger, _simData.LifetimeSpend,
+            _simData.BookOfAccounts, _simData.CurrentDateInSim.Year - 1, _simData.Model);
         _simData.BookOfAccounts = taxResult.accounts;
         _simData.TaxLedger = taxResult.ledger;
         _simData.LifetimeSpend = taxResult.spend;
@@ -495,8 +497,8 @@ public class LifeSimulator
         var results = Rebalance.RebalancePortfolio(
             _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.RecessionStats, _simData.CurrentPrices, _simData.Model,
             _simData.TaxLedger, _simData.PgPerson);
-        _simData.BookOfAccounts = results.newBookOfAccounts;
-        _simData.TaxLedger = results.newLedger;
+        _simData.BookOfAccounts = results.accounts;
+        _simData.TaxLedger = results.ledger;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
