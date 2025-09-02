@@ -123,13 +123,13 @@ public class InvestmentTests
         // Arrange
         var accounts = CreateTestBookOfAccounts();
         var investmentAmount = 1000m;
+        var model = TestDataManager.CreateTestModel();
 
         // Act
-        var result = Investment.InvestFunds(
+        var result = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
             accounts,
             _testDate,
             investmentAmount,
-            McInvestmentPositionType.LONG_TERM,
             McInvestmentAccountType.TAXABLE_BROKERAGE,
             _testPrices).accounts;
 
@@ -152,13 +152,13 @@ public class InvestmentTests
     {
         // Arrange
         var accounts = CreateTestBookOfAccounts();
+        var model = TestDataManager.CreateTestModel();
 
         // Act
-        var result = Investment.InvestFunds(
+        var result = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
             accounts,
             _testDate,
             0m,
-            McInvestmentPositionType.LONG_TERM,
             McInvestmentAccountType.TAXABLE_BROKERAGE,
             _testPrices).accounts;
 

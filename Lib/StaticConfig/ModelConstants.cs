@@ -10,7 +10,7 @@ public static class ModelConstants
     /// MinorVersion is your general version increment. If two model runs have differing major and minor numbers then
     /// you should consider them as apples-to-oranges comparisons  
     /// </summary>
-    public static int MinorVersion = 11; 
+    public static int MinorVersion = 12; 
     /// <summary>
     /// PatchVersion can be used when a change doesn't affect the LifeSimulator.Run outcome. If two model runs have the
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples

@@ -113,7 +113,7 @@ public static class Payday
     /// that the cash that funds these purchases was already deducted from your paycheck (or is free, like the match)  
     /// </summary>
     public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) AddPaycheckRelatedRetirementSavings(
-        PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
+        PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, Model model, CurrentPrices prices)
     {
         if (person.IsBankrupt || person.IsRetired) return (bookOfAccounts, []);
 
@@ -133,23 +133,20 @@ public static class Payday
         var hsaAmount =
             (person.AnnualHsaContribution + person.AnnualHsaEmployerContribution) / 12m;
 
-        var investRothResults = Investment.InvestFunds(results.accounts, currentDate, roth401KAmount,
-            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.ROTH_401_K, prices);
+        var investRothResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
+            results.accounts, currentDate, roth401KAmount, McInvestmentAccountType.ROTH_401_K, prices);
         results.accounts = investRothResults.accounts;
 
-        var invest401KResults = Investment.InvestFunds(
-            results.accounts, currentDate, traditional401KAmount,
-            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K, prices);
+        var invest401KResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
+            results.accounts, currentDate, traditional401KAmount, McInvestmentAccountType.TRADITIONAL_401_K, prices);
         results.accounts = invest401KResults.accounts;
 
-        var investHsaResults = Investment.InvestFunds(
-            results.accounts, currentDate, hsaAmount, McInvestmentPositionType.LONG_TERM,
-            McInvestmentAccountType.HSA, prices);
+        var investHsaResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
+            results.accounts, currentDate, hsaAmount, McInvestmentAccountType.HSA, prices);
         results.accounts = investHsaResults.accounts;
 
-        var investMatchResults = Investment.InvestFunds(
-            results.accounts, currentDate, monthly401KMatch, McInvestmentPositionType.LONG_TERM,
-            McInvestmentAccountType.TRADITIONAL_401_K, prices);
+        var investMatchResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
+            results.accounts, currentDate, monthly401KMatch, McInvestmentAccountType.TRADITIONAL_401_K, prices);
         results.accounts = investMatchResults.accounts;
         
 

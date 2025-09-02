@@ -9,6 +9,35 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class InvestmentSales
 {
+    ///<summary>
+    /// creates a cross joined list of account and position types, order by account type, then position type
+    /// </summary> 
+    public static (McInvestmentPositionType positionType, McInvestmentAccountType accountType)[]
+        CreateSalesOrderAccountTypeFirst(
+            McInvestmentPositionType[] positionTypes, McInvestmentAccountType[] accountTypes)
+    {
+        var size = accountTypes.Length * positionTypes.Length;
+        var result = new (McInvestmentPositionType positionType, McInvestmentAccountType accountType)[size];
+        for (var i = 0; i < accountTypes.Length; i++)
+        for (var j = 0; j < positionTypes.Length; j++)
+            result[i * positionTypes.Length + j] = (positionTypes[j], accountTypes[i]);
+        return result;
+    }
+    
+    ///<summary>
+    /// creates a cross joined list of account and position types, order by position type, then account type
+    /// </summary> 
+    public static (McInvestmentPositionType positionType, McInvestmentAccountType accountType)[]
+        CreateSalesOrderPositionTypeFirst(
+            McInvestmentPositionType[] positionTypes, McInvestmentAccountType[] accountTypes)
+    {
+        var size = accountTypes.Length * positionTypes.Length;
+        var result = new (McInvestmentPositionType positionType, McInvestmentAccountType accountType)[size];
+        for (var i = 0; i < positionTypes.Length; i++)
+        for (var j = 0; j < accountTypes.Length; j++)
+            result[i * positionTypes.Length + j] = (positionTypes[j], accountTypes[i]);
+        return result;
+    }
     public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)
     {
         return strategy switch {
@@ -164,69 +193,7 @@ public static class InvestmentSales
     }
    
 
-    // /// <summary>
-    // /// sells enough positions of the provided position type to reach the amountToSell. It does this strategically
-    // /// by first selling tax deferred positions until you've reached the annual income head room to avoid going into
-    // /// higher tax brackets. It deposits proceeds into the cash account.
-    // /// </summary>
-    // /// <returns>the exact amount sold, a new book of accounts, and a new ledger</returns>
-    // public static (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) 
-    //     SellInvestmentsToDollarAmountByPositionType(decimal amountNeeded, McInvestmentPositionType positionType,
-    //         BookOfAccounts bookOfAccounts, TaxLedger taxLedger, LocalDateTime currentDate)
-    // {
-    //     if (bookOfAccounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
-    //     if (bookOfAccounts.InvestmentAccounts.Count == 0) return (0, bookOfAccounts, taxLedger, []);
-    //     
-    //     var oneYearAgo = currentDate.PlusYears(-1);
-    //     
-    //     // set up the return tuple
-    //     (decimal amountSold, BookOfAccounts newBookOfAccounts, TaxLedger newLedger, 
-    //         List<ReconciliationMessage> messages) results = (
-    //         0M, AccountCopy.CopyBookOfAccounts(bookOfAccounts), Tax.CopyTaxLedger(taxLedger), []);
-    //     
-    //     // calculate the amount of income room we have so we can sell tax deferred account positions first
-    //     var incomeRoom = TaxCalculation.CalculateIncomeRoom(taxLedger, currentDate);
-    //
-    //     if (incomeRoom > 0)
-    //     {
-    //         // we have income room. sell tax deferred positions, up to the incomeRoom amount
-    //         List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrderWithRoom = [];
-    //         foreach (var accountType in InvestmentConfig.SalesOrderWithRoom)
-    //         {
-    //             salesOrderWithRoom.Add((positionType, accountType));
-    //         }
-    //         var amountToSell = Math.Min(amountNeeded, incomeRoom);
-    //         var withRoomResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
-    //             results.newLedger, currentDate, amountToSell, salesOrderWithRoom.ToArray(), null, 
-    //             oneYearAgo);
-    //         results.amountSold += withRoomResult.amountSold;
-    //         results.newBookOfAccounts = withRoomResult.accounts;
-    //         results.newLedger = withRoomResult.ledger;
-    //         results.messages.AddRange(withRoomResult.messages);
-    //     }
-    //     if (results.amountSold >= amountNeeded) return results;
-    //     
-    //     // we don't have any more income room and we still have sellin to do. sell taxed and tax-free positions, up to
-    //     // the amountNeeded
-    //     List<(McInvestmentPositionType positionType, McInvestmentAccountType accountType)> salesOrderWithNoRoom = [];
-    //     foreach (var accountType in InvestmentConfig.SalesOrderWithNoRoom)
-    //     {
-    //         salesOrderWithNoRoom.Add((positionType, accountType));
-    //     }
-    //     var noRoomResult = SellInvestmentsToDollarAmount(results.newBookOfAccounts,
-    //         results.newLedger, currentDate, amountNeeded - results.amountSold, salesOrderWithNoRoom.ToArray(),
-    //         null, oneYearAgo);
-    //     results.amountSold += noRoomResult.amountSold;
-    //     results.newBookOfAccounts = noRoomResult.accounts;
-    //     results.newLedger = noRoomResult.ledger;
-    //     
-    //     if (!MonteCarloConfig.DebugMode) return results;
-    //     results.messages.AddRange(noRoomResult.messages);
-    //     results.messages.Add(new ReconciliationMessage(
-    //         currentDate, results.amountSold, $"Amount sold in investment accounts"));
-    //
-    //     return results;
-    // }
+   
     
     
 }

@@ -169,7 +169,8 @@ internal static class TestDataManager
             ThisYearsStateTaxWithholdingPreSimStart = 0,
         };
     }
-    internal static Model CreateTestModel()
+    internal static Model CreateTestModel(
+        WithdrawalStrategyType withdrawalStrategyType = WithdrawalStrategyType.BasicBuckets)
     {
         return new Model(){
         
@@ -197,7 +198,7 @@ internal static class TestDataManager
             DesiredMonthlySpendPreRetirement = 0,
             Percent401KTraditional = 0,
             Generation = -1,
-            WithdrawalStrategyType = WithdrawalStrategyType.BasicBuckets
+            WithdrawalStrategyType = withdrawalStrategyType
         };
     }
 

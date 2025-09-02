@@ -171,8 +171,8 @@ public static class Tax
         var localResult = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
             amountLeft, results.newBookOfAccounts, results.newLedger, currentDate);
         
-        results.newBookOfAccounts = localResult.newBookOfAccounts;
-        results.newLedger = localResult.newLedger;
+        results.newBookOfAccounts = localResult.accounts;
+        results.newLedger = localResult.ledger;
      
         if (!MonteCarloConfig.DebugMode) return results;
         results.messages.AddRange(localResult.messages);

@@ -45,11 +45,12 @@ public static class Investment
     
     /// <summary>
     /// note this only does the investment. it assumes that you withdrew the cash external to this method. The reason is
-    /// that we also use this to invest things like 401K contributions that come from outside of our cash account
+    /// that we also use this to invest things like 401K contributions that come from outside the cash account
     /// </summary>
-    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) InvestFunds(
-        BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount, 
-        McInvestmentPositionType mcInvestmentPositionType, McInvestmentAccountType accountType, CurrentPrices prices)
+    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) 
+        InvestFundsByAccountTypeAndPositionType(BookOfAccounts accounts, LocalDateTime currentDate, 
+            decimal dollarAmount, McInvestmentPositionType mcInvestmentPositionType, 
+            McInvestmentAccountType accountType, CurrentPrices prices)
     {
         if (dollarAmount <= 0) return (accounts, []);
         if (accounts.Cash is null) throw new InvalidDataException("Cash account is null");

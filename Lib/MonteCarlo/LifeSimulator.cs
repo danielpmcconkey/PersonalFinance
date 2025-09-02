@@ -309,14 +309,15 @@ public class LifeSimulator
         Stopwatch stopwatch = new();
         stopwatch.Start();
 #endif 
-        _simData.Log.Debug("Rebalancing portfolio");
+        _simData.Log.Debug("Investing excess cash");
         if (_simData.PgPerson.IsBankrupt) return;
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing && _isReconcilingTime) 
-            _reconciliationLedger.AddFullReconLine(_simData, "Rebalancing portfolio");
+            _reconciliationLedger.AddFullReconLine(_simData, "Investing excess cash");
         
-        var results = Rebalance.InvestExcessCash(
-            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices, _simData.Model, _simData.PgPerson);
-        _simData.BookOfAccounts = results.newBookOfAccounts;
+        var results = _simData.Model.WithdrawalStrategy.InvestExcessCash(
+            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices, _simData.Model,
+            _simData.PgPerson);
+        _simData.BookOfAccounts = results.accounts;
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -325,7 +326,7 @@ public class LifeSimulator
         
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileRebalancing || !_isReconcilingTime) return;
         _reconciliationLedger.AddMessages(results.messages);
-        _reconciliationLedger.AddFullReconLine(_simData, "Rebalanced portfolio");
+        _reconciliationLedger.AddFullReconLine(_simData, "Invested excess cash");
     }
 
     private void MeetRmdRequirements()
@@ -494,9 +495,9 @@ public class LifeSimulator
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcileRebalancing && _isReconcilingTime) 
             _reconciliationLedger.AddFullReconLine(_simData, "Rebalancing portfolio");
         
-        var results = Rebalance.RebalancePortfolio(
-            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.RecessionStats, _simData.CurrentPrices, _simData.Model,
-            _simData.TaxLedger, _simData.PgPerson);
+        var results = _simData.Model.WithdrawalStrategy.RebalancePortfolio(
+            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.RecessionStats, _simData.CurrentPrices,
+            _simData.Model, _simData.TaxLedger, _simData.PgPerson);
         _simData.BookOfAccounts = results.accounts;
         _simData.TaxLedger = results.ledger;
         

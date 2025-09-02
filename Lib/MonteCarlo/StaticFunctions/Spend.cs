@@ -154,8 +154,9 @@ public static class Spend
         
         return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
     }
-    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate
-        , BookOfAccounts accounts)
+    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) 
+        CalculateMonthlyRequiredSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate,
+            BookOfAccounts accounts)
     {
         var standardSpend = person.RequiredMonthlySpend;
         var healthCareSpend = CalculateMonthlyHealthSpend(model, person, currentDate);

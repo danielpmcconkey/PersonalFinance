@@ -82,7 +82,6 @@ public class InvestmentSalesTests
         // Assert
         Assert.Equal(expected, actual);
     }
-
     
     [Fact]
     public void SellInvestmentsToDollarAmount_WithValidPosition_SellsAndUpdatesCash()
@@ -362,7 +361,7 @@ public class InvestmentSalesTests
         var result = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
             amountNeeded, book, taxLedger, _testDate);
         
-        var newCash = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
+        var newCash = AccountCalculation.CalculateCashBalance(result.accounts);
 
         // Assert
         Assert.Equal(expectedSaleAmount, result.amountSold);
@@ -389,8 +388,8 @@ public class InvestmentSalesTests
         var result = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
             amountNeeded, book, taxLedger, _testDate);
         
-        var newCash = AccountCalculation.CalculateCashBalance(result.newBookOfAccounts);
-        var recordedRmd = result.newLedger.TaxableIraDistribution
+        var newCash = AccountCalculation.CalculateCashBalance(result.accounts);
+        var recordedRmd = result.ledger.TaxableIraDistribution
             .Where(x => x.earnedDate == _testDate)
             .Sum(x => x.amount);
 
