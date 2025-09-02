@@ -17,9 +17,11 @@ public class SimulationTrigger
 {
     #region DB functions
 
-    public static void SaveModelToDb(DataTypes.MonteCarlo.Model model)
+    public static void SaveModelToDb(Model model)
     {
         using var context = new PgContext();
+        if(model.ParentA is not null) context.Attach(model.ParentA);
+        if(model.ParentB is not null) context.Attach(model.ParentB);
         context.McModels.Add(model);
         context.SaveChanges();
     }
@@ -157,6 +159,7 @@ public class SimulationTrigger
                 var offspring = ModelFunc.MateModels(allModels[i1], allModels[i2], person.BirthDate);
                 offspring.SimStartDate = startDate;
                 offspring.SimEndDate = endDate;
+                logger.Info($"new model ID is {offspring.Id}");
                 SaveModelToDb(offspring);
                 var allLivesRuns2 = ExecuteSingleModelAllLives(
                     logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
@@ -246,7 +249,7 @@ where id in (select id from childless)");
                  extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand,
                  nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths,
                  recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
-                 percent401ktraditional, generation 
+                 percent401ktraditional, generation , withdrawalstrategy
              from personalfinance.singlemodelrunresult r 
                  left join personalfinance.montecarlomodel m on r.modelid = m.id 
              where m.id is not null 
@@ -259,7 +262,7 @@ where id in (select id from childless)");
                  extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand, 
                  nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths, 
                  recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
-                  percent401ktraditional, generation 
+                  percent401ktraditional, generation , withdrawalstrategy
              order by 
                  max(r.funpointsatendofsim50) desc, 
                  min(r.bankruptcyrateatendofsim) asc, 
@@ -287,7 +290,6 @@ where id in (select id from childless)");
 
     public static List<DataTypes.MonteCarlo.Model> FetchOrCreateModelsForTraining(PgPerson person)
     {
-        
         var currentChamps = FetchModelsForTrainingByVersion(
             person, ModelConstants.MajorVersion, ModelConstants.MinorVersion);
         var dbCount = currentChamps.Count();

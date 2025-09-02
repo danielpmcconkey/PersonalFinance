@@ -1078,4 +1078,24 @@ public class SimulationTests
         // Assert
         Assert.True(bankruptcyRate > 0);
     }
+    
+    
+    [Fact]
+    public void FetchModelsForTrainingByVersion_ReturnsCorrectNumberOfModels()
+    {
+        // Arrange
+        var person = TestDataManager.CreateTestPerson();
+        var expectedCount = MonteCarloConfig.NumberOfModelsToPull;
+    
+        // Act
+        var models = SimulationTrigger.FetchModelsForTrainingByVersion(
+            person, 
+            ModelConstants.MajorVersion, 
+            ModelConstants.MinorVersion);
+
+        // Assert
+        Assert.NotNull(models);
+        Assert.True(models.Count <= expectedCount, 
+            $"Expected no more than {expectedCount} models, but got {models.Count}");
+    }
 }
