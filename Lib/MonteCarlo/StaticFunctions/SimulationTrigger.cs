@@ -159,7 +159,6 @@ public class SimulationTrigger
                 var offspring = ModelFunc.MateModels(allModels[i1], allModels[i2], person.BirthDate);
                 offspring.SimStartDate = startDate;
                 offspring.SimEndDate = endDate;
-                logger.Info($"new model ID is {offspring.Id}");
                 SaveModelToDb(offspring);
                 var allLivesRuns2 = ExecuteSingleModelAllLives(
                     logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
