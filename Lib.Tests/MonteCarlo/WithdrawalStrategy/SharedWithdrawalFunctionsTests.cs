@@ -19,7 +19,7 @@ public class SharedWithdrawalFunctionsTests
         var ledger = TestDataManager.CreateEmptyTaxLedger();
         var expectedAmountSold = amountNeeded;
         // Act
-        var results = SharedWithdrawalFunctions.SellInvestmentsToRmdAmountStandardBucketsStrat(
+        var results = SharedWithdrawalFunctions.BasicBucketsSellInvestmentsToRmdAmount(
             amountNeeded, accounts, ledger, currentDate);
         var actualAmountSold = results.amountSold;
         // Assert

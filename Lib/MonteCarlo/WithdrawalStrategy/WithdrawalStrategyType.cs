@@ -2,5 +2,6 @@ namespace Lib.MonteCarlo.WithdrawalStrategy;
 
 public enum WithdrawalStrategyType
 {
-    BasicBuckets = 1,
+    BasicBucketsIncomeThreshold = 1,
+    BasicBucketsTaxableFirst = 2,
 }

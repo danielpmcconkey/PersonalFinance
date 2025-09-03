@@ -1,6 +1,7 @@
 
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
+using Lib.MonteCarlo.WithdrawalStrategy;
 using Lib.StaticConfig;
 using Lib.Utils;
 using NodaTime;
@@ -659,6 +660,22 @@ public class ModelTests
 
         // Assert
         Assert.True(actualDiff < maxDiff);
+    }
+    
+    
+
+    [Fact]
+    public void MateWithdrawalStrategyType_ReturnsValidResult()
+    {
+        // Arrange
+        var modelA = ModelFunc.CreateRandomModel(_birthdate);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+
+        // Act
+        var result = ModelFunc.MateWithdrawalStrategyType(modelA, modelB);
+
+        // Assert
+        Assert.True(Enum.IsDefined(typeof(WithdrawalStrategyType), result));
     }
 
     #endregion

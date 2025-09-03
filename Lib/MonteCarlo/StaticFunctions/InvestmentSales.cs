@@ -41,7 +41,8 @@ public static class InvestmentSales
     public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)
     {
         return strategy switch {
-            WithdrawalStrategyType.BasicBuckets => new BasicBuckets(),
+            WithdrawalStrategyType.BasicBucketsIncomeThreshold => new BasicBucketsIncomeThreshold(),
+            WithdrawalStrategyType.BasicBucketsTaxableFirst => new BasicBucketsTaxableFirst(),
             _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null)
         };
     }

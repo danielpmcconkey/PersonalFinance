@@ -5,7 +5,7 @@ using NodaTime;
 
 namespace Lib.Tests.MonteCarlo.WithdrawalStrategy;
 
-public class BasicBucketsTests
+public class BasicBucketsIncomeThresholdTests
 {
     private McInvestmentAccount CreateInvestmentAccountWithPositions(
         int count, decimal amountPerPosition, decimal pricePerShare, McInvestmentAccountType accountType,
@@ -77,7 +77,7 @@ public class BasicBucketsTests
         accounts.InvestmentAccounts.Add(
             CreateInvestmentAccountWithPositions(countTaxFree, amountPerPosition,
                 pricePerShare, McInvestmentAccountType.ROTH_IRA, McInvestmentPositionType.LONG_TERM));
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         var ledger = new TaxLedger();
         var currentDate = LocalDateTime.FromDateTime(DateTime.Now);
         
@@ -107,7 +107,7 @@ public class BasicBucketsTests
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 500;
         
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         model.NumMonthsCashOnHand = 12;
@@ -167,7 +167,7 @@ public class BasicBucketsTests
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 500;
         
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         model.NumMonthsCashOnHand = 12;
@@ -232,7 +232,7 @@ public class BasicBucketsTests
         person.RequiredMonthlySpend = 1000;
         person.RequiredMonthlySpendHealthCare = 500;
         
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         model.NumMonthsCashOnHand = 12;
@@ -284,7 +284,7 @@ public class BasicBucketsTests
         person.RequiredMonthlySpendHealthCare = 1500;
         var currentDate = person.BirthDate.PlusYears(50); // before rebalance window
         
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = person.BirthDate.PlusYears(67); // the magic age When you are retired but have no medicare
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         model.NumMonthsCashOnHand = 12;
@@ -362,7 +362,7 @@ public class BasicBucketsTests
         {
             CurrentLongTermInvestmentPrice = 100m
         };
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = baseDate.PlusYears(1);
         model.NumMonthsPriorToRetirementToBeginRebalance = 18; // close enough
         model.NumMonthsCashOnHand = 15;
@@ -430,7 +430,7 @@ public class BasicBucketsTests
         {
             CurrentLongTermInvestmentPrice = 100m
         };
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = currentDate.PlusYears(27);
         model.NumMonthsPriorToRetirementToBeginRebalance = 12; // well into the future
         var person = TestDataManager.CreateTestPerson();
@@ -458,7 +458,7 @@ public class BasicBucketsTests
     [Fact]
     public void RebalanceLongToMid_DuringRecession_DoesNotRebalance()
     {
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
@@ -565,7 +565,7 @@ public class BasicBucketsTests
     [Fact]
     public void RebalanceLongToMid_MovesFromTaxDeferredAccountsFirst()
     {
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
@@ -686,7 +686,7 @@ public class BasicBucketsTests
         
         // Arrange
 
-        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBuckets);
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
         var person = TestDataManager.CreateTestPerson();
         person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);

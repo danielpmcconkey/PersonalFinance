@@ -183,7 +183,7 @@ public class ModelFunc
             Percent401KTraditional = MathFunc.GetUnSeededRandomDecimal(
                 ModelConstants.Percent401KTraditionalMin, ModelConstants.Percent401KTraditionalMax),
             Generation = 1,
-            WithdrawalStrategyType = WithdrawalStrategyType.BasicBuckets // todo: randomize WithdrawalStrategyType
+            WithdrawalStrategyType = GetRandomWithdrawalStrategyType(),
         };
     }
     
@@ -375,13 +375,11 @@ public class ModelFunc
             model => model.WithdrawalStrategyType,
             () =>
             {
-                // todo: implement MateWithdrawalStrategyType
-                var randomInt = MathFunc.GetUnSeededRandomInt(0, 3000);
+                var randomInt = MathFunc.GetUnSeededRandomInt(0, 2000);
                 return randomInt switch
                 {
-                    < 1000 => WithdrawalStrategyType.BasicBuckets,
-                    < 2000 => WithdrawalStrategyType.BasicBuckets,
-                    _ => WithdrawalStrategyType.BasicBuckets
+                    < 1000 => WithdrawalStrategyType.BasicBucketsIncomeThreshold,
+                    _ => WithdrawalStrategyType.BasicBucketsTaxableFirst
                 };
             });
         
@@ -396,6 +394,15 @@ public class ModelFunc
             < 1000 => RebalanceFrequency.MONTHLY,
             < 2000 => RebalanceFrequency.QUARTERLY,
             _ => RebalanceFrequency.YEARLY
+        };
+    }
+    
+    private static  WithdrawalStrategyType GetRandomWithdrawalStrategyType()
+    {
+        return MathFunc.GetUnSeededRandomInt(0, 2000) switch
+        {
+            < 1000 => WithdrawalStrategyType.BasicBucketsIncomeThreshold,
+            _ => WithdrawalStrategyType.BasicBucketsTaxableFirst
         };
     }
     

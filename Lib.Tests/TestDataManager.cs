@@ -170,7 +170,7 @@ internal static class TestDataManager
         };
     }
     internal static Model CreateTestModel(
-        WithdrawalStrategyType withdrawalStrategyType = WithdrawalStrategyType.BasicBuckets)
+        WithdrawalStrategyType withdrawalStrategyType = WithdrawalStrategyType.BasicBucketsIncomeThreshold)
     {
         return new Model(){
         
