@@ -87,9 +87,7 @@ public static class SharedWithdrawalFunctions
             Tax.CopyTaxLedger(taxLedger),
             currentDate, 
             amountNeeded, 
-            salesOrder,
-            null, 
-            currentDate.PlusYears(-1));
+            salesOrder);
         if (salesResult.amountSold >= amountNeeded) return salesResult;
         if (Math.Abs(salesResult.amountSold - amountNeeded) < 1m) return salesResult; // call it a wash due to floating point math
         

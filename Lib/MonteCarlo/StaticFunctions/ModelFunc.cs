@@ -187,12 +187,12 @@ public class ModelFunc
         };
     }
     
-    public static Model FetchModelChampion()
+    public static Model FetchModelChampion(string? championOverride = null)
     {
-        
+        var champId = championOverride ?? MonteCarloConfig.ChampionModelId;
         using var context = new PgContext();
         var champ = context.McModels
-                        .FirstOrDefault(x => x.Id == Guid.Parse(MonteCarloConfig.ChampionModelId)) ??
+                        .FirstOrDefault(x => x.Id == Guid.Parse(champId)) ??
                     throw new InvalidDataException();
         return champ;
     }
