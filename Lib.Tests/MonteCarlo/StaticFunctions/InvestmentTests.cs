@@ -131,7 +131,7 @@ public class InvestmentTests
             _testDate,
             investmentAmount,
             McInvestmentAccountType.TAXABLE_BROKERAGE,
-            _testPrices).accounts;
+            _testPrices, model).accounts;
 
         // Assert
         Assert.Single(result.Brokerage.Positions);
@@ -160,7 +160,7 @@ public class InvestmentTests
             _testDate,
             0m,
             McInvestmentAccountType.TAXABLE_BROKERAGE,
-            _testPrices).accounts;
+            _testPrices, model).accounts;
 
         // Assert
         Assert.Empty(result.Brokerage.Positions);

@@ -43,6 +43,7 @@ public static class InvestmentSales
         return strategy switch {
             WithdrawalStrategyType.BasicBucketsIncomeThreshold => new BasicBucketsIncomeThreshold(),
             WithdrawalStrategyType.BasicBucketsTaxableFirst => new BasicBucketsTaxableFirst(),
+            WithdrawalStrategyType.SixtyForty => new SixtyForty(),
             _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null)
         };
     }

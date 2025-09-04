@@ -244,16 +244,13 @@ public static class SharedWithdrawalFunctions
     }
 
     #endregion
-    
-    
+
     /// <summary>
-    /// takes money out of cash account and puts it in a long-term position in the brokerage account
+    /// used for investing excess cash. let's you know how much excess you have to invest
     /// </summary>
-    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages)
-        InvestExcessCashIntoLongTermBrokerage(
-            LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices, Model model, PgPerson person)
+    public static decimal CalculateExcessCash(LocalDateTime currentDate, BookOfAccounts accounts, 
+        Model model, PgPerson person)
     {
-        
         var reserveCashNeeded = 0m;
         if (Rebalance.CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))
         {
@@ -276,6 +273,18 @@ public static class SharedWithdrawalFunctions
         // check if we have any excess cash
         var cashOnHand = AccountCalculation.CalculateCashBalance(accounts);
         var totalInvestmentAmount = cashOnHand - reserveCashNeeded;
+        return totalInvestmentAmount;
+    }
+    
+    
+    /// <summary>
+    /// takes money out of cash account and puts it in a long-term position in the brokerage account
+    /// </summary>
+    public static (BookOfAccounts accounts, List<ReconciliationMessage> messages)
+        InvestExcessCashIntoLongTermBrokerage(
+            LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices, Model model, PgPerson person)
+    {
+        var totalInvestmentAmount = CalculateExcessCash(currentDate, accounts, model, person);
 
         if (totalInvestmentAmount <= 0)
         {

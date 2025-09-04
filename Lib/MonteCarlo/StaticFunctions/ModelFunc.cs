@@ -379,7 +379,8 @@ public class ModelFunc
                 return randomInt switch
                 {
                     < 1000 => WithdrawalStrategyType.BasicBucketsIncomeThreshold,
-                    _ => WithdrawalStrategyType.BasicBucketsTaxableFirst
+                    < 2000 => WithdrawalStrategyType.BasicBucketsTaxableFirst,
+                    _ => WithdrawalStrategyType.SixtyForty
                 };
             });
         
@@ -399,10 +400,11 @@ public class ModelFunc
     
     private static  WithdrawalStrategyType GetRandomWithdrawalStrategyType()
     {
-        return MathFunc.GetUnSeededRandomInt(0, 2000) switch
+        return MathFunc.GetUnSeededRandomInt(0, 3000) switch
         {
             < 1000 => WithdrawalStrategyType.BasicBucketsIncomeThreshold,
-            _ => WithdrawalStrategyType.BasicBucketsTaxableFirst
+            < 2000 => WithdrawalStrategyType.BasicBucketsTaxableFirst,
+            _ => WithdrawalStrategyType.SixtyForty
         };
     }
     

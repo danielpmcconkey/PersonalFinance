@@ -134,19 +134,19 @@ public static class Payday
             (person.AnnualHsaContribution + person.AnnualHsaEmployerContribution) / 12m;
 
         var investRothResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
-            results.accounts, currentDate, roth401KAmount, McInvestmentAccountType.ROTH_401_K, prices);
+            results.accounts, currentDate, roth401KAmount, McInvestmentAccountType.ROTH_401_K, prices, model);
         results.accounts = investRothResults.accounts;
 
         var invest401KResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
-            results.accounts, currentDate, traditional401KAmount, McInvestmentAccountType.TRADITIONAL_401_K, prices);
+            results.accounts, currentDate, traditional401KAmount, McInvestmentAccountType.TRADITIONAL_401_K, prices, model);
         results.accounts = invest401KResults.accounts;
 
         var investHsaResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
-            results.accounts, currentDate, hsaAmount, McInvestmentAccountType.HSA, prices);
+            results.accounts, currentDate, hsaAmount, McInvestmentAccountType.HSA, prices, model);
         results.accounts = investHsaResults.accounts;
 
         var investMatchResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
-            results.accounts, currentDate, monthly401KMatch, McInvestmentAccountType.TRADITIONAL_401_K, prices);
+            results.accounts, currentDate, monthly401KMatch, McInvestmentAccountType.TRADITIONAL_401_K, prices, model);
         results.accounts = investMatchResults.accounts;
         
 

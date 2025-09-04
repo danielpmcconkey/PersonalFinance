@@ -17,7 +17,7 @@ public interface IWithdrawalStrategy
     /// </summary>
     (BookOfAccounts accounts, List<ReconciliationMessage> messages) 
         InvestFundsWithoutCashWithdrawal(BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount,
-            McInvestmentAccountType accountType, CurrentPrices prices);
+            McInvestmentAccountType accountType, CurrentPrices prices, Model model);
 
     (BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts accounts, RecessionStats recessionStats,

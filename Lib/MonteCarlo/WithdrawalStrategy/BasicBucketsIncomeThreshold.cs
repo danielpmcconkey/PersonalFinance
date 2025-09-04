@@ -59,7 +59,7 @@ public class BasicBucketsIncomeThreshold : IWithdrawalStrategy
     public (BookOfAccounts accounts, List<ReconciliationMessage> messages) 
         InvestFundsWithoutCashWithdrawal(
             BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount,
-            McInvestmentAccountType accountType, CurrentPrices prices)
+            McInvestmentAccountType accountType, CurrentPrices prices, Model model)
     {
         return Investment.InvestFundsByAccountTypeAndPositionType(
             accounts, currentDate, dollarAmount, McInvestmentPositionType.LONG_TERM, accountType,

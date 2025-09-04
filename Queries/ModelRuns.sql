@@ -68,13 +68,14 @@ limit 10
 
 select 
 r.modelId
+, m.withdrawalstrategy
 , r.rundate
 , r.numlivesrun
 , r.majorversion
 , r.minorversion
 , r.patchversion
-, r.networthatendofsim50
 , round(r.funpointsatendofsim50,2) as funpointsatendofsim50
+, r.networthatendofsim50
 , r.spendatendofsim50
 , r.taxatendofsim50
 , r.bankruptcyrateatendofsim
@@ -90,7 +91,7 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 11
+and minorversion = 13
 --and patchversion = 1
 and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc, r.bankruptcyrateatendofsim asc
@@ -104,7 +105,7 @@ from personalfinance.singlemodelrunresult
 order by rundate desc
 limit 20;
 
-alter table personalfinance.montecarlomodel add livinlargenetworthtrigger numeric(18,4) not null default 4000000.0;
+select * from personalfinance.montecarlomodel order by modelcreateddate desc limit 100
 
 select * from personalfinance.montecarlomodel
 where desiredmonthlyspendpostretirement > 10000
