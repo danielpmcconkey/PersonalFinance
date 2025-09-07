@@ -88,7 +88,7 @@ public static class AccountCashManagement
         
         // can we pull it from the mid-range bucket's long-term holdings?
         var localResult = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-            result.accounts, result.ledger, currentDate, amountStillNeeded, 
+            result.accounts, result.ledger, currentDate, amountStillNeeded, model, 
             minDateExclusive: null,
             maxDateInclusive: currentDate.PlusYears(-1),
             positionTypeOverride: McInvestmentPositionType.MID_TERM,
@@ -109,7 +109,7 @@ public static class AccountCashManagement
         amountStillNeeded = amount - totalCashOnHand;
         
         localResult = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-            result.accounts, result.ledger, currentDate, amountStillNeeded, 
+            result.accounts, result.ledger, currentDate, amountStillNeeded, model, 
             minDateExclusive: null,
             maxDateInclusive: currentDate.PlusYears(-1),
             positionTypeOverride: McInvestmentPositionType.LONG_TERM,
@@ -130,7 +130,7 @@ public static class AccountCashManagement
         amountStillNeeded = amount - totalCashOnHand;
         
         localResult = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-            result.accounts, result.ledger, currentDate, amountStillNeeded, 
+            result.accounts, result.ledger, currentDate, amountStillNeeded, model, 
             minDateExclusive: null,
             maxDateInclusive: null,
             positionTypeOverride: McInvestmentPositionType.MID_TERM,
@@ -151,7 +151,7 @@ public static class AccountCashManagement
         amountStillNeeded = amount - totalCashOnHand;
         
         localResult = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-            result.accounts, result.ledger, currentDate, amountStillNeeded, 
+            result.accounts, result.ledger, currentDate, amountStillNeeded, model, 
             minDateExclusive: null,
             maxDateInclusive: null,
             positionTypeOverride: McInvestmentPositionType.LONG_TERM,

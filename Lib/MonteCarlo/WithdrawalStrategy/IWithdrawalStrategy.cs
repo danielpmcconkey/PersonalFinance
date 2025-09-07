@@ -25,14 +25,14 @@ public interface IWithdrawalStrategy
     
     (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToDollarAmount(
-            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell,
+            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell, Model model,
             LocalDateTime? minDateExclusive = null, LocalDateTime? maxDateInclusive = null,
             McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null
             );
 
     (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToRmdAmount(decimal amountNeeded, BookOfAccounts accounts, TaxLedger ledger,
-            LocalDateTime currentDate);
+            LocalDateTime currentDate, Model model);
     
     
 }

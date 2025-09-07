@@ -35,7 +35,13 @@ public static class InvestmentSales
         var result = new (McInvestmentPositionType positionType, McInvestmentAccountType accountType)[size];
         for (var i = 0; i < positionTypes.Length; i++)
         for (var j = 0; j < accountTypes.Length; j++)
-            result[i * positionTypes.Length + j] = (positionTypes[j], accountTypes[i]);
+        {
+            var ordinal = i * positionTypes.Length + j;
+            var thisPosition = positionTypes[i];
+            var thisAccount = accountTypes[j];
+            result[ordinal] = (thisPosition, thisAccount);
+        }
+
         return result;
     }
     public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)

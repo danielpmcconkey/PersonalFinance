@@ -129,7 +129,7 @@ public static class SharedWithdrawalFunctions
         if (amountToSell > 0m)
         {
             var salesResults = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-                results.accounts, results.ledger, currentDate, amountToSell, null,
+                results.accounts, results.ledger, currentDate, amountToSell, model, null,
                 currentDate.PlusYears(-1), McInvestmentPositionType.LONG_TERM, null);
             var amountSold = salesResults.amountSold;
             results.accounts = salesResults.accounts;
@@ -194,7 +194,7 @@ public static class SharedWithdrawalFunctions
             // pull what we can from the mid-term bucket, don't touch the long unless we have to (and we'll do that when
             // we try to withdraw cash)
             var localResults = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-                results.accounts, results.ledger, currentDate, cashNeededToBeMoved, null, 
+                results.accounts, results.ledger, currentDate, cashNeededToBeMoved, model, null, 
                 currentDate.PlusYears(-1), McInvestmentPositionType.MID_TERM, null);
             results.accounts = localResults.accounts;
             results.ledger = localResults.ledger;
@@ -212,7 +212,7 @@ public static class SharedWithdrawalFunctions
         {
             // not in a recession. pull what we can from the long-term bucket first, then from mid if we still need to
             var localResults = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(results.accounts, results.ledger, 
-                currentDate, cashNeededToBeMoved, null, currentDate.PlusYears(-1),
+                currentDate, cashNeededToBeMoved, model, null, currentDate.PlusYears(-1),
                 McInvestmentPositionType.LONG_TERM, null);
             results.accounts = localResults.accounts;
             results.ledger = localResults.ledger;
@@ -227,7 +227,7 @@ public static class SharedWithdrawalFunctions
             
             // still hungry, hungry, hippo. Sell from mid
             localResults = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(results.accounts, results.ledger, 
-                currentDate, cashNeededToBeMoved, null, currentDate.PlusYears(-1),
+                currentDate, cashNeededToBeMoved, model, null, currentDate.PlusYears(-1),
                 McInvestmentPositionType.MID_TERM, null);
             results.accounts = localResults.accounts;
             results.ledger = localResults.ledger;
@@ -326,7 +326,7 @@ public static class SharedWithdrawalFunctions
             0m, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), []);
 
         var salesResults = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
-            accounts, ledger, currentDate, cashNeeded, null, currentDate.PlusYears(-1),
+            accounts, ledger, currentDate, cashNeeded, model, null, currentDate.PlusYears(-1),
             positionType, null);
         results.amountMoved = salesResults.amountSold;
         results.accounts = salesResults.accounts;
@@ -338,12 +338,6 @@ public static class SharedWithdrawalFunctions
             currentDate, results.amountMoved, $"Rebalance: Selling {positionType} investment"));
         return results;
     }
-    
-    
-    
-    
-
-    
     
     public static (decimal amountSold, BookOfAccounts newAccounts, TaxLedger newLedger, 
         List<ReconciliationMessage> messages) 

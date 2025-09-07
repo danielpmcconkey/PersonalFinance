@@ -92,7 +92,7 @@ public class BasicBucketsIncomeThreshold : IWithdrawalStrategy
     /// <exception cref="InvalidDataException"></exception>
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage>messages)
         SellInvestmentsToDollarAmount(
-            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell,
+            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell, Model model,
             LocalDateTime? minDateExclusive, LocalDateTime? maxDateInclusive, 
             McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null)
     {
@@ -149,7 +149,7 @@ public class BasicBucketsIncomeThreshold : IWithdrawalStrategy
     
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) 
         SellInvestmentsToRmdAmount(
-            decimal amountNeeded, BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate)
+            decimal amountNeeded, BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, Model model)
     {
        return SharedWithdrawalFunctions.BasicBucketsSellInvestmentsToRmdAmount(
            amountNeeded, accounts, ledger, currentDate);

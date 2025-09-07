@@ -169,7 +169,7 @@ public static class Tax
         results.newLedger = Tax.CopyTaxLedger(ledger);
 
         var localResult = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
-            amountLeft, results.newBookOfAccounts, results.newLedger, currentDate);
+            amountLeft, results.newBookOfAccounts, results.newLedger, currentDate, model);
         
         results.newBookOfAccounts = localResult.accounts;
         results.newLedger = localResult.ledger;

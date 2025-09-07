@@ -84,7 +84,8 @@ public class BasicBucketsTaxableFirstTests
        
 
         // Act
-        var result = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(accounts, ledger, currentDate, amountToSell);
+        var result = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
+            accounts, ledger, currentDate, amountToSell, model);
         var actualEndBalDeferred = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
             result.accounts, [McInvestmentAccountType.TRADITIONAL_401_K]);
         var actualEndBalTaxable = AccountCalculation.CalculateTotalBalanceByMultipleFactors(

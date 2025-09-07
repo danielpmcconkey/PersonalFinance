@@ -359,7 +359,7 @@ public class InvestmentSalesTests
         
         // Act
         var result = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
-            amountNeeded, book, taxLedger, _testDate);
+            amountNeeded, book, taxLedger, _testDate, model);
         
         var newCash = AccountCalculation.CalculateCashBalance(result.accounts);
 
@@ -386,7 +386,7 @@ public class InvestmentSalesTests
         
         // Act
         var result = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
-            amountNeeded, book, taxLedger, _testDate);
+            amountNeeded, book, taxLedger, _testDate, model);
         
         var newCash = AccountCalculation.CalculateCashBalance(result.accounts);
         var recordedRmd = result.ledger.TaxableIraDistribution
@@ -414,7 +414,7 @@ public class InvestmentSalesTests
 
         // Act & Assert
         Assert.Throws<InvalidDataException>(() => 
-            model.WithdrawalStrategy.SellInvestmentsToRmdAmount(amountNeeded, book, taxLedger, _testDate));
+            model.WithdrawalStrategy.SellInvestmentsToRmdAmount(amountNeeded, book, taxLedger, _testDate, model));
     }
 
     [Fact]
@@ -437,7 +437,8 @@ public class InvestmentSalesTests
             book,
             taxLedger,
             _testDate,
-            amountNeeded
+            amountNeeded,
+            model
             );
         
         var cashBalance = AccountCalculation.CalculateCashBalance(result.accounts);
@@ -476,7 +477,8 @@ public class InvestmentSalesTests
             book,
             taxLedger,
             _testDate,
-            amountNeeded
+            amountNeeded,
+            model
             );
         
         var cashBalance = AccountCalculation.CalculateCashBalance(result.accounts);
@@ -533,6 +535,7 @@ public class InvestmentSalesTests
             taxLedger,
             _testDate,
             amountNeeded,
+            model,
             null,
             null,
             McInvestmentPositionType.LONG_TERM

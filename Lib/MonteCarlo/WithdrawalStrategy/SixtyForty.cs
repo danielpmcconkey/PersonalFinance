@@ -8,13 +8,22 @@ namespace Lib.MonteCarlo.WithdrawalStrategy;
 
 public class SixtyForty : IWithdrawalStrategy
 {
+    private static McInvestmentAccountType[] _salesOrder = [
+        // tax on growth only
+        McInvestmentAccountType.TAXABLE_BROKERAGE,
+        // tax deferred
+        McInvestmentAccountType.TRADITIONAL_401_K,
+        McInvestmentAccountType.TRADITIONAL_IRA,
+        // no tax, period
+        McInvestmentAccountType.HSA,
+        McInvestmentAccountType.ROTH_IRA,
+        McInvestmentAccountType.ROTH_401_K,
+    ];
+    
     public (BookOfAccounts accounts, List<ReconciliationMessage> messages)
         InvestExcessCash(LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices,
             Model model, PgPerson person)
     {
-        /*
-         * you are here. you just implemented this method. use the spreadsheet to create a UT
-         */
         var totalInvestmentAmount = SharedWithdrawalFunctions.CalculateExcessCash(
             currentDate, accounts, model, person);
 
@@ -56,41 +65,34 @@ public class SixtyForty : IWithdrawalStrategy
         InvestFundsWithoutCashWithdrawal(BookOfAccounts accounts, LocalDateTime currentDate, decimal dollarAmount,
             McInvestmentAccountType accountType, CurrentPrices prices, Model model)
     {
-        var (longTermAmount, midTermAmount, ratio) = CalculateExistingRatio(accounts);
-        var desiredRatio = CalculateDesiredRatio(currentDate, model);
-        var totalAfterInvestment = longTermAmount + midTermAmount + dollarAmount;
-        var desiredLongAfterInvestment = totalAfterInvestment * desiredRatio;
-        var desiredMidAfterInvestment = totalAfterInvestment - desiredLongAfterInvestment;
-        var diffLong = desiredLongAfterInvestment - longTermAmount;
-        var diffMid = desiredMidAfterInvestment - midTermAmount;
-        var amountToInvestLong =
-            (diffLong <= 0)
-                ? 0
-                : (diffLong <= dollarAmount) 
-                    ? diffLong
-                    : dollarAmount;
-        var amountToInvestMid = dollarAmount - amountToInvestLong;
+        var (amountToMoveLong, amountToMoveMid) = CalculateMovementAmountNeededByPositionType(
+            accounts, currentDate, dollarAmount, model);
         
-        // set up return tuple
+        // set up the return tuple
         (BookOfAccounts accounts, List<ReconciliationMessage> messages) results = (
             AccountCopy.CopyBookOfAccounts(accounts), []);
-        
-        var investLongResults = Investment.InvestFundsByAccountTypeAndPositionType(
-            results.accounts, currentDate, amountToInvestLong, McInvestmentPositionType.LONG_TERM, 
-            McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
-        results.accounts = investLongResults.accounts;
-        
-        var investMidResults = Investment.InvestFundsByAccountTypeAndPositionType(
-            results.accounts, currentDate, amountToInvestMid, McInvestmentPositionType.MID_TERM, 
-            McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
-        results.accounts = investMidResults.accounts;
+        if (amountToMoveLong > 0)
+        {
+            var investLongResults = Investment.InvestFundsByAccountTypeAndPositionType(
+                results.accounts, currentDate, amountToMoveLong, McInvestmentPositionType.LONG_TERM, 
+                McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
+            results.accounts = investLongResults.accounts;
+            results.messages.AddRange(investLongResults.messages);
+        }
+
+        if (amountToMoveMid > 0)
+        {
+            var investMidResults = Investment.InvestFundsByAccountTypeAndPositionType(
+                results.accounts, currentDate, amountToMoveMid, McInvestmentPositionType.MID_TERM, 
+                McInvestmentAccountType.TAXABLE_BROKERAGE, prices);
+            results.accounts = investMidResults.accounts;
+            results.messages.AddRange(investMidResults.messages);
+        }
         
         if (!MonteCarloConfig.DebugMode) return results;
-        results.messages.AddRange(investLongResults.messages);
-        results.messages.AddRange(investMidResults.messages);
         results.messages.Add(new ReconciliationMessage(
             currentDate, dollarAmount,
-            $"Invested {amountToInvestLong} (long) and {amountToInvestMid} (mid) in brokerage account"));
+            $"Invested {amountToMoveLong} (long) and {amountToMoveMid} (mid) in brokerage account"));
         return results;
     }
 
@@ -103,19 +105,106 @@ public class SixtyForty : IWithdrawalStrategy
     
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToDollarAmount(
-            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell,
+            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell, Model model,
             LocalDateTime? minDateExclusive = null, LocalDateTime? maxDateInclusive = null,
             McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null
         )
     {
-        throw new NotImplementedException();
+        var salesOrderLong = InvestmentSales.CreateSalesOrderPositionTypeFirst(
+            [McInvestmentPositionType.LONG_TERM], 
+            accountTypeOverride is null ? _salesOrder : [accountTypeOverride.Value]);
+        var salesOrderMid = InvestmentSales.CreateSalesOrderPositionTypeFirst(
+            [McInvestmentPositionType.MID_TERM],
+            accountTypeOverride is null ? _salesOrder : [accountTypeOverride.Value]);
+        
+        // if we're overriding the position type, just sell the amount we're given in the position type requested
+        if (positionTypeOverride is not null && positionTypeOverride == McInvestmentPositionType.LONG_TERM)
+            return InvestmentSales.SellInvestmentsToDollarAmount(
+                accounts, ledger, currentDate, amountToSell, salesOrderLong, minDateExclusive, maxDateInclusive);
+        if (positionTypeOverride is not null && positionTypeOverride == McInvestmentPositionType.MID_TERM)
+            return InvestmentSales.SellInvestmentsToDollarAmount(
+                accounts, ledger, currentDate, amountToSell, salesOrderMid, minDateExclusive, maxDateInclusive);
+        
+        var (amountToMoveLong, amountToMoveMid) = CalculateMovementAmountNeededByPositionType(
+           accounts, currentDate, -amountToSell, model); // flip the sign as the calc movement function works for both selling and investing
+        // flip the sign back now as the sales function take a positive number as the amount to sell
+        var amountToSellLong = -amountToMoveLong;
+        var amountToSellMid = -amountToMoveMid;
+        
+        // set up return tuple
+        (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) 
+            results = (
+                0, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), []
+            );
+        
+       // actually sell stuff
+       if (amountToSellLong > 0)
+       {
+           var longSalesResult = InvestmentSales.SellInvestmentsToDollarAmount(
+               results.accounts, results.ledger, currentDate, amountToSellLong, salesOrderLong, minDateExclusive,
+               maxDateInclusive);
+           results.amountSold += longSalesResult.amountSold;
+           results.accounts = longSalesResult.accounts;
+           results.ledger = longSalesResult.ledger;
+           results.messages.AddRange(longSalesResult.messages);
+       }
+
+       if (amountToSellMid > 0)
+       {
+           var midSalesResult = InvestmentSales.SellInvestmentsToDollarAmount(
+               results.accounts, results.ledger, currentDate, amountToSellMid, salesOrderMid, minDateExclusive,
+               maxDateInclusive);
+           results.amountSold += midSalesResult.amountSold;
+           results.accounts = midSalesResult.accounts;
+           results.ledger = midSalesResult.ledger;
+           results.messages.AddRange(midSalesResult.messages);
+       }
+       
+       if (!MonteCarloConfig.DebugMode) return results;
+       
+       results.messages.Add(new ReconciliationMessage(
+           currentDate, results.amountSold, $"Amount sold in investment accounts"));
+        return results;
     }
 
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToRmdAmount(decimal amountNeeded, BookOfAccounts accounts, TaxLedger ledger,
-            LocalDateTime currentDate)
+            LocalDateTime currentDate, Model model)
     {
-        throw new NotImplementedException();
+        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        if (accounts.InvestmentAccounts.Count == 0) return (0, accounts, ledger, []);
+        
+        // set up return tuple
+        (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) 
+            results = (
+                0, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), []
+            );
+        
+        // try the traditional IRA first
+        var tradIraResults = SellInvestmentsToDollarAmount(
+            accounts, ledger, currentDate, amountNeeded, model);
+        results.amountSold += tradIraResults.amountSold;
+        results.accounts = tradIraResults.accounts;
+        results.ledger = tradIraResults.ledger;
+        results.messages.AddRange(tradIraResults.messages);
+        
+        var amountStillNeeded = amountNeeded - results.amountSold;
+        if(amountStillNeeded <= 0) return results;
+        
+        // now try the traditional 401k
+        var trad401KResults = SellInvestmentsToDollarAmount(
+            accounts, ledger, currentDate, amountNeeded, model);
+        results.amountSold += trad401KResults.amountSold;
+        results.accounts = trad401KResults.accounts;
+        results.ledger = trad401KResults.ledger;
+        results.messages.AddRange(trad401KResults.messages);
+        
+        amountStillNeeded = amountNeeded - results.amountSold;
+        if(amountStillNeeded <= 0) return results;
+        
+        // nothing's left to try. not sure how we got here
+        throw new InvalidDataException("RMD: Nothing left to try. Not sure how we got here");
+        // todo: UT the 60/40 SellInvestmentsToRmdAmount function
     }
 
     /// <summary>
@@ -138,6 +227,7 @@ public class SixtyForty : IWithdrawalStrategy
         var percentClimb = percentClimbPerMonth * monthsSinceRebalanceStart;
         return maxRatio - percentClimb;
     }
+    
     private (decimal longTermAmount, decimal midTermAmount, decimal ratio) 
         CalculateExistingRatio(BookOfAccounts accounts)
     {
@@ -145,5 +235,73 @@ public class SixtyForty : IWithdrawalStrategy
         var midTermAmount = AccountCalculation.CalculateMidBucketTotalBalance(accounts);
         var ratio = longTermAmount / (longTermAmount + midTermAmount);
         return (longTermAmount, midTermAmount, ratio);
+    }
+
+    /// <summary>
+    /// Analyzes current long / mid mix, how much you want to move (buy or sell), and determines how much of each bucket
+    /// would need to move to reach ideal 60/40 state. Positive numbers assume purchase. Negative assumes sale.
+    /// Method is public so I can unit test it independently.
+    /// </summary>
+    public (decimal diffLong, decimal diffMid) 
+        CalculateMovementAmountNeededByPositionType(
+            BookOfAccounts accounts, LocalDateTime currentDate, decimal movementAmount, Model model)
+    {
+        if(movementAmount == 0) return (0, 0);
+        var isSale = movementAmount < 0;
+        var targetRatio = CalculateDesiredRatio(currentDate, model);
+        var (currentLongTermAmount, curretMidTermAmount, ratio) = CalculateExistingRatio(accounts);
+        // determive what your ideal movement would be; what you would have to sell or buy to reach the target ratio 
+        var finalCombinedAfterMovement = currentLongTermAmount + curretMidTermAmount + movementAmount;
+        var idealLongAfterMovement = finalCombinedAfterMovement * targetRatio;
+        var idealMidAfterMovement = finalCombinedAfterMovement * (1 - targetRatio);
+        var idealLongMovement = idealLongAfterMovement - currentLongTermAmount;
+        var idealMidMovement = idealMidAfterMovement - curretMidTermAmount;
+        
+        // calculate and return buy values first as that's way easier
+        if (!isSale)
+        {
+            // if both ideal movement values are positive, return the ideal values
+            if(idealLongMovement >= 0 && idealMidMovement >= 0 ) return (idealLongMovement, idealMidMovement);
+            // if one is positive and the other is negative, put everything into the positive one
+            var isLongMovementNegative = idealLongMovement < 0;
+            var isMidMovementNegative = idealMidMovement < 0;
+            var finalLongMovement = isMidMovementNegative ? movementAmount : 0;
+            var finalMidMovement = isLongMovementNegative ? movementAmount : 0;
+            return (finalLongMovement, finalMidMovement);
+        }
+        
+        // now do sales, which are more complex because you have to make sure you have the funds as well
+        else
+        {
+            // if you either can't afford the total sale, or it'll take you to zero, sell everything you got
+            if (currentLongTermAmount + curretMidTermAmount <= -movementAmount) 
+                return (-currentLongTermAmount, -curretMidTermAmount);
+            
+            // set up the variables to determine which route to take
+            var isLongMovementNegative = idealLongMovement < 0;
+            var isMidMovementNegative = idealMidMovement < 0;
+            var canYouAffordTheLongSale = currentLongTermAmount >= -idealLongMovement;
+            var canYouAffordTheMidSale = curretMidTermAmount >= -idealMidMovement;
+            var youHaveBothAndBothAreNegative = canYouAffordTheLongSale && canYouAffordTheMidSale &&
+                                                isLongMovementNegative && isMidMovementNegative;
+            
+            // if you can afford the total sale, and each of your current balances would support the ideal sale, return the ideal
+            if (youHaveBothAndBothAreNegative) return (idealLongMovement, idealMidMovement);
+            
+            // calculate long and mid independently
+            
+            // if you can afford the long sale, take the max between the movement amount and the ideal long
+            var finalLongMovement = (isLongMovementNegative && canYouAffordTheLongSale) ?
+                Math.Max(movementAmount, idealLongMovement)
+                : 0m;
+            // if you can afford the mid sale, take the max between the movement amount and the ideal mid
+            var finalMidMovement = (isMidMovementNegative && canYouAffordTheMidSale) ?
+                Math.Max(movementAmount, idealMidMovement)
+                : 0m;
+            
+            return (finalLongMovement, finalMidMovement);
+        }
+        
+        
     }
 }

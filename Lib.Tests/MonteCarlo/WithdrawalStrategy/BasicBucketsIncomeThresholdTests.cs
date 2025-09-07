@@ -57,7 +57,7 @@ public class BasicBucketsIncomeThresholdTests
 
 
     // test values created in the testing spreadsheet attached to this solution in the tab named "basic buckets sales order test"
-    public void BasicBuckets_SellInvestmentsToDollarAmount_WithIncomeRoom_SellsInCorrectOrder(
+    public void SellInvestmentsToDollarAmount_WithIncomeRoom_SellsInCorrectOrder(
         int countDeferred, int countTaxable, decimal expectedEndBalDeferred, decimal expectedEndBalTaxable,
         decimal expectedEndBalTaxFree)
     {
@@ -84,7 +84,8 @@ public class BasicBucketsIncomeThresholdTests
        
 
         // Act
-        var result = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(accounts, ledger, currentDate, amountToSell);
+        var result = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
+            accounts, ledger, currentDate, amountToSell, model);
         var actualEndBalDeferred = AccountCalculation.CalculateTotalBalanceByMultipleFactors(
             result.accounts, [McInvestmentAccountType.TRADITIONAL_401_K]);
         var actualEndBalTaxable = AccountCalculation.CalculateTotalBalanceByMultipleFactors(

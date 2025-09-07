@@ -61,7 +61,7 @@ public class BasicBucketsTaxableFirst : IWithdrawalStrategy
 
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToDollarAmount(
-            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell,
+            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell, Model model,
             LocalDateTime? minDateExclusive = null, LocalDateTime? maxDateInclusive = null,
             McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null
         )
@@ -81,7 +81,7 @@ public class BasicBucketsTaxableFirst : IWithdrawalStrategy
 
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) 
         SellInvestmentsToRmdAmount(
-            decimal amountNeeded, BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate)
+            decimal amountNeeded, BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, Model model)
     {
         return SharedWithdrawalFunctions.BasicBucketsSellInvestmentsToRmdAmount(
             amountNeeded, accounts, ledger, currentDate);
