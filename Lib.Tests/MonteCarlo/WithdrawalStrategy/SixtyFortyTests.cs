@@ -455,4 +455,87 @@ public class SixtyFortyTests
         Assert.Equal(Math.Round(expectedMid,1, MidpointRounding.AwayFromZero),
             Math.Round(actualMid,1, MidpointRounding.AwayFromZero));
     }
+    
+    [Fact]
+    public void SellInvestmentsToRmdAmount_WithAllMidTermPositions_SellsWhatsNeeded()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2050, 1, 1, 0, 0);
+        var amountNeeded = 100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.5m, McInvestmentPositionType.MID_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        var expectedAmountSold = amountNeeded;
+        // Act
+        var results = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
+            amountNeeded, accounts, ledger, currentDate, model);
+        var actualAmountSold = results.amountSold;
+        // Assert
+        Assert.Equal(expectedAmountSold, actualAmountSold);
+    }
+    
+    [Fact]
+    public void SellInvestmentsToRmdAmount_WithAllLongTermPositions_SellsWhatsNeeded()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2050, 1, 1, 0, 0);
+        var amountNeeded = 100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.5m, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        var expectedAmountSold = amountNeeded;
+        // Act
+        var results = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
+            amountNeeded, accounts, ledger, currentDate, model);
+        var actualAmountSold = results.amountSold;
+        // Assert
+        Assert.Equal(expectedAmountSold, actualAmountSold);
+    }
+    
+    [Fact]
+    public void SellInvestmentsToRmdAmount_WithAllRecentPositions_SellsWhatsNeeded()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2050, 1, 1, 0, 0);
+        var amountNeeded = 100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.5m, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate));
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        var expectedAmountSold = amountNeeded;
+        // Act
+        var results = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
+            amountNeeded, accounts, ledger, currentDate, model);
+        var actualAmountSold = results.amountSold;
+        // Assert
+        Assert.Equal(expectedAmountSold, actualAmountSold);
+    }
+    
+    [Fact]
+    public void SellInvestmentsToRmdAmount_WithNoTaxDeferredPositions_ThrowsException()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2050, 1, 1, 0, 0);
+        var amountNeeded = 100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts.Brokerage.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.5m, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        
+        // Act & Assert
+        var exception = Assert.Throws<InvalidDataException>(() => 
+            model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
+                amountNeeded, accounts, ledger, currentDate, model));
+        Assert.Equal("RMD: Nothing left to try. Not sure how we got here", exception.Message);
+    }
 }

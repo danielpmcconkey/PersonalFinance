@@ -8,6 +8,8 @@ namespace Lib.MonteCarlo.WithdrawalStrategy;
 
 public class SixtyForty : IWithdrawalStrategy
 {
+    // todo: adjust the 60/40 strat to have a varible long target
+    
     private static McInvestmentAccountType[] _salesOrder = [
         // tax on growth only
         McInvestmentAccountType.TAXABLE_BROKERAGE,
@@ -182,7 +184,8 @@ public class SixtyForty : IWithdrawalStrategy
         
         // try the traditional IRA first
         var tradIraResults = SellInvestmentsToDollarAmount(
-            accounts, ledger, currentDate, amountNeeded, model);
+            accounts, ledger, currentDate, amountNeeded, model, null, null, 
+            null, McInvestmentAccountType.TRADITIONAL_IRA);
         results.amountSold += tradIraResults.amountSold;
         results.accounts = tradIraResults.accounts;
         results.ledger = tradIraResults.ledger;
@@ -193,7 +196,8 @@ public class SixtyForty : IWithdrawalStrategy
         
         // now try the traditional 401k
         var trad401KResults = SellInvestmentsToDollarAmount(
-            accounts, ledger, currentDate, amountNeeded, model);
+            accounts, ledger, currentDate, amountNeeded, model, null, null, 
+            null, McInvestmentAccountType.TRADITIONAL_401_K);
         results.amountSold += trad401KResults.amountSold;
         results.accounts = trad401KResults.accounts;
         results.ledger = trad401KResults.ledger;
