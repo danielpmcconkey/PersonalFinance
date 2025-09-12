@@ -262,13 +262,14 @@ public class BasicBucketsIncomeThresholdTests
             AreWeInExtremeAusterityMeasures = false,
             AreWeInLivinLargeMode = false
         };
-        var prices = new CurrentPrices();
+        var prices = TestDataManager.CreateTestCurrentPrices(
+            1m, 100m, 50m, 0m);
         var expectedNetWorth = AccountCalculation.CalculateNetWorth(accounts);
         
     
         // Act
         var result = model.WithdrawalStrategy.RebalancePortfolio(
-            currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
+            currentDate, accounts, recessionStats, prices, model, new TaxLedger(), person);
         
         var actualNetWorth = AccountCalculation.CalculateNetWorth(result.accounts);
     

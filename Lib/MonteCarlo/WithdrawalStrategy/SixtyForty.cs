@@ -10,7 +10,7 @@ public class SixtyForty : IWithdrawalStrategy
 {
     // todo: adjust the 60/40 strat to have a varible long target
     
-    private static McInvestmentAccountType[] _salesOrder = [
+    private static readonly McInvestmentAccountType[] SalesOrder = [
         // tax on growth only
         McInvestmentAccountType.TAXABLE_BROKERAGE,
         // tax deferred
@@ -58,6 +58,7 @@ public class SixtyForty : IWithdrawalStrategy
             currentDate, totalInvestmentAmount,$"Invested {totalInvestmentAmount} excess cash into brokerage account"));
         return results;
     }
+    
     /// <summary>
     /// Invest funds per the withdrawal strategy rules. Assumes that the cash has already been taken out of the cash
     /// account. This is because this method is sometimes used for investing extra cash, but also used to invest
@@ -102,7 +103,117 @@ public class SixtyForty : IWithdrawalStrategy
         RebalancePortfolio(LocalDateTime currentDate, BookOfAccounts accounts, RecessionStats recessionStats,
             CurrentPrices currentPrices, Model model, TaxLedger ledger, PgPerson person)
     {
-        throw new NotImplementedException();
+        if (!Rebalance.CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))
+        {
+            if (!MonteCarloConfig.DebugMode) return (accounts, ledger, []);
+            return (accounts, ledger, [new ReconciliationMessage(
+                currentDate, null, "Not close enough to retirement yet to rebalance")]);
+        };
+        if (!Rebalance.CalculateWhetherItsBucketRebalanceTime(currentDate, model))
+        {
+            if (!MonteCarloConfig.DebugMode) return (accounts, ledger, []);
+            return (accounts, ledger, [new ReconciliationMessage(
+                currentDate, null, "Not a rebalancing month")]);
+        };
+        
+        // set up return tuple
+        (BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) results = (
+            AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), []);
+        if (MonteCarloConfig.DebugMode)
+        {
+            results.messages.Add(new ReconciliationMessage(
+                currentDate, null, "Rebalance: time to move funds"));
+        }
+        
+        var cashNeededOnHand =
+            Spend.CalculateCashNeedForNMonths(model, person, results.accounts, currentDate,
+                model.NumMonthsCashOnHand);
+        var actualCashOnHand = AccountCalculation.CalculateCashBalance(results.accounts);
+        var cashStillNeeded = Math.Max(0, cashNeededOnHand - actualCashOnHand);
+
+        if (cashStillNeeded > 0)
+        {
+            var rebalanceCashResults = SellInvestmentsToDollarAmount(
+                results.accounts, results.ledger, currentDate, cashStillNeeded, model, null,
+                currentDate.PlusYears(-1));
+            results.accounts = rebalanceCashResults.accounts;
+            results.ledger = rebalanceCashResults.ledger;
+            results.messages.AddRange(rebalanceCashResults.messages);
+        }
+        
+        // now set your mid and long to target
+        var (idealLongMovement, idealMidMovement) = CalculateRebalanceInvestmentTargets(
+            results.accounts, currentDate, model);
+        
+        // check if the juice is worth the squeeze
+        const decimal minJuice = 1000m;
+        if (Math.Abs(idealLongMovement) < minJuice && Math.Abs(idealMidMovement) < minJuice) return results;
+
+        // try to do it without tax consequence first
+        switch (idealLongMovement)
+        {
+            case > 0 when idealMidMovement < 0:
+            {
+                // sell mid, buy long
+                var taxFreeMove = Rebalance.MoveMidToLongWithoutTaxConsequences(
+                    idealLongMovement, results.accounts, results.ledger, currentDate, currentPrices);
+                results.accounts = taxFreeMove.accounts;
+                results.messages.AddRange(taxFreeMove.messages);
+                break;
+            }
+            case < 0 when idealMidMovement > 0:
+            {
+                // sell long, buy mid
+                var taxFreeMove = Rebalance.MoveLongToMidWithoutTaxConsequences(
+                    idealMidMovement, results.accounts, results.ledger, currentDate, currentPrices);
+                results.accounts = taxFreeMove.accounts;
+                results.messages.AddRange(taxFreeMove.messages);
+                break;
+            }
+        }
+        
+        // recalc your mid and long to target
+        (idealLongMovement, idealMidMovement) = CalculateRebalanceInvestmentTargets(
+            results.accounts, currentDate, model);
+        
+        // check if the juice is worth the squeeze
+        if (Math.Abs(idealLongMovement) < minJuice && Math.Abs(idealMidMovement) < minJuice) return results;
+        
+        // gotta move stuff around in your brokerage account. this involves selling and buying and produces a taxable
+        // event
+        var movementAmount = Math.Max(idealLongMovement, idealMidMovement);
+        var sourceType = idealLongMovement > idealMidMovement
+            ? McInvestmentPositionType.MID_TERM
+            : McInvestmentPositionType.LONG_TERM;
+        var destinationType = idealLongMovement > idealMidMovement
+            ? McInvestmentPositionType.LONG_TERM
+            : McInvestmentPositionType.MID_TERM;
+        
+        // sell source
+        var sellResults = SellInvestmentsToDollarAmount(
+            results.accounts, results.ledger, currentDate, movementAmount, model, null,
+            currentDate.PlusYears(-1), sourceType, McInvestmentAccountType.TAXABLE_BROKERAGE);
+        results.accounts = sellResults.accounts;
+        results.ledger = sellResults.ledger;
+        results.messages.AddRange(sellResults.messages);
+        
+        if (sellResults.amountSold <= 0) return results; // sometimes, there was nothing to sell, so don't try to buy
+            
+        // withdraw the cash
+        var withdrawalResult = AccountCashManagement.TryWithdrawCash(
+            results.accounts, sellResults.amountSold, currentDate);
+        results.accounts = withdrawalResult.newAccounts;
+        if(!withdrawalResult.isSuccessful) throw new InvalidDataException("Failed to withdraw cash after selling");
+        results.messages.AddRange(withdrawalResult.messages);
+        // buy destination
+        var buyResult = Investment.InvestFundsByAccountTypeAndPositionType(
+            results.accounts, currentDate, sellResults.amountSold, destinationType, 
+            McInvestmentAccountType.TAXABLE_BROKERAGE, currentPrices);
+        results.accounts = buyResult.accounts;
+        results.messages.AddRange(buyResult.messages);
+        
+        // you did what you could
+        return results;
     }
     
     public (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
@@ -112,12 +223,13 @@ public class SixtyForty : IWithdrawalStrategy
             McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null
         )
     {
+        // todo: confirm that usages of SellInvestmentsToDollarAmount are supplying the 1-year-ago date max where they should 
         var salesOrderLong = InvestmentSales.CreateSalesOrderPositionTypeFirst(
             [McInvestmentPositionType.LONG_TERM], 
-            accountTypeOverride is null ? _salesOrder : [accountTypeOverride.Value]);
+            accountTypeOverride is null ? SalesOrder : [accountTypeOverride.Value]);
         var salesOrderMid = InvestmentSales.CreateSalesOrderPositionTypeFirst(
             [McInvestmentPositionType.MID_TERM],
-            accountTypeOverride is null ? _salesOrder : [accountTypeOverride.Value]);
+            accountTypeOverride is null ? SalesOrder : [accountTypeOverride.Value]);
         
         // if we're overriding the position type, just sell the amount we're given in the position type requested
         if (positionTypeOverride is not null && positionTypeOverride == McInvestmentPositionType.LONG_TERM)
@@ -214,7 +326,8 @@ public class SixtyForty : IWithdrawalStrategy
     /// <summary>
     /// Determines what percentage of total investments we want in long-term growth stocks 
     /// </summary>
-    private decimal CalculateDesiredRatio(LocalDateTime currentDate, Model model)
+    private decimal 
+        CalculateDesiredRatio(LocalDateTime currentDate, Model model)
     {
         const decimal minRatio = 0.6m;
         const decimal maxRatio = 1.0m;
@@ -305,7 +418,20 @@ public class SixtyForty : IWithdrawalStrategy
             
             return (finalLongMovement, finalMidMovement);
         }
-        
-        
+    }
+
+    private (decimal idealLongMovement, decimal idealShortMovement) 
+        CalculateRebalanceInvestmentTargets(BookOfAccounts accounts, LocalDateTime currentDate, Model model)
+    {
+        // now set your mid and long to target
+        var targetRatio = CalculateDesiredRatio(currentDate, model);
+        var (currentLongTermAmount, curretMidTermAmount, ratio) = CalculateExistingRatio(accounts);
+        // determive what your ideal movement would be; what you would have to sell or buy to reach the target ratio 
+        var combined = currentLongTermAmount + curretMidTermAmount;
+        var idealLong = combined * targetRatio;
+        var idealMid = combined * (1 - targetRatio);
+        var idealLongMovement = idealLong - currentLongTermAmount;
+        var idealMidMovement = idealMid - curretMidTermAmount;
+        return (idealLongMovement, idealMidMovement);
     }
 }

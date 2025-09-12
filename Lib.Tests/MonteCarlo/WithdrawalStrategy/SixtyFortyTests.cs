@@ -1,12 +1,128 @@
 using Lib.DataTypes.MonteCarlo;
+using Lib.DataTypes.Postgres;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.MonteCarlo.WithdrawalStrategy;
 using NodaTime;
 
 namespace Lib.Tests.MonteCarlo.WithdrawalStrategy;
 
+internal record RebalanceTestAssetRow
+{
+    internal required McInvestmentAccountType AccountType;
+    internal required McInvestmentPositionType PositionType;
+    internal required LocalDateTime EntryDate;
+    internal required decimal StartingBalance;
+    internal required decimal ActualEndingBalance;
+    internal required decimal ExpectedEndingBalance;
+    internal required decimal CostModifier;
+}
 public class SixtyFortyTests
 {
+    private Model _rebalanceModel;
+    private PgPerson _rebalancePerson;
+    private LocalDateTime _rebalanceCurrentDate;
+    private decimal _rebalanceCashNeededOnHand;
+    public SixtyFortyTests()
+    {
+        _rebalancePerson = TestDataManager.CreateTestPerson();
+        _rebalancePerson.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
+        _rebalancePerson.RequiredMonthlySpend = 1000;
+        _rebalancePerson.RequiredMonthlySpendHealthCare = 500;
+        _rebalanceModel = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        _rebalanceModel.RetirementDate = _rebalancePerson.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        _rebalanceModel.RebalanceFrequency = RebalanceFrequency.MONTHLY;
+        _rebalanceModel.NumMonthsCashOnHand = 12;
+        _rebalanceModel.NumMonthsMidBucketOnHand = 6;
+        _rebalanceModel.NumMonthsPriorToRetirementToBeginRebalance = 12; 
+        _rebalanceModel.DesiredMonthlySpendPostRetirement = 800;
+        _rebalanceModel.DesiredMonthlySpendPreRetirement = 600; 
+        _rebalanceCurrentDate = _rebalancePerson.BirthDate.PlusYears(63); // Within rebalance window, post retirement, pre-medicare
+        _rebalanceCashNeededOnHand = Spend.CalculateCashNeedForNMonths(_rebalanceModel, _rebalancePerson, 
+            TestDataManager.CreateEmptyBookOfAccounts(), _rebalanceCurrentDate, _rebalanceModel.NumMonthsCashOnHand);
+    }
+    private (RebalanceTestAssetRow[] assetRowsAfter, TaxLedger ledger)
+        RebalancePrep(RebalanceTestAssetRow[] assetRowsBefore)
+    {
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        foreach (var assetRow in assetRowsBefore)
+        {
+            var entryDate = assetRow.EntryDate;
+            var position = TestDataManager.CreateTestInvestmentPosition(
+                1.0m, assetRow.StartingBalance, assetRow.PositionType, true,
+                assetRow.CostModifier, entryDate);
+            switch (assetRow.AccountType)
+            {
+                case McInvestmentAccountType.CASH :
+                    accounts = AccountCashManagement.DepositCash(accounts, assetRow.StartingBalance,
+                            _rebalanceCurrentDate).accounts;
+                    break;
+                case McInvestmentAccountType.HSA:
+                    accounts.Hsa.Positions.Add(position);
+                    break;
+                case McInvestmentAccountType.TAXABLE_BROKERAGE:
+                    accounts.Brokerage.Positions.Add(position);
+                    break;
+                case McInvestmentAccountType.TRADITIONAL_401_K:
+                    accounts.Traditional401K.Positions.Add(position);
+                    break;
+                case McInvestmentAccountType.ROTH_401_K:
+                    accounts.Roth401K.Positions.Add(position);
+                    break;
+                case McInvestmentAccountType.ROTH_IRA:
+                    accounts.RothIra.Positions.Add(position);
+                    break;
+                case McInvestmentAccountType.TRADITIONAL_IRA:
+                    accounts.TraditionalIra.Positions.Add(position);
+                    break;
+                case McInvestmentAccountType.PRIMARY_RESIDENCE:
+                    throw new InvalidDataException();
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+        
+        var ledger = new TaxLedger();
+        var recessionStats = new RecessionStats
+        {
+            AreWeInARecession = false,
+            AreWeInExtremeAusterityMeasures = false,
+            AreWeInLivinLargeMode = false
+        };
+        var prices = TestDataManager.CreateTestCurrentPrices(
+            1m, 100m, 50m, 0m);
+    
+        var result = _rebalanceModel.WithdrawalStrategy.RebalancePortfolio(
+            _rebalanceCurrentDate, accounts, recessionStats, prices, _rebalanceModel, ledger, _rebalancePerson);
+
+        var assetRowsAfter = new RebalanceTestAssetRow[assetRowsBefore.Length];
+        for (var i = 0; i < assetRowsBefore.Length; i++)
+        {
+            var assetRowStart = assetRowsBefore[i];
+            var endingBalance = 0m;
+            if (assetRowStart.AccountType == McInvestmentAccountType.CASH)
+            {
+                endingBalance = AccountCalculation.CalculateCashBalance(result.accounts);
+            }
+            else
+            {
+                endingBalance = AccountCalculation.CalculateTotalBalanceByMultipleFactors(result.accounts,
+                    [assetRowStart.AccountType], [assetRowStart.PositionType]);
+            }
+
+            assetRowsAfter[i] = new RebalanceTestAssetRow()
+            {
+                AccountType = assetRowStart.AccountType,
+                ActualEndingBalance = endingBalance,
+                StartingBalance = assetRowStart.StartingBalance,
+                CostModifier = assetRowStart.CostModifier,
+                EntryDate = assetRowStart.EntryDate,
+                ExpectedEndingBalance = assetRowStart.ExpectedEndingBalance,
+                PositionType = assetRowStart.PositionType
+            };
+        }
+
+        return (assetRowsAfter, result.ledger);
+    }
     [Theory]
     // these values are in the testing spreadsheet in the 60-40 invest excess cash tab
     [InlineData(1, 2039, 100000, 525000, 180800, 525000)]
@@ -537,5 +653,546 @@ public class SixtyFortyTests
             model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
                 amountNeeded, accounts, ledger, currentDate, model));
         Assert.Equal("RMD: Nothing left to try. Not sure how we got here", exception.Message);
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_DoesntChangeNetWorth()
+    {
+        var person = TestDataManager.CreateTestPerson();
+        person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
+        person.RequiredMonthlySpend = 1000;
+        person.RequiredMonthlySpendHealthCare = 500;
+        
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
+        model.NumMonthsCashOnHand = 12;
+        model.NumMonthsMidBucketOnHand = 6;
+        model.NumMonthsPriorToRetirementToBeginRebalance = 12; 
+        model.DesiredMonthlySpendPostRetirement = 800;
+        model.DesiredMonthlySpendPreRetirement = 600; 
+        
+        var currentDate = person.BirthDate.PlusYears(63); // Within rebalance window, post retirement, pre-medicare
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        
+        var cashNeededOnHand =
+            Spend.CalculateCashNeedForNMonths(model, person, accounts, currentDate, model.NumMonthsCashOnHand);
+        var midNeededOnHand =
+            Spend.CalculateCashNeedForNMonths(model, person, accounts, currentDate, model.NumMonthsMidBucketOnHand);
+        
+       // add everything to long positions in a tax deferred account
+        var position = TestDataManager.CreateTestInvestmentPosition(
+            cashNeededOnHand + midNeededOnHand, 1.5m, McInvestmentPositionType.LONG_TERM);
+        accounts.InvestmentAccounts.Add(TestDataManager.CreateTestInvestmentAccount([ position ],
+            McInvestmentAccountType.TRADITIONAL_IRA));
+        var recessionStats = new RecessionStats
+        {
+            AreWeInARecession = false,
+            AreWeInExtremeAusterityMeasures = false,
+            AreWeInLivinLargeMode = false
+        };
+        var prices = TestDataManager.CreateTestCurrentPrices(
+            1m, 100m, 50m, 0m);
+        var expectedNetWorth = AccountCalculation.CalculateNetWorth(accounts);
+        
+    
+        // Act
+        var result = model.WithdrawalStrategy.RebalancePortfolio(
+            currentDate, accounts, recessionStats, prices, model, new TaxLedger(), person);
+        
+        var actualNetWorth = AccountCalculation.CalculateNetWorth(result.accounts);
+    
+        // Assert
+        Assert.Equal(Math.Round(expectedNetWorth  ,2),  Math.Round(actualNetWorth, 2));
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithTaxFreeImbalanceInMid_MovesPositionsToLong()
+    {
+        // Arrange
+        var startingCash = 1000000m; // enough to not need any movement to cash
+        var totalEquities = 100000m;
+        var startingMid = 70000m;
+        var startingLong = totalEquities - startingMid;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingCash,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.ROTH_IRA,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = totalEquities * 0.6m,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.ROTH_IRA,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = totalEquities * 0.4m,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithTaxFreeImbalanceInLong_DoesntMovePositionsToMid()
+    {
+        // Arrange
+        var startingCash = 1000000m; // enough to not need any movement to cash
+        var startingLong = 70000m;
+        var startingMid = 30000m;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingCash,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.ROTH_IRA,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = startingLong,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.ROTH_IRA,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = startingMid,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithYoungPositions_NothingMoves()
+    {
+        // Arrange
+        var startingCash = 1000000m; // enough to not need any movement to cash
+        var startingEquity = 100000m;
+        var startingLong = startingEquity / 2m;
+        var startingMid = startingEquity - startingLong;
+        var assetRows = new []{
+            new RebalanceTestAssetRow()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingCash,
+            },
+            new RebalanceTestAssetRow()
+            {
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingLong,
+            },
+            new RebalanceTestAssetRow()
+            {
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingMid,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithYoungDeferredPositions_StillMovesMidToLong()
+    {
+        // Arrange
+        var startingCash = 1000000m; // enough to not need any movement to cash
+        var startingEquity = 100000m;
+        var startingLong = startingEquity / 2m;
+        var startingMid = startingEquity - startingLong;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingCash,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.TRADITIONAL_IRA,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingEquity * 0.6m,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.TRADITIONAL_IRA,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingEquity * 0.4m,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithYoungTaxFreePositions_DoesntMoveLongToMid()
+    {
+        // Arrange
+        var startingCash = 1000000m; // enough to not need any movement to cash
+        var startingLong = 70000m;
+        var startingMid = 30000m;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingCash,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.ROTH_IRA,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingLong,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.ROTH_IRA,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingMid,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithLimitedCash_SellsFromTaxableBeforeTraditional()
+    {
+        // Arrange
+        var startingCash = 0m; // enough to not need any movement to cash
+        var cashNeededOnHand = 27600m;
+        var shortFall = 5000m;
+        var expectedRemainder = 3300m;
+        var startingTaxable = cashNeededOnHand - shortFall;
+        var startingTrad = shortFall + expectedRemainder;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = cashNeededOnHand,
+            },
+            new ()
+            {
+                // this entire position will be wiped out by the initial rebalance into cash
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingTaxable,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = 0,
+            },
+            new ()
+            {
+                // this position will have the shortfall amount sold for cash, but then the remainder will be
+                // rebalanced to 60/40
+                AccountType = McInvestmentAccountType.TRADITIONAL_IRA,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingTrad,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = expectedRemainder * 0.6m,
+            },
+            new ()
+            {
+                // this position won't start with anything, but then the rebalancing from long-to-mid will add to it
+                AccountType = McInvestmentAccountType.TRADITIONAL_IRA,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = 0,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = expectedRemainder * 0.4m,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithLimitedCash_SellsFullCashNeededAndRebalancesToTarget()
+    {
+        // Arrange
+        var startingCash = 0m; // enough to not need any movement to cash
+        var cashNeededOnHand = 27600m;
+        var shortFall = 5000m;
+        var expectedRemainder = 3300m;
+        var startingLong = cashNeededOnHand - shortFall;
+        var startingMid = shortFall + expectedRemainder;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = cashNeededOnHand,
+            },
+            new ()
+            {
+                // this entire position will be wiped out by the initial rebalance into cash, but then have the
+                // remainder rebalanced back in at 60%
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = expectedRemainder * .6m,
+            },
+            new ()
+            {
+                // this position will have the shortfall amount sold for cash, but then the remainder will be
+                // rebalanced to 60/40
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = expectedRemainder * 0.4m,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithRatioNearTarget_DoesntMoveAnything()
+    {
+        // Arrange
+        var startingCash = 1000000m; // enough to not need any movement to cash
+        var totalEquities = 100000m;
+        var startingLong = totalEquities * 0.596m;
+        var startingMid = totalEquities - startingLong;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = startingCash,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = startingLong,
+            },
+            new ()
+            {
+                // this position will have the shortfall amount sold for cash, but then the remainder will be
+                // rebalanced to 60/40
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = startingMid,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
+    }
+    
+    [Fact]
+    public void RebalancePortfolio_WithNoCashAndSufficientEquity_MovesAdequateCash()
+    {
+        // Arrange
+        var startingCash = 0m; // enough to not need any movement to cash
+        var cashNeededOnHand = 27600m;
+        var startingLong = cashNeededOnHand * 2m;
+        var startingMid = 0m;
+        var assetRows = new RebalanceTestAssetRow[]{
+            new ()
+            {
+                AccountType = McInvestmentAccountType.CASH,
+                PositionType = McInvestmentPositionType.SHORT_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingCash,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate,
+                ExpectedEndingBalance = cashNeededOnHand,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.LONG_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingLong,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = cashNeededOnHand * .6m,
+            },
+            new ()
+            {
+                AccountType = McInvestmentAccountType.TAXABLE_BROKERAGE,
+                PositionType = McInvestmentPositionType.MID_TERM,
+                ActualEndingBalance = 0,
+                StartingBalance = startingMid,
+                CostModifier = 1m,
+                EntryDate = _rebalanceCurrentDate.PlusYears(-2),
+                ExpectedEndingBalance = cashNeededOnHand * 0.4m,
+            },
+        };
+        // Act
+        var results = RebalancePrep(assetRows).assetRowsAfter;
+    
+        // Assert
+        foreach (var assetRow in results)
+        {
+            var expected = assetRow.ExpectedEndingBalance;
+            var actual = assetRow.ActualEndingBalance;
+            Assert.Equal(expected, actual);
+        }
     }
 }
