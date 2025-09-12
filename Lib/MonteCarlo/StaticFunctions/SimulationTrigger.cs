@@ -111,7 +111,7 @@ public class SimulationTrigger
         
         logger.Info("Batching up the results into something meaningful");
         
-        var results = Simulation.InterpretSimulationResults(model, allLivesRuns);
+        var results = Simulation.InterpretSimulationResults(model, allLivesRuns, -1);
         
         return results;
     }
@@ -146,6 +146,7 @@ public class SimulationTrigger
         
         logger.Info(logger.FormatTimespanDisplay("Pulling model champions from DB", duration));
         var allModels = FetchOrCreateModelsForTraining(person);
+        int maxCounter = FetchMaxRunResult();
         
         /*
          * breed and run
@@ -162,7 +163,7 @@ public class SimulationTrigger
                 SaveModelToDb(offspring);
                 var allLivesRuns2 = ExecuteSingleModelAllLives(
                     logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
-                var modelResults = Simulation.InterpretSimulationResults(offspring, allLivesRuns2);
+                var modelResults = Simulation.InterpretSimulationResults(offspring, allLivesRuns2, ++maxCounter);
                 SaveSingleModelRunResultsToDb(modelResults);
                 modelResults = null; // trying to ensure that we clear up the memory
             }
@@ -313,5 +314,13 @@ where id in (select id from childless)");
         }
         context.SaveChanges();
         return allModels;
+    }
+
+    public static int FetchMaxRunResult()
+    {
+        using var context = new PgContext();
+        var query = "select * from personalfinance.singlemodelrunresult order by counter desc limit 1;";
+        var maxRun = context.SingleModelRunResults.FromSqlRaw(query).First();
+        return maxRun.Counter;
     }
 }

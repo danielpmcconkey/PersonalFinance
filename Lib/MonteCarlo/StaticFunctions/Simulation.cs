@@ -187,7 +187,8 @@ public static class Simulation
     /// <summary>
     /// reads the output from running all lives on a single model and creates statistical views
     /// </summary>
-    public static SingleModelRunResult InterpretSimulationResults(DataTypes.MonteCarlo.Model model, List<SimSnapshot>[] allSnapshots)
+    public static SingleModelRunResult InterpretSimulationResults(
+        DataTypes.MonteCarlo.Model model, List<SimSnapshot>[] allSnapshots, int counter)
     {
         // todo: unit test InterpretSimulationResults
         
@@ -253,6 +254,7 @@ public static class Simulation
 
         var result= new SingleModelRunResult()
         {
+            Counter = counter,
             ModelId = model.Id,
             RunDate = LocalDateTime.FromDateTime(DateTime.Now),
             MajorVersion = ModelConstants.MajorVersion,

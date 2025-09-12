@@ -45,10 +45,10 @@ logger.Info(logger.FormatBarSeparator('*'));
 /*
  * use this code to run a specific life for a specific model
  */
-// var model = ModelFunc.FetchModelChampion("812bba24-8687-4934-a114-3c8884f593f2");
+// var model = ModelFunc.FetchModelChampion("7758072c-b455-4352-ace7-6ab2bc478b0f");
 // var hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(sAndP500HistoricalTrends);
 // var newPerson = Person.CopyPerson(dan, false);
-// var i = 5;
+// var i = 3;
 // LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, hypotheticalPrices[i], i);
 // var runResults = sim.Run();
 /*

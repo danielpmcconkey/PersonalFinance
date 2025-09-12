@@ -656,6 +656,31 @@ public class SixtyFortyTests
     }
     
     [Fact]
+    public void SellInvestmentsToRmdAmount_WithNonDeferredPositionsOutOfBalance_StillSellsWhatsRequired()
+    {
+        // because the security sales is gonna try to rebalance as it sells, it's not gonna sell enough  
+        // Arrange
+        var currentDate = new LocalDateTime(2050, 1, 1, 0, 0);
+        var amountNeeded = 100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.1m, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        accounts.Brokerage.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 3.1m, McInvestmentPositionType.MID_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        var expectedAmountSold = amountNeeded;
+        // Act
+        var results = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
+            amountNeeded, accounts, ledger, currentDate, model);
+        var actualAmountSold = results.amountSold;
+        // Assert
+        Assert.Equal(expectedAmountSold, actualAmountSold);
+    }
+    
+    [Fact]
     public void RebalancePortfolio_DoesntChangeNetWorth()
     {
         var person = TestDataManager.CreateTestPerson();

@@ -193,7 +193,7 @@ public class ModelFunc
         using var context = new PgContext();
         var champ = context.McModels
                         .FirstOrDefault(x => x.Id == Guid.Parse(champId)) ??
-                    throw new InvalidDataException();
+                    throw new InvalidDataException($"Champion with ID {champId} doesn't exist.");
         return champ;
     }
     

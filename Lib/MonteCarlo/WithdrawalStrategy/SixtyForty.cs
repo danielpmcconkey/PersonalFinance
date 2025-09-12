@@ -224,6 +224,7 @@ public class SixtyForty : IWithdrawalStrategy
         )
     {
         // todo: confirm that usages of SellInvestmentsToDollarAmount are supplying the 1-year-ago date max where they should 
+        // todo: determine whether it's okay for this function to return less than what's requested sometimes when you have an overall imbalance, but can't correct it from the position and account types provided
         var salesOrderLong = InvestmentSales.CreateSalesOrderPositionTypeFirst(
             [McInvestmentPositionType.LONG_TERM], 
             accountTypeOverride is null ? SalesOrder : [accountTypeOverride.Value]);
@@ -293,28 +294,46 @@ public class SixtyForty : IWithdrawalStrategy
             results = (
                 0, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), []
             );
+        // you need to sell long and mid separately so it doesn't try to balance the sale and end up selling less than
+        // you need
         
-        // try the traditional IRA first
-        var tradIraResults = SellInvestmentsToDollarAmount(
-            accounts, ledger, currentDate, amountNeeded, model, null, null, 
-            null, McInvestmentAccountType.TRADITIONAL_IRA);
-        results.amountSold += tradIraResults.amountSold;
-        results.accounts = tradIraResults.accounts;
-        results.ledger = tradIraResults.ledger;
-        results.messages.AddRange(tradIraResults.messages);
-        
+        var tradIraResultsLong = SellInvestmentsToDollarAmount(
+            results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
+            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_IRA);
+        results.amountSold += tradIraResultsLong.amountSold;
+        results.accounts = tradIraResultsLong.accounts;
+        results.ledger = tradIraResultsLong.ledger;
+        results.messages.AddRange(tradIraResultsLong.messages);
         var amountStillNeeded = amountNeeded - results.amountSold;
+        if(Math.Round(amountStillNeeded, 2) <= 0) return results;
+        
+        var tradIraResultsMid = SellInvestmentsToDollarAmount(
+            results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
+            McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TRADITIONAL_IRA);
+        results.amountSold += tradIraResultsMid.amountSold;
+        results.accounts = tradIraResultsMid.accounts;
+        results.ledger = tradIraResultsMid.ledger;
+        results.messages.AddRange(tradIraResultsMid.messages);
+        amountStillNeeded = amountNeeded - results.amountSold;
+        if(Math.Round(amountStillNeeded, 2) <= 0) return results;
+        
+        var trad401KResultsLong = SellInvestmentsToDollarAmount(
+            results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
+            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
+        results.amountSold += trad401KResultsLong.amountSold;
+        results.accounts = trad401KResultsLong.accounts;
+        results.ledger = trad401KResultsLong.ledger;
+        results.messages.AddRange(trad401KResultsLong.messages);
+        amountStillNeeded = amountNeeded - results.amountSold;
         if(amountStillNeeded <= 0) return results;
         
-        // now try the traditional 401k
-        var trad401KResults = SellInvestmentsToDollarAmount(
-            accounts, ledger, currentDate, amountNeeded, model, null, null, 
-            null, McInvestmentAccountType.TRADITIONAL_401_K);
-        results.amountSold += trad401KResults.amountSold;
-        results.accounts = trad401KResults.accounts;
-        results.ledger = trad401KResults.ledger;
-        results.messages.AddRange(trad401KResults.messages);
-        
+        var trad401KResultsMid = SellInvestmentsToDollarAmount(
+            results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
+            McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
+        results.amountSold += trad401KResultsMid.amountSold;
+        results.accounts = trad401KResultsMid.accounts;
+        results.ledger = trad401KResultsMid.ledger;
+        results.messages.AddRange(trad401KResultsMid.messages);
         amountStillNeeded = amountNeeded - results.amountSold;
         if(amountStillNeeded <= 0) return results;
         
@@ -350,7 +369,9 @@ public class SixtyForty : IWithdrawalStrategy
     {
         var longTermAmount = AccountCalculation.CalculateLongBucketTotalBalance(accounts);
         var midTermAmount = AccountCalculation.CalculateMidBucketTotalBalance(accounts);
-        var ratio = longTermAmount / (longTermAmount + midTermAmount);
+        var ratio = (longTermAmount + midTermAmount == 0m)
+            ? 0m
+            : longTermAmount / (longTermAmount + midTermAmount);
         return (longTermAmount, midTermAmount, ratio);
     }
 

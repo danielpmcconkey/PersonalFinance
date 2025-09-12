@@ -118,6 +118,12 @@ public record SingleModelRunResult
     
     [Column("bankruptcyrateatendofsim", TypeName = "numeric(6,4)")]
     public required decimal BankruptcyRateAtEndOfSim { get; init; }
+    
+    /// <summary>
+    /// this is the Nth run result in the history of this operation
+    /// </summary>
+    [Column("counter", TypeName = "int")]
+    public required int Counter { get; set; }
 }
 
 public record SingleModelRunResultStatLineAtTime(
