@@ -256,7 +256,7 @@ where id in (select id from childless)");
              where m.id is not null 
                and majorversion = {majorVersion}  
                and minorversion = {minorVersion} 
-               and r.bankruptcyrateatendofsim <= 0.1 
+               and r.bankruptcyrateatendofsim <= 0 
                and clade = {clade}
              group by 
                  m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate, retirementdate,
