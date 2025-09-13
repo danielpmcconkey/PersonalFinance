@@ -68,6 +68,7 @@ limit 10
 
 select 
 r.modelId
+, m.clade
 , m.withdrawalstrategy
 , r.rundate
 , r.numlivesrun
@@ -89,7 +90,7 @@ r.modelId
 , *
 from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
-where m.id is not null
+where m.id is not null	
 and majorversion = 0
 and minorversion = 14
 --and patchversion = 1
