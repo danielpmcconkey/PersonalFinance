@@ -319,7 +319,7 @@ where id in (select id from childless)");
     public static int FetchMaxRunResult()
     {
         using var context = new PgContext();
-        var query = "select * from personalfinance.singlemodelrunresult order by counter desc limit 1;";
+        var query = "select * from personalfinance.singlemodelrunresult order by counter desc limit 1";
         var maxRun = context.SingleModelRunResults.FromSqlRaw(query).First();
         return maxRun.Counter;
     }

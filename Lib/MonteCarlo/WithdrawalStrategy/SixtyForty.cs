@@ -223,8 +223,6 @@ public class SixtyForty : IWithdrawalStrategy
             McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null
         )
     {
-        // todo: confirm that usages of SellInvestmentsToDollarAmount are supplying the 1-year-ago date max where they should 
-        // todo: determine whether it's okay for this function to return less than what's requested sometimes when you have an overall imbalance, but can't correct it from the position and account types provided
         var salesOrderLong = InvestmentSales.CreateSalesOrderPositionTypeFirst(
             [McInvestmentPositionType.LONG_TERM], 
             accountTypeOverride is null ? SalesOrder : [accountTypeOverride.Value]);
@@ -273,6 +271,22 @@ public class SixtyForty : IWithdrawalStrategy
            results.accounts = midSalesResult.accounts;
            results.ledger = midSalesResult.ledger;
            results.messages.AddRange(midSalesResult.messages);
+       }
+
+       // sometimes, we have enough to sell in the filter criteria, but there's an unbalance elsewhere that skews our
+       // cals and makes us sell less than we're asking for in the name of proper balance. We're making the decision
+       // here that it's more important to sell what's asked for than to land on the most perfect balance 
+       if (results.amountSold < amountToSell)
+       {
+           var remainder = amountToSell - results.amountSold;
+           var salesOrderCombined = salesOrderLong.Concat(salesOrderMid).ToArray();
+           var lastChanceSalesResult = InvestmentSales.SellInvestmentsToDollarAmount(
+               results.accounts, results.ledger, currentDate, remainder, salesOrderCombined, minDateExclusive,
+               maxDateInclusive);
+           results.amountSold += lastChanceSalesResult.amountSold;
+           results.accounts = lastChanceSalesResult.accounts;
+           results.ledger = lastChanceSalesResult.ledger;
+           results.messages.AddRange(lastChanceSalesResult.messages);
        }
        
        if (!MonteCarloConfig.DebugMode) return results;

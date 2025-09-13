@@ -259,7 +259,45 @@ public class SixtyFortyTests
             Math.Round(actualLong,1, MidpointRounding.AwayFromZero));
         Assert.Equal(Math.Round(expectedMid,1, MidpointRounding.AwayFromZero),
             Math.Round(actualMid,1, MidpointRounding.AwayFromZero));
+    }
+    
+    [Fact]
+    public void SellInvestmentsToDollarAmount_WhenYouHaveEnoughInFilteredPositionsButAlsoHaveAnImbalanceElsewhere_SellsTheCompleteAmount()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2025, 10, 1, 0, 0);
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
         
+        // set up a significant imbalance in the brokerage account 
+        accounts.Brokerage.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, 40000, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        accounts.Brokerage.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, 60000, McInvestmentPositionType.MID_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        // set up even, small amounts in the trad IRA
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, 2000, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, 2000, McInvestmentPositionType.MID_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        // current ratio is 40.4% (42k / 104k)
+        var salesAmount = 3000m;
+        
+        
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        
+        // Act
+        
+        // specify to sell only out of the trad IRA
+        var results = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
+            accounts, ledger, currentDate, salesAmount, model, null, null, 
+            null, McInvestmentAccountType.TRADITIONAL_IRA);
+        // Assert
+        Assert.Equal(Math.Round(salesAmount,1, MidpointRounding.AwayFromZero), 
+            Math.Round(results.amountSold,1, MidpointRounding.AwayFromZero));
     }
 
     [Theory]

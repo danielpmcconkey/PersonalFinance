@@ -146,7 +146,7 @@ public static class AccountCashManagement
         result.messages.AddRange(tryResult.messages);
         if (tryResult.isSuccessful) return result;
         
-        // Last chance. Let's try for short-term capital gains hits on the long bucket
+        // Last chance. Let's try for no filters at all
         totalCashOnHand = AccountCalculation.CalculateCashBalance(accounts);
         amountStillNeeded = amount - totalCashOnHand;
         
@@ -154,7 +154,7 @@ public static class AccountCashManagement
             result.accounts, result.ledger, currentDate, amountStillNeeded, model, 
             minDateExclusive: null,
             maxDateInclusive: null,
-            positionTypeOverride: McInvestmentPositionType.LONG_TERM,
+            positionTypeOverride: null,
             accountTypeOverride: null);
         result.accounts = localResult.accounts;
         result.ledger = localResult.ledger;
