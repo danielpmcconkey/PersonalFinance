@@ -136,4 +136,16 @@ public record Model
             return _withdrawalStrategy!;
         } 
     }
+    
+    /// <summary>
+    /// the actual target long percentage when using the 60/40 withdraw strat
+    /// </summary>
+    [Column("sixtyfortylong", TypeName = "numeric(6,5)")]
+    public required decimal SixtyFortyLong { get; set; }
+    
+    /// <summary>
+    /// the actual target mid percentage when using the 60/40 withdraw strat
+    /// </summary>
+    [NotMapped]
+    public decimal SixtyFortyMid => 1.0m - SixtyFortyLong;
 }

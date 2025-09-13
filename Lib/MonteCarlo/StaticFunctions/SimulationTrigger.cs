@@ -249,7 +249,7 @@ where id in (select id from childless)");
                  extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand,
                  nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths,
                  recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
-                 percent401ktraditional, generation , withdrawalstrategy
+                 percent401ktraditional, generation , withdrawalstrategy, sixtyfortylong
              from personalfinance.singlemodelrunresult r 
                  left join personalfinance.montecarlomodel m on r.modelid = m.id 
              where m.id is not null 
@@ -262,7 +262,7 @@ where id in (select id from childless)");
                  extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand, 
                  nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths, 
                  recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
-                  percent401ktraditional, generation , withdrawalstrategy
+                  percent401ktraditional, generation , withdrawalstrategy, sixtyfortylong
              order by 
                  max(r.funpointsatendofsim50) desc, 
                  min(r.bankruptcyrateatendofsim) asc, 

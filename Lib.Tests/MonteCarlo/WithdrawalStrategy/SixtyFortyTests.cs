@@ -192,6 +192,35 @@ public class SixtyFortyTests
         
     }
     
+    [Fact]
+    public void InvestExcessCash_WithALongTargetOf70_CalculatesCorrectly()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2025, 10, 1, 0, 0);
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts = AccountCashManagement.DepositCash(accounts, 100000m, currentDate).accounts;
+        
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        model.RetirementDate = currentDate.PlusYears(-2);
+        model.SixtyFortyLong = 0.7m;
+        var person = TestDataManager.CreateTestPerson();
+        person.BirthDate = currentDate.PlusYears(-64);
+        person.RequiredMonthlySpend = 1000m;
+        person.RequiredMonthlySpendHealthCare = 1500m;
+        var prices = TestDataManager.CreateTestCurrentPrices(
+            1.0m, 100m, 50m, 0m);
+        
+        // Act
+        var results = model.WithdrawalStrategy.InvestExcessCash(
+            currentDate, accounts, prices, model, person).accounts;
+        var actualLong = AccountCalculation.CalculateLongBucketTotalBalance(results);
+        var actualMid = AccountCalculation.CalculateMidBucketTotalBalance(results);
+        var actualRatio = actualLong / (actualMid + actualLong);
+        // Assert
+        Assert.Equal(0.7m, Math.Round(actualRatio, 2, MidpointRounding.AwayFromZero));
+        
+    }
+    
     [Theory]
     // these values are in the testing spreadsheet in the 60-40 invest excess cash tab
     // testing common scenarios at 60% target ratio
@@ -298,6 +327,47 @@ public class SixtyFortyTests
         // Assert
         Assert.Equal(Math.Round(salesAmount,1, MidpointRounding.AwayFromZero), 
             Math.Round(results.amountSold,1, MidpointRounding.AwayFromZero));
+    }
+    
+    [Fact]
+    public void SellInvestmentsToDollarAmount_WithLongTargetOf70_SellsToTheRightTarget()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2025, 10, 1, 0, 0);
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        
+        // set up a significant imbalance in the brokerage account 
+        accounts.Brokerage.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, 70000, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        accounts.Brokerage.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, 30000, McInvestmentPositionType.MID_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        var salesAmount = 20000;
+        
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        model.SixtyFortyLong = 0.7m;
+        model.RetirementDate = currentDate.PlusYears(-2);
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        /*
+         * we currently have 100k balance at 50% ratio. We want to sell 20k, giving us 80k left over. 70% of 80k is 56k
+         */
+        var expectedLong = 56000m;
+        
+        
+        // Act
+        
+        // specify to sell only out of the trad IRA
+        var results = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(
+            accounts, ledger, currentDate, salesAmount, model, null, null, 
+            null, null).accounts;
+        
+        var actualLong = AccountCalculation.CalculateLongBucketTotalBalance(results);
+        var actualMid = AccountCalculation.CalculateMidBucketTotalBalance(results);
+        var actualRatio = actualLong / (actualMid + actualLong);
+        // Assert
+        Assert.Equal(expectedLong, actualLong);
+        Assert.Equal(0.7m, Math.Round(actualRatio, 2, MidpointRounding.AwayFromZero));
     }
 
     [Theory]
@@ -629,6 +699,33 @@ public class SixtyFortyTests
         var actualAmountSold = results.amountSold;
         // Assert
         Assert.Equal(expectedAmountSold, actualAmountSold);
+    }
+    
+    [Fact]
+    public void SellInvestmentsToRmdAmount_WithLongTargetOf70_SellsToTarget()
+    {
+        // Arrange
+        var currentDate = new LocalDateTime(2050, 1, 1, 0, 0);
+        var amountNeeded = 100000m;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.3m, McInvestmentPositionType.MID_TERM, true, 1m,
+            currentDate.PlusYears(-2)));accounts.TraditionalIra.Positions.Add(TestDataManager.CreateTestInvestmentPosition(
+            1, amountNeeded * 1.7m, McInvestmentPositionType.LONG_TERM, true, 1m,
+            currentDate.PlusYears(-2)));
+        var ledger = TestDataManager.CreateEmptyTaxLedger();
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.SixtyForty);
+        model.SixtyFortyLong = 0.7m;
+        var expectedLong = ((amountNeeded * 1.3m) + (amountNeeded * 1.7m) - amountNeeded) * 0.7m;
+        // Act
+        var results = model.WithdrawalStrategy.SellInvestmentsToRmdAmount(
+            amountNeeded, accounts, ledger, currentDate, model).accounts;
+        var actualLong = AccountCalculation.CalculateLongBucketTotalBalance(results);
+        var actualMid = AccountCalculation.CalculateMidBucketTotalBalance(results);
+        var actualRatio = actualLong / (actualMid + actualLong);
+        // Assert
+        Assert.Equal(expectedLong, actualLong);
+        Assert.Equal(0.7m, Math.Round(actualRatio, 2, MidpointRounding.AwayFromZero));
     }
     
     [Fact]

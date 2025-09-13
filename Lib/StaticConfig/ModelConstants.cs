@@ -16,7 +16,7 @@ public static class ModelConstants
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples
     /// comparisons
     /// </summary>
-    public static int PatchVersion = 4;
+    public static int PatchVersion = 5;
     
     public static decimal FunPenaltyBankruptcy = -35000m;
     public static decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
@@ -98,5 +98,11 @@ public static class ModelConstants
     /// </summary>
     public const decimal Percent401KTraditionalMin = 0m;
     public const decimal Percent401KTraditionalMax = 1m;
+    
+    /// <summary>
+    /// the percentage of teh overall employee contribution goes to the traditional 401K account
+    /// </summary>
+    public const decimal SixtyFortyLongMax = 1.0m;
+    public const decimal SixtyFortyLongMin = 0.3m;
 
 }

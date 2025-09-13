@@ -8,7 +8,7 @@ namespace Lib.MonteCarlo.WithdrawalStrategy;
 
 public class SixtyForty : IWithdrawalStrategy
 {
-    // todo: adjust the 60/40 strat to have a varible long target
+    
     
     private static readonly McInvestmentAccountType[] SalesOrder = [
         // tax on growth only
@@ -21,6 +21,8 @@ public class SixtyForty : IWithdrawalStrategy
         McInvestmentAccountType.ROTH_IRA,
         McInvestmentAccountType.ROTH_401_K,
     ];
+
+    
     
     public (BookOfAccounts accounts, List<ReconciliationMessage> messages)
         InvestExcessCash(LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices,
@@ -308,52 +310,30 @@ public class SixtyForty : IWithdrawalStrategy
             results = (
                 0, AccountCopy.CopyBookOfAccounts(accounts), Tax.CopyTaxLedger(ledger), []
             );
-        // you need to sell long and mid separately so it doesn't try to balance the sale and end up selling less than
-        // you need
         
-        var tradIraResultsLong = SellInvestmentsToDollarAmount(
+        
+        var tradIraResults = SellInvestmentsToDollarAmount(
             results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
-            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_IRA);
-        results.amountSold += tradIraResultsLong.amountSold;
-        results.accounts = tradIraResultsLong.accounts;
-        results.ledger = tradIraResultsLong.ledger;
-        results.messages.AddRange(tradIraResultsLong.messages);
+            null, McInvestmentAccountType.TRADITIONAL_IRA);
+        results.amountSold += tradIraResults.amountSold;
+        results.accounts = tradIraResults.accounts;
+        results.ledger = tradIraResults.ledger;
+        results.messages.AddRange(tradIraResults.messages);
         var amountStillNeeded = amountNeeded - results.amountSold;
         if(Math.Round(amountStillNeeded, 2) <= 0) return results;
         
-        var tradIraResultsMid = SellInvestmentsToDollarAmount(
+        var trad401KResults = SellInvestmentsToDollarAmount(
             results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
-            McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TRADITIONAL_IRA);
-        results.amountSold += tradIraResultsMid.amountSold;
-        results.accounts = tradIraResultsMid.accounts;
-        results.ledger = tradIraResultsMid.ledger;
-        results.messages.AddRange(tradIraResultsMid.messages);
-        amountStillNeeded = amountNeeded - results.amountSold;
-        if(Math.Round(amountStillNeeded, 2) <= 0) return results;
-        
-        var trad401KResultsLong = SellInvestmentsToDollarAmount(
-            results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
-            McInvestmentPositionType.LONG_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
-        results.amountSold += trad401KResultsLong.amountSold;
-        results.accounts = trad401KResultsLong.accounts;
-        results.ledger = trad401KResultsLong.ledger;
-        results.messages.AddRange(trad401KResultsLong.messages);
-        amountStillNeeded = amountNeeded - results.amountSold;
-        if(amountStillNeeded <= 0) return results;
-        
-        var trad401KResultsMid = SellInvestmentsToDollarAmount(
-            results.accounts, results.ledger, currentDate, amountNeeded, model, null, null, 
-            McInvestmentPositionType.MID_TERM, McInvestmentAccountType.TRADITIONAL_401_K);
-        results.amountSold += trad401KResultsMid.amountSold;
-        results.accounts = trad401KResultsMid.accounts;
-        results.ledger = trad401KResultsMid.ledger;
-        results.messages.AddRange(trad401KResultsMid.messages);
+            null, McInvestmentAccountType.TRADITIONAL_401_K);
+        results.amountSold += trad401KResults.amountSold;
+        results.accounts = trad401KResults.accounts;
+        results.ledger = trad401KResults.ledger;
+        results.messages.AddRange(trad401KResults.messages);
         amountStillNeeded = amountNeeded - results.amountSold;
         if(amountStillNeeded <= 0) return results;
         
         // nothing's left to try. not sure how we got here
         throw new InvalidDataException("RMD: Nothing left to try. Not sure how we got here");
-        // todo: UT the 60/40 SellInvestmentsToRmdAmount function
     }
 
     /// <summary>
@@ -362,7 +342,7 @@ public class SixtyForty : IWithdrawalStrategy
     private decimal 
         CalculateDesiredRatio(LocalDateTime currentDate, Model model)
     {
-        const decimal minRatio = 0.6m;
+        var minRatio = model.SixtyFortyLong;
         const decimal maxRatio = 1.0m;
         if(currentDate >= model.RetirementDate) return minRatio;
         if (!Rebalance.CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))

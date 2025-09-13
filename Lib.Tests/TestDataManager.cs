@@ -198,7 +198,8 @@ internal static class TestDataManager
             DesiredMonthlySpendPreRetirement = 0,
             Percent401KTraditional = 0,
             Generation = -1,
-            WithdrawalStrategyType = withdrawalStrategyType
+            WithdrawalStrategyType = withdrawalStrategyType,
+            SixtyFortyLong = 0.6m,
         };
     }
 

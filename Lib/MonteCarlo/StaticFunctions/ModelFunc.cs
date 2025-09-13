@@ -184,6 +184,8 @@ public class ModelFunc
                 ModelConstants.Percent401KTraditionalMin, ModelConstants.Percent401KTraditionalMax),
             Generation = 1,
             WithdrawalStrategyType = GetRandomWithdrawalStrategyType(),
+            SixtyFortyLong = MathFunc.GetUnSeededRandomDecimal(
+                ModelConstants.SixtyFortyLongMin, ModelConstants.SixtyFortyLongMax),
         };
     }
     
@@ -230,7 +232,8 @@ public class ModelFunc
             DesiredMonthlySpendPostRetirement = MateDesiredMonthlySpendPostRetirement(a, b),
             Percent401KTraditional = MatePercent401KTraditional(a, b),
             Generation = Math.Max(a.Generation, b.Generation) + 1,
-            WithdrawalStrategyType = MateWithdrawalStrategyType(a, b)
+            WithdrawalStrategyType = MateWithdrawalStrategyType(a, b),
+            SixtyFortyLong = MateSixtyFortyLong(a, b),
         };
     }
     
@@ -357,6 +360,12 @@ public class ModelFunc
                     .PlusMonths(ModelConstants.RetirementAgeMax.months)
             );
     
+    public static decimal MateSixtyFortyLong(Model a, Model b) =>
+        MateNumericProperty(
+            a, b,
+            model => model.SixtyFortyLong,
+            ModelConstants.SixtyFortyLongMin,
+            ModelConstants.SixtyFortyLongMax);
     
     public static LocalDateTime MateSocialSecurityStartDate(Model a, Model b, LocalDateTime birthDate) =>
         MateNumericProperty(
