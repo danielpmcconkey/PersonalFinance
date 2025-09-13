@@ -127,10 +127,11 @@ public class ModelFunc
      * unit testing 
      */
     
-    public static Model CreateRandomModel(LocalDateTime birthdate)
+    public static Model CreateRandomModel(LocalDateTime birthdate, int clade)
     {
         return new Model(){
             Id = Guid.NewGuid(),
+            Clade = clade,
             PersonId = Guid.Empty,
             ParentAId = Guid.Empty,
             ParentBId = Guid.Empty,
@@ -205,6 +206,7 @@ public class ModelFunc
         return new Model(){
         
             Id = Guid.NewGuid(),
+            Clade = a.Clade,
             PersonId = a.PersonId,
             ParentAId = a.Id,
             ParentA = a,

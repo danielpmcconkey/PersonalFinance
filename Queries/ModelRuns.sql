@@ -91,13 +91,17 @@ from personalfinance.singlemodelrunresult r
 left join personalfinance.montecarlomodel m on r.modelid = m.id
 where m.id is not null
 and majorversion = 0
-and minorversion = 13
+and minorversion = 14
 --and patchversion = 1
 and r.bankruptcyrateatendofsim <= .1
 order by r.funpointsatendofsim50 desc, r.bankruptcyrateatendofsim asc
 limit 100
 
 /*
+
+select max(counter) from personalfinance.singlemodelrunresult 
+--262220
+
 select 
 networthatendofsim50
 * 

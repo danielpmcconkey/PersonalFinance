@@ -148,4 +148,7 @@ public record Model
     /// </summary>
     [NotMapped]
     public decimal SixtyFortyMid => 1.0m - SixtyFortyLong;
+    
+    [Column("clade", TypeName = "int")]
+    public required int Clade { get; init; }
 }

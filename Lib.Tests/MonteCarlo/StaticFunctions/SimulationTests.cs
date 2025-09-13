@@ -1091,7 +1091,8 @@ public class SimulationTests
         var models = SimulationTrigger.FetchModelsForTrainingByVersion(
             person, 
             ModelConstants.MajorVersion, 
-            ModelConstants.MinorVersion);
+            ModelConstants.MinorVersion, 
+            -1);
 
         // Assert
         Assert.NotNull(models);

@@ -200,6 +200,7 @@ internal static class TestDataManager
             Generation = -1,
             WithdrawalStrategyType = withdrawalStrategyType,
             SixtyFortyLong = 0.6m,
+            Clade = -1,
         };
     }
 

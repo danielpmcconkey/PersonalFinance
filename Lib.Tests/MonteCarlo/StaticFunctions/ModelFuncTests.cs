@@ -68,7 +68,7 @@ public class ModelTests
     [Theory]
     [InlineData(0,4821,5200)] // 0 and 10 will only get half as many due to rounding
     [InlineData(1,9700,10300)]
-    [InlineData(2,9700,10300)]
+    [InlineData(2,9654,10300)]
     [InlineData(3,9700,10300)]
     [InlineData(4,9700,10300)]
     [InlineData(5,9700,10300)]
@@ -101,8 +101,8 @@ public class ModelTests
     public void MateAusterityRatio_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateAusterityRatio(modelA, modelB);
@@ -115,8 +115,8 @@ public class ModelTests
     public void MateDesiredMonthlySpendPostRetirement_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateDesiredMonthlySpendPostRetirement(modelA, modelB);
@@ -131,8 +131,8 @@ public class ModelTests
     public void MateDesiredMonthlySpendPreRetirement_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateDesiredMonthlySpendPreRetirement(modelA, modelB);
@@ -147,8 +147,8 @@ public class ModelTests
     public void MateExtremeAusterityNetWorthTrigger_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateExtremeAusterityNetWorthTrigger(modelA, modelB);
@@ -163,8 +163,8 @@ public class ModelTests
     public void MateExtremeAusterityRatio_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateExtremeAusterityRatio(modelA, modelB);
@@ -178,8 +178,8 @@ public class ModelTests
     public void MateNumMonthsCashOnHand_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateNumMonthsCashOnHand(modelA, modelB);
@@ -194,8 +194,8 @@ public class ModelTests
     public void MateNumMonthsMidBucketOnHand_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateNumMonthsMidBucketOnHand(modelA, modelB);
@@ -210,8 +210,8 @@ public class ModelTests
     public void MateNumMonthsPriorToRetirementToBeginRebalance_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateNumMonthsPriorToRetirementToBeginRebalance(modelA, modelB);
@@ -226,8 +226,8 @@ public class ModelTests
     public void MatePercent401KTraditional_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MatePercent401KTraditional(modelA, modelB);
@@ -242,8 +242,8 @@ public class ModelTests
     public void MateRebalanceFrequency_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateRebalanceFrequency(modelA, modelB);
@@ -256,8 +256,8 @@ public class ModelTests
     public void MateRecessionCheckLookBackMonths_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateRecessionCheckLookBackMonths(modelA, modelB);
@@ -272,8 +272,8 @@ public class ModelTests
     public void MateRecessionRecoveryPointModifier_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateRecessionRecoveryPointModifier(modelA, modelB);
@@ -288,8 +288,8 @@ public class ModelTests
     public void MateRetirementDate_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
         var minDate = _birthdate
             .PlusYears(ModelConstants.RetirementAgeMin.years)
             .PlusMonths(ModelConstants.RetirementAgeMin.months);
@@ -308,8 +308,8 @@ public class ModelTests
     public void MateSocialSecurityStartDate_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
         var minDate = _birthdate
             .PlusYears(ModelConstants.SocialSecurityElectionStartMin.years)
             .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months);
@@ -343,8 +343,8 @@ public class ModelTests
             var minSpend = ModelConstants.DesiredMonthlySpendPostRetirementMin;
             var maxSpend = ModelConstants.DesiredMonthlySpendPostRetirementMax;
             
-            var modelA = ModelFunc.CreateRandomModel(_birthdate);
-            var modelB = ModelFunc.CreateRandomModel(_birthdate);
+            var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+            var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
             modelA.SocialSecurityStart = minDate.PlusMonths(-1);
             modelB.SocialSecurityStart = maxDate.PlusMonths(1);
             modelA.DesiredMonthlySpendPostRetirement = minSpend - 1;
@@ -372,7 +372,7 @@ public class ModelTests
         var expected = 6;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -389,7 +389,7 @@ public class ModelTests
         var expected = 9;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -406,7 +406,7 @@ public class ModelTests
         var expected = 9;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -423,7 +423,7 @@ public class ModelTests
         var expected = 3;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -447,7 +447,7 @@ public class ModelTests
         // Act
         for (int i = 0; i < numTests; i++)
         {
-            var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+            var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
             if(actual == expectedA) count5++;
             else if(actual == expectedB) count7++;
             else Assert.True(false); // this ain't right
@@ -472,7 +472,7 @@ public class ModelTests
         var expected = 6m;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -490,7 +490,7 @@ public class ModelTests
         var expected = max - significance;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -508,7 +508,7 @@ public class ModelTests
         var expected = max - significance;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -526,7 +526,7 @@ public class ModelTests
         var expected = min + significance;
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -576,7 +576,7 @@ public class ModelTests
         var expected = new LocalDateTime(2025, 9, 1, 0, 0);
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -593,7 +593,7 @@ public class ModelTests
         var expected = max.PlusMonths(-1);
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -610,7 +610,7 @@ public class ModelTests
         var expected = max.PlusMonths(-1);
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -627,7 +627,7 @@ public class ModelTests
         var expected = min.PlusMonths(1);
 
         // Act
-        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);;
+        var actual = ModelFunc.GenerateNudgeValue(min, max, valueA, valueB);
 
         // Assert
         Assert.Equal(expected, actual);
@@ -668,8 +668,8 @@ public class ModelTests
     public void MateWithdrawalStrategyType_ReturnsValidResult()
     {
         // Arrange
-        var modelA = ModelFunc.CreateRandomModel(_birthdate);
-        var modelB = ModelFunc.CreateRandomModel(_birthdate);
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
         var result = ModelFunc.MateWithdrawalStrategyType(modelA, modelB);

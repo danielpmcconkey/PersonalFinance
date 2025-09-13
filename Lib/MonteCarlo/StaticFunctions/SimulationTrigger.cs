@@ -122,7 +122,7 @@ public class SimulationTrigger
     /// <returns></returns>
     public static void RunModelTrainingSession(
         Logger logger, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts, 
-        decimal[] historicalPrices)
+        decimal[] historicalPrices, int clade)
     {   
         Stopwatch stopwatch = Stopwatch.StartNew();
         logger.Debug("Creating simulation pricing");
@@ -145,7 +145,7 @@ public class SimulationTrigger
         var endDate = MonteCarloConfig.MonteCarloSimEndDate;
         
         logger.Info(logger.FormatTimespanDisplay("Pulling model champions from DB", duration));
-        var allModels = FetchOrCreateModelsForTraining(person);
+        var allModels = FetchOrCreateModelsForTraining(person, clade);
         int maxCounter = FetchMaxRunResult();
         
         /*
@@ -235,7 +235,8 @@ where id in (select id from childless)");
         
     }
 
-    public static List<DataTypes.MonteCarlo.Model> FetchModelsForTrainingByVersion(PgPerson person, int majorVersion, int minorVersion)
+    public static List<DataTypes.MonteCarlo.Model> FetchModelsForTrainingByVersion(
+        PgPerson person, int majorVersion, int minorVersion, int clade)
     {
         var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
         using var context = new PgContext();
@@ -249,20 +250,21 @@ where id in (select id from childless)");
                  extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand,
                  nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths,
                  recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
-                 percent401ktraditional, generation , withdrawalstrategy, sixtyfortylong
+                 percent401ktraditional, generation , withdrawalstrategy, sixtyfortylong, clade
              from personalfinance.singlemodelrunresult r 
                  left join personalfinance.montecarlomodel m on r.modelid = m.id 
              where m.id is not null 
                and majorversion = {majorVersion}  
                and minorversion = {minorVersion} 
                and r.bankruptcyrateatendofsim <= 0.1 
+               and clade = {clade}
              group by 
                  m.id, personid, parenta, parentb, modelcreateddate, simstartdate, simenddate, retirementdate,
                  socialsecuritystart, austerityratio, extremeausterityratio, livinlargeratio, livinlargenetworthtrigger,
                  extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, nummonthsmidbucketonhand, 
                  nummonthspriortoretirementtobeginrebalance, recessionchecklookbackmonths, 
                  recessionrecoverypointmodifier, desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement,
-                  percent401ktraditional, generation , withdrawalstrategy, sixtyfortylong
+                  percent401ktraditional, generation , withdrawalstrategy, sixtyfortylong, clade
              order by 
                  max(r.funpointsatendofsim50) desc, 
                  min(r.bankruptcyrateatendofsim) asc, 
@@ -288,17 +290,17 @@ where id in (select id from childless)");
             (latestResult.MajorVersion, latestResult.MinorVersion);
     }
 
-    public static List<DataTypes.MonteCarlo.Model> FetchOrCreateModelsForTraining(PgPerson person)
+    public static List<DataTypes.MonteCarlo.Model> FetchOrCreateModelsForTraining(PgPerson person, int clade)
     {
         var currentChamps = FetchModelsForTrainingByVersion(
-            person, ModelConstants.MajorVersion, ModelConstants.MinorVersion);
+            person, ModelConstants.MajorVersion, ModelConstants.MinorVersion, clade);
         var dbCount = currentChamps.Count();
         if (dbCount == 0)
         {
             // we might've just changed the version. Try to pull models from the prior version
             var latestVersion = FetchLatestVersionOfTrainingRuns();
             currentChamps = FetchModelsForTrainingByVersion(
-                person, latestVersion.majorVersion, latestVersion.minorVersion);
+                person, latestVersion.majorVersion, latestVersion.minorVersion, clade);
             dbCount = currentChamps.Count();
         }
         
@@ -308,7 +310,7 @@ where id in (select id from childless)");
         var allModels = currentChamps.ToList();
         for (int i = 0; i < numNew; i++)
         {
-            var newModel = ModelFunc.CreateRandomModel(person.BirthDate);
+            var newModel = ModelFunc.CreateRandomModel(person.BirthDate, clade);
             allModels.Add(newModel);
             context.McModels.Add(newModel);
         }
