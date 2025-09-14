@@ -10,6 +10,31 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Simulation
 {
+    private static bool _hasCalculatedSpendablePay = false;
+    private static decimal _spendablePay = 0;
+    public static bool CalculateIsIncomeInflection(
+        LocalDateTime currentDate, decimal priorInterestAccrual, decimal currentInterestAccrual, PgPerson person)
+    {
+        if (priorInterestAccrual <= 0) return false; // it's too early in the sim and some bad months can throw this off
+        var interestAccrual = currentInterestAccrual - priorInterestAccrual;
+        if (interestAccrual <= 0) return false;
+        if (_hasCalculatedSpendablePay) return (interestAccrual >= _spendablePay);
+        
+        // calculate it
+        var grossMonthlyPay = (person.AnnualSalary + person.AnnualBonus) / 12m;
+        _spendablePay = grossMonthlyPay;
+        _spendablePay -= Payday
+            .WithholdTaxesFromPaycheck(person, currentDate, new TaxLedger(), grossMonthlyPay)
+            .amount;
+        _spendablePay -= (person.PreTaxHealthDeductions / 12);
+        _spendablePay -= (person.AnnualHsaContribution / 12);
+        _spendablePay -= (person.Annual401KPreTax / 12);
+        _spendablePay -= (person.Annual401KPostTax / 12);
+        _spendablePay -= (person.PostTaxInsuranceDeductions / 12);
+        _hasCalculatedSpendablePay = true;
+
+        return (interestAccrual >= _spendablePay);
+    }
     
     /// <summary>
     /// This method was written by Claude. Matches Google Sheets' PERCENTILE (inclusive / PERCENTILE.INC) behavior
@@ -182,15 +207,31 @@ public static class Simulation
         
         return percentileValue;
     }
-    
 
+
+    private static string DetermineAverageIncomeInflectionAge(LocalDateTime[] firstIncomeInflections, PgPerson person)
+    {
+        if(firstIncomeInflections.Length == 0) return string.Empty;
+        var averageIncomeInflection = DateFunc.CalculateAverageDate(firstIncomeInflections);
+        var span = averageIncomeInflection - person.BirthDate;
+        return $"{span.Years} years and {span.Months} months";
+    }
     /// <summary>
     /// reads the output from running all lives on a single model and creates statistical views
     /// </summary>
     public static SingleModelRunResult InterpretSimulationResults(
-        DataTypes.MonteCarlo.Model model, List<SimSnapshot>[] allSnapshots, int counter)
+        DataTypes.MonteCarlo.Model model,
+        (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[] allResults, int counter, PgPerson person)
     {
         // todo: unit test InterpretSimulationResults
+
+        var allSnapshots = allResults
+            .Select(x => x.snapshots)
+            .ToArray();
+        var firstIncomeInflections = allResults
+            .Select(x => x.firstIncomeInflection)
+            .ToArray();
+        var averageIncomeInflectionAge = DetermineAverageIncomeInflectionAge(firstIncomeInflections, person);
         
         var maxDate = MonteCarloConfig.MonteCarloSimEndDate;
         var minDate = (MonteCarloConfig.ModelTrainingMode == true)? maxDate : MonteCarloConfig.MonteCarloSimStartDate;
@@ -298,7 +339,9 @@ public static class Simulation
             TaxAtEndOfSim50 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 50),
             TaxAtEndOfSim75 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 75),
             TaxAtEndOfSim90 = Simulation.GetLastValueFromSingleModelRunResultsOverTime(totalTaxOverTime, 90),
-            BankruptcyRateAtEndOfSim = GetLastValueFromSingleModelRunResultBankruptcyRateAtTime(bankruptcyRateOverTime)
+            BankruptcyRateAtEndOfSim = GetLastValueFromSingleModelRunResultBankruptcyRateAtTime(bankruptcyRateOverTime),
+            
+            AverageIncomeInflectionAge = averageIncomeInflectionAge
         };
         return result;
     }

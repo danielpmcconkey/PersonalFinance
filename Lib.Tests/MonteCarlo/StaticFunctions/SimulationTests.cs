@@ -1072,7 +1072,7 @@ public class SimulationTests
         var allLivesRuns = SimulationTrigger.ExecuteSingleModelAllLives(
             logger, model, person, accounts.InvestmentAccounts, accounts.DebtAccounts, hypotheticalPrices);
         
-        var results = Simulation.InterpretSimulationResults(model, allLivesRuns, -1);
+        var results = Simulation.InterpretSimulationResults(model, allLivesRuns, -1, person);
         var bankruptcyRate = results.BankruptcyRateAtEndOfSim;
         
         // Assert

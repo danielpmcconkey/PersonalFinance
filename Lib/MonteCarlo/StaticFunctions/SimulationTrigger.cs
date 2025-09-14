@@ -38,12 +38,13 @@ public class SimulationTrigger
     /// runs all simulation lives for a single model
     /// </summary>
     /// <returns>an array of SimSnapshot lists. Each element in the array represents one simulated life</returns>
-    public static List<SimSnapshot>[] ExecuteSingleModelAllLives(Logger logger,
-        DataTypes.MonteCarlo.Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
-        Dictionary<LocalDateTime, decimal>[] allPricingDicts)
+    public static (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[] 
+        ExecuteSingleModelAllLives(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
+            List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
+            Dictionary<LocalDateTime, decimal>[] allPricingDicts)
     {
         int numLivesPerModelRun = MonteCarloConfig.NumLivesPerModelRun;
-        List<SimSnapshot>[] runs = new List<SimSnapshot>[numLivesPerModelRun];
+        var runs = new (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[numLivesPerModelRun];
         
         if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLivesPerModelRun, i =>
         {
@@ -64,7 +65,7 @@ public class SimulationTrigger
     /// Trigger the simulator for a single run after you've created all the default accounts, parameters and pricing.
     /// Can be used by RunSingle and Train.
     /// </summary>
-    public static List<SimSnapshot> ExecuteSingleModelSingleLife(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
+    public static (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection) ExecuteSingleModelSingleLife(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
         List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
         Dictionary<LocalDateTime, Decimal> hypotheticalPrices)
     {
@@ -111,7 +112,7 @@ public class SimulationTrigger
         
         logger.Info("Batching up the results into something meaningful");
         
-        var results = Simulation.InterpretSimulationResults(model, allLivesRuns, -1);
+        var results = Simulation.InterpretSimulationResults(model, allLivesRuns, -1, person);
         
         return results;
     }
@@ -163,7 +164,8 @@ public class SimulationTrigger
                 SaveModelToDb(offspring);
                 var allLivesRuns2 = ExecuteSingleModelAllLives(
                     logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
-                var modelResults = Simulation.InterpretSimulationResults(offspring, allLivesRuns2, ++maxCounter);
+                var modelResults = Simulation.InterpretSimulationResults(
+                    offspring, allLivesRuns2, ++maxCounter, person);
                 SaveSingleModelRunResultsToDb(modelResults);
                 modelResults = null; // trying to ensure that we clear up the memory
             }

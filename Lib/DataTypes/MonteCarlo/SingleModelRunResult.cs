@@ -124,6 +124,9 @@ public record SingleModelRunResult
     /// </summary>
     [Column("counter", TypeName = "int")]
     public required int Counter { get; set; }
+    
+    [Column("averageincomeinflectionage", TypeName = "varchar(50)")]
+    public required string AverageIncomeInflectionAge { get; init; }
 }
 
 public record SingleModelRunResultStatLineAtTime(

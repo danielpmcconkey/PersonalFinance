@@ -40,6 +40,14 @@ public class LifeSimulator
     /// </summary>
     private readonly int _lifeNum;
 
+    /// <summary>
+    ///  these three fields are used to calculate the income inflection point
+    /// </summary>
+    private decimal _priorInvestmentAccrual = 0;
+    private decimal _currentInvestmentAccrual = 0;
+    private readonly Dictionary<LocalDateTime, bool> _incomeInflectionCalculationResults = [];
+    private LocalDateTime _firstIncomeInflection = LocalDateTime.MaxIsoValue;
+
     public LifeSimulator(
         Logger logger, Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
         List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices, int lifeNum)
@@ -102,7 +110,7 @@ public class LifeSimulator
         _snapshots = [];
     }
 
-    public List<SimSnapshot> Run()
+    public (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection) Run()
     {
         try
         {
@@ -127,6 +135,7 @@ public class LifeSimulator
                     SetGrowthAndPrices();
                     CheckForRetirement();
                     AccrueInterest();
+                    CheckForInflection();
                     ProcessPayday(); 
                     PayDownLoans();
                     UpdateRecessionStats();
@@ -158,12 +167,12 @@ public class LifeSimulator
             }
 
             _simData.Log.Debug($"Done with lifetime {_lifeNum}.");
-            if (!MonteCarloConfig.DebugMode) return _snapshots;
+            if (!MonteCarloConfig.DebugMode) return (_snapshots, _firstIncomeInflection);
             
             _simData.Log.Debug("Writing reconciliation data to spreadsheet");
             _reconciliationLedger.ExportToSpreadsheet();
             _simData.Log.Debug(_simData.Log.FormatHeading("End of simulated lifetime"));
-            return _snapshots;
+            return (_snapshots, _firstIncomeInflection);
         }
         catch (Exception e)
         {
@@ -193,10 +202,16 @@ public class LifeSimulator
             _reconciliationLedger.AddFullReconLine(_simData, "Accruing interest");
         }
 
+        _priorInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
+        
+
         var result = AccountInterestAccrual.AccrueInterest(
             _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices, _simData.LifetimeSpend);
         _simData.BookOfAccounts = result.newAccounts;
         _simData.LifetimeSpend = result.newSpend;
+        
+        _currentInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
+        
         
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
@@ -207,6 +222,30 @@ public class LifeSimulator
 
         _reconciliationLedger.AddMessages(result.messages);
         _reconciliationLedger.AddFullReconLine(_simData, "Accrued interest");
+    }
+    
+    /// <summary>
+    /// Inflection is the point at which you are making more from investment accrual than from salary. But it als takes
+    /// things into account, like that you're currently saving for retirement, so don't count that as true income
+    /// </summary>
+    private void CheckForInflection()
+    {
+        var calcResults = Simulation.CalculateIsIncomeInflection(
+            _simData.CurrentDateInSim, _priorInvestmentAccrual, _currentInvestmentAccrual,
+            _simData.PgPerson);
+        _incomeInflectionCalculationResults.Add(_simData.CurrentDateInSim, calcResults);
+        if (!calcResults) return;
+        const int numMonthsToLookBack = 12;
+        const int numSuccessesRequired = 10;
+        if (numMonthsToLookBack > _incomeInflectionCalculationResults.Count) return;
+        var lastN = _incomeInflectionCalculationResults
+            .OrderByDescending(x => x.Key)
+            .Take(numMonthsToLookBack);
+        var numSuccess = lastN.Count(x => x.Value == true);
+        if (numSuccess < numSuccessesRequired) return;
+
+        if (_simData.CurrentDateInSim >= _firstIncomeInflection) return;
+        _firstIncomeInflection = _simData.CurrentDateInSim;
     }
 
     private void CheckForRetirement()

@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Reflection;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.StaticConfig;
+using Lib.Utils;
 using NodaTime;
 using Model = Lib.DataTypes.MonteCarlo.Model;
 
@@ -41,6 +42,7 @@ logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
 logger.Info(logger.FormatHeading($"Version {ModelConstants.MajorVersion}.{ModelConstants.MinorVersion}.{ModelConstants.PatchVersion}"));
 logger.Info(logger.FormatBarSeparator('*'));
+
 
 /*
  * use this code to run a specific life for a specific model
