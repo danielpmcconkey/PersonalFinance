@@ -13,9 +13,10 @@ with ranked_by_model as (
 		, m.socialsecuritystart
 		, m.austerityratio
 		, m.extremeausterityratio
-		, m.desiredmonthlyspendpreretirement
-		, m.desiredmonthlyspendpostretirement
+		, round (m.desiredmonthlyspendpreretirement, 2) as desiredmonthlyspendpreretirement
+		, round(m.desiredmonthlyspendpostretirement, 2) as desiredmonthlyspendpostretirement
 		, m.percent401ktraditional
+		, r.bankruptcyrateatendofsim
 		, row_number() over(
 			partition by m.id, m.clade, r.majorversion, r.minorversion 
 			order by r.funpointsatendofsim50 desc, 
@@ -38,6 +39,8 @@ with ranked_by_model as (
 		, clade
 		, majorversion
 		, minorversion
+		, desiredmonthlyspendpreretirement
+		, desiredmonthlyspendpostretirement
 		, funpointsatendofsim50
 		, networthatendofsim50
 		, funpointsatendofsim90
@@ -46,9 +49,8 @@ with ranked_by_model as (
 		, socialsecuritystart
 		, austerityratio
 		, extremeausterityratio
-		, desiredmonthlyspendpreretirement
-		, desiredmonthlyspendpostretirement
 		, percent401ktraditional
+		, bankruptcyrateatendofsim
 		, row_number() over(
 			partition by clade 
 			order by funpointsatendofsim50 desc, 

@@ -34,13 +34,15 @@ logger.Info(logger.FormatHeading("Beginning Monte Carlo training session"));
 logger.Info(logger.FormatHeading($"Version {ModelConstants.MajorVersion}.{ModelConstants.MinorVersion}.{ModelConstants.PatchVersion}"));
 logger.Info(logger.FormatBarSeparator('*'));
 var keepRunning = true;
-int cladeCounter = 2;
+int cladeCounter = 0;
+int[] activeClades = [0, 1, 2, 3, 4, 5];
 while(keepRunning)
 {
-    var clade = cladeCounter % 4;
+    var cladePosition = cladeCounter % activeClades.Length;
+    var clade = activeClades[cladePosition];
     logger.Info($"Clade: {clade}");
     SimulationTrigger.RunModelTrainingSession(
-    logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends, cladeCounter);
+    logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends, clade);
     logger.Info("Training session completed.");
     logger.Info("Cleaning up unneeded model training data.");
     SimulationTrigger.CleanUpModelAndRunResultsData();
