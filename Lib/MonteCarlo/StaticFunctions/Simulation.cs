@@ -216,6 +216,7 @@ public static class Simulation
         var span = averageIncomeInflection - person.BirthDate;
         return $"{span.Years} years and {span.Months} months";
     }
+    
     /// <summary>
     /// reads the output from running all lives on a single model and creates statistical views
     /// </summary>

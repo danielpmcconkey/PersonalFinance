@@ -108,6 +108,8 @@ public class LifeSimulator
         };
         _hypotheticalPrices = hypotheticalPrices;
         _snapshots = [];
+
+        _firstIncomeInflection = model.SimEndDate;
     }
 
     public (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection) Run()

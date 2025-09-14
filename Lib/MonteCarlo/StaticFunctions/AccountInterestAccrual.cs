@@ -180,7 +180,7 @@ public static class AccountInterestAccrual
             AccountCopy.CopyInvestmentPosition(position), Spend.CopyLifetimeSpend(lifetimeSpend), []);
         
         
-        var oldAmount = (!MonteCarloConfig.DebugMode) ? 0 : position.CurrentValue;
+        var oldAmount = position.CurrentValue;
         
         var newPrice = position.InvestmentPositionType switch
         {
@@ -189,10 +189,6 @@ public static class AccountInterestAccrual
             _ => (decimal)prices.CurrentLongTermInvestmentPrice
         };
         results.newPosition.Price = newPrice;
-        
-        // return here unless we're reconciling
-        if (!MonteCarloConfig.DebugMode)
-            return results;
         
         // do the recon stuff, then return
         var newAmount =  results.newPosition.CurrentValue;
