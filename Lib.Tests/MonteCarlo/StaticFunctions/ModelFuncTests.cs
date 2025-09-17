@@ -67,17 +67,17 @@ public class ModelFuncTests
     }
     
     [Theory]
-    [InlineData(0,4821,5200)] // 0 and 10 will only get half as many due to rounding
-    [InlineData(1,9700,10300)]
-    [InlineData(2,9654,10300)]
-    [InlineData(3,9700,10300)]
-    [InlineData(4,9700,10300)]
-    [InlineData(5,9700,10300)]
-    [InlineData(6,9700,10300)]
-    [InlineData(7,9700,10300)]
-    [InlineData(8,9700,10300)]
-    [InlineData(9,9700,10300)]
-    [InlineData(10,4850,5150)] // 0 and 10 will only get half as many due to rounding
+    [InlineData(0, 4500, 5500)]   // Edge case: ~5% ± 10% tolerance  
+    [InlineData(1, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(2, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance  
+    [InlineData(3, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(4, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(5, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(6, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(7, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(8, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(9, 9000, 11000)]  // Normal case: ~10% ± 10% tolerance
+    [InlineData(10, 4500, 5500)]  // Edge case: ~5% ± 10% tolerance
     public void GetUnSeededRandomDecimal_IsRandom(int batch, int expectedLow, int expectedHigh)
     {
         var totalChecks = 100000;

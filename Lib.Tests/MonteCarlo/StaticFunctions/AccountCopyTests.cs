@@ -249,7 +249,6 @@ public class AccountCopyTests
 
     [Fact]
     public void CopyPositions_ShouldHandleNullPositions()
-
     {
         // Arrange
         List<McDebtPosition>? nullDebtPositions = null;
@@ -259,5 +258,21 @@ public class AccountCopyTests
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() => AccountCopy.CopyDebtPositions(nullDebtPositions!));
         Assert.Throws<ArgumentNullException>(() => AccountCopy.CopyInvestmentPositions(nullInvestmentPositions!));
+    }
+    
+    [Fact]
+    public void CopyBookOfAccounts_WithCash_ShouldCopyCash()
+    {
+        // Arrange
+        const decimal expectedCash = 1000m;
+        var originalAccounts = TestDataManager.CreateEmptyBookOfAccounts();
+        originalAccounts = AccountCashManagement.DepositCash(
+            originalAccounts, expectedCash, new LocalDateTime(2025, 1, 1, 0, 0))
+            .accounts;
+        // Act
+        var copiedAccounts = AccountCopy.CopyBookOfAccounts(originalAccounts);
+        var actualCash = AccountCalculation.CalculateCashBalance(copiedAccounts);
+        // Assert
+        Assert.Equal(expectedCash, actualCash);
     }
 }
