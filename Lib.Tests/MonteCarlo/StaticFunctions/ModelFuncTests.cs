@@ -1,4 +1,5 @@
 
+using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.StaticFunctions;
 using Lib.MonteCarlo.WithdrawalStrategy;
@@ -9,7 +10,7 @@ using Xunit;
 
 namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
-public class ModelTests
+public class ModelFuncTests
 {
     #region utility functions and private variables
     
@@ -105,7 +106,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateAusterityRatio(modelA, modelB);
+        var result = ModelFunc.MateAusterityRatio(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(result, ModelConstants.AusterityRatioMin, ModelConstants.AusterityRatioMax);
@@ -119,7 +120,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateDesiredMonthlySpendPostRetirement(modelA, modelB);
+        var result = ModelFunc.MateDesiredMonthlySpendPostRetirement(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -135,7 +136,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateDesiredMonthlySpendPreRetirement(modelA, modelB);
+        var result = ModelFunc.MateDesiredMonthlySpendPreRetirement(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -151,7 +152,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateExtremeAusterityNetWorthTrigger(modelA, modelB);
+        var result = ModelFunc.MateExtremeAusterityNetWorthTrigger(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -167,7 +168,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateExtremeAusterityRatio(modelA, modelB);
+        var result = ModelFunc.MateExtremeAusterityRatio(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -182,7 +183,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateNumMonthsCashOnHand(modelA, modelB);
+        var result = ModelFunc.MateNumMonthsCashOnHand(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -198,7 +199,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateNumMonthsMidBucketOnHand(modelA, modelB);
+        var result = ModelFunc.MateNumMonthsMidBucketOnHand(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -214,7 +215,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateNumMonthsPriorToRetirementToBeginRebalance(modelA, modelB);
+        var result = ModelFunc.MateNumMonthsPriorToRetirementToBeginRebalance(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -230,7 +231,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MatePercent401KTraditional(modelA, modelB);
+        var result = ModelFunc.MatePercent401KTraditional(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -260,7 +261,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateRecessionCheckLookBackMonths(modelA, modelB);
+        var result = ModelFunc.MateRecessionCheckLookBackMonths(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -276,7 +277,7 @@ public class ModelTests
         var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
 
         // Act
-        var result = ModelFunc.MateRecessionRecoveryPointModifier(modelA, modelB);
+        var result = ModelFunc.MateRecessionRecoveryPointModifier(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(
@@ -298,7 +299,7 @@ public class ModelTests
             .PlusMonths(ModelConstants.RetirementAgeMax.months);
 
         // Act
-        var result = ModelFunc.MateRetirementDate(modelA, modelB, _birthdate);
+        var result = ModelFunc.MateRetirementDate(modelA, modelB, _birthdate, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(result, minDate, maxDate);
@@ -318,7 +319,7 @@ public class ModelTests
             .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months);
 
         // Act
-        var result = ModelFunc.MateSocialSecurityStartDate(modelA, modelB, _birthdate);
+        var result = ModelFunc.MateSocialSecurityStartDate(modelA, modelB, _birthdate, MathFunc.FlipACoin() == CoinFlip.Heads);
 
         // Assert
         Assert.InRange(result, minDate, maxDate);
@@ -351,8 +352,8 @@ public class ModelTests
             modelB.DesiredMonthlySpendPostRetirement = maxSpend + 1;
 
             // Act
-            var dateResult = ModelFunc.MateSocialSecurityStartDate(modelA, modelB, _birthdate);
-            var spendResult = ModelFunc.MateDesiredMonthlySpendPostRetirement(modelA, modelB);
+            var dateResult = ModelFunc.MateSocialSecurityStartDate(modelA, modelB, _birthdate, MathFunc.FlipACoin() == CoinFlip.Heads);
+            var spendResult = ModelFunc.MateDesiredMonthlySpendPostRetirement(modelA, modelB, MathFunc.FlipACoin() == CoinFlip.Heads);
 
             // Assert
             Assert.InRange(dateResult, minDate, maxDate);
@@ -677,6 +678,65 @@ public class ModelTests
         // Assert
         Assert.True(Enum.IsDefined(typeof(WithdrawalStrategyType), result));
     }
+    
+    [Fact]
+    public void MateModels_WithIdenticalParentsAndManyRuns_ShowsCorrectStatisticalVariation()
+    {
+        // Arrange
+        const int totalTests = 10000;
+        const decimal tolerance = 0.15m;
+        var modelA = ModelFunc.CreateRandomModel(_birthdate, -1);
+        var modelB = ModelFunc.CreateRandomModel(_birthdate, -1);
+
+        // Make one property identical to force nudge detection
+        modelA.AusterityRatio = 0.75m; // right between min and max
+        modelB.AusterityRatio = 0.75m;
+
+        const decimal oddsOfUsingParentVal = .8m;
+        const decimal oddsOfUsingRandomVal = 1.0m - oddsOfUsingParentVal;
+        const decimal oddsOfUsingNudge = oddsOfUsingRandomVal * 0.5m;
+        const decimal oddsOfUsingFullRandom = oddsOfUsingNudge;
+        var nudgeSignificance = Math.Round(
+            (ModelConstants.AusterityRatioMax - ModelConstants.AusterityRatioMin) * 0.01m, 4);
+        var nudgeUp = modelA.AusterityRatio + nudgeSignificance;
+        var nudgeDown = modelA.AusterityRatio - nudgeSignificance;
+        
+        const decimal expectedCountAtIdenticalToParent = totalTests * oddsOfUsingParentVal;
+        const decimal expectedCountAtIdenticalToParentLow = expectedCountAtIdenticalToParent * (1m - tolerance);
+        const decimal expectedCountAtIdenticalToParentHigh = expectedCountAtIdenticalToParent * (1m + tolerance);
+        const decimal expectedCountAtNudge = totalTests * oddsOfUsingNudge;
+        const decimal expectedCountAtNudgeLow = expectedCountAtNudge * (1m - tolerance);
+        const decimal expectedCountAtNudgeHigh = expectedCountAtNudge * (1m + tolerance);
+        const decimal expectedCountAtFullRandom = totalTests * oddsOfUsingFullRandom;
+        const decimal expectedCountAtFullRandomLow = expectedCountAtFullRandom * (1m - tolerance);
+        const decimal expectedCountAtFullRandomHigh = expectedCountAtFullRandom * (1m + tolerance);
+        
+
+        // Act
+        var actualCountAtIdenticalToParent = 0;
+        var actualCountAtNudge = 0;
+        var actualCountAtFullRandom = 0;
+        for (var i = 0; i < totalTests; i++)
+        {
+            var child = ModelFunc.MateModels(modelA, modelB, _birthdate);
+
+            if (child.AusterityRatio == modelA.AusterityRatio) actualCountAtIdenticalToParent++;
+            else if (Math.Round(child.AusterityRatio, 4) == nudgeUp) actualCountAtNudge++;
+            else if (Math.Round(child.AusterityRatio, 4) == nudgeDown) actualCountAtNudge++;
+            else actualCountAtFullRandom++;
+        }
+
+        // Assert
+        Assert.InRange(actualCountAtIdenticalToParent,
+            expectedCountAtIdenticalToParentLow, expectedCountAtIdenticalToParentHigh);
+        Assert.InRange(actualCountAtNudge,
+            expectedCountAtNudgeLow, expectedCountAtNudgeHigh);
+        Assert.InRange(actualCountAtFullRandom,
+            expectedCountAtFullRandomLow, expectedCountAtFullRandomHigh);
+    }
+
+
+
 
     #endregion
 }

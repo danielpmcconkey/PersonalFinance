@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Lib.Utils;
 using NodaTime;
 
@@ -28,8 +29,8 @@ public class IntNudgeHandler : INudgeHandler<int>
         if (parentAValue - Significance < minValue)
             return minValue + Significance;
 
-        var diceRoll = MathFunc.GetUnSeededRandomInt(1, 10);
-        return AddSignificantValue(parentAValue, diceRoll < 6);
+        var coinFlip = MathFunc.FlipACoin();
+        return AddSignificantValue(parentAValue, coinFlip == CoinFlip.Heads);
     }
 
     public bool IsDifferentEnough(int value1, int value2) => Math.Abs(value1 - value2) > 1;
@@ -54,8 +55,8 @@ public class DecimalNudgeHandler : INudgeHandler<decimal>
         if (parentAValue - _significance < minValue)
             return minValue + _significance;
 
-        var diceRoll = MathFunc.GetUnSeededRandomInt(1, 10);
-        var burp = AddSignificantValue(parentAValue, diceRoll < 6);
+        var coinFlip = MathFunc.FlipACoin();
+        var burp = AddSignificantValue(parentAValue, coinFlip == CoinFlip.Heads);
         return burp;
     }
 
@@ -83,8 +84,8 @@ public class LocalDateTimeNudgeHandler : INudgeHandler<LocalDateTime>
         if (parentAValue.PlusMonths(-Significance) < minValue)
             return minValue.PlusMonths(Significance);
 
-        var diceRoll = MathFunc.GetUnSeededRandomInt(1, 10);
-        return AddSignificantValue(parentAValue, diceRoll < 6);
+        var coinFlip = MathFunc.FlipACoin();
+        return AddSignificantValue(parentAValue, coinFlip == CoinFlip.Heads);
     }
 
     public bool IsDifferentEnough(LocalDateTime value1, LocalDateTime value2)

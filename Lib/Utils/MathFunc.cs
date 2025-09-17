@@ -1,9 +1,17 @@
+using Lib.DataTypes;
 using NodaTime;
 
 namespace Lib.Utils;
 
 public class MathFunc
 {
+
+    private static readonly Random Random = new ();
+
+    public static CoinFlip FlipACoin()
+    {
+        return Random.Next(2) == 0 ? CoinFlip.Heads : CoinFlip.Tails;
+    }
     
     /// <summary>
     /// Helper for generating a random value in [minValue, maxValue] for supported types.
@@ -55,13 +63,12 @@ public class MathFunc
     
     public static int GetUnSeededRandomInt(int minInclusive, int maxInclusive)
     {
-        var rand = new Random();
-        return rand.Next(minInclusive, maxInclusive + 1);
+        return Random.Next(minInclusive, maxInclusive + 1);
+
     }
     public static decimal GetUnSeededRandomDecimal(decimal minInclusive, decimal maxInclusive)
     {
-        var rand = new Random();
-        return (decimal)rand.NextDouble() * (maxInclusive - minInclusive) + minInclusive;
+        return (decimal)Random.NextDouble() * (maxInclusive - minInclusive) + minInclusive;
     }
     public static LocalDateTime GetUnSeededRandomDate(LocalDateTime min, LocalDateTime max)
     {

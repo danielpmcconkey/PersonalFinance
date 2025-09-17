@@ -1,3 +1,4 @@
+using Lib.DataTypes;
 using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.WithdrawalStrategy;
 using Lib.StaticConfig;
@@ -39,7 +40,9 @@ public class ModelFunc
         Model parentB,
         Func<Model, T> propertySelector,
         T minValue,
-        T maxValue) where T : IComparable<T>
+        T maxValue,
+        bool nudgeMode
+    ) where T : IComparable<T>
     {
         // Normalize bounds if they were provided in reverse order.
         if (Comparer<T>.Default.Compare(minValue, maxValue) > 0)
@@ -57,7 +60,7 @@ public class ModelFunc
                 candidate = propertySelector(parentB);
                 break;
             case HereditarySource.Random:
-                if(MonteCarloConfig.IsNudgeModeOn) candidate = GenerateNudgeValue(
+                if(nudgeMode) candidate = GenerateNudgeValue(
                     minValue, maxValue, propertySelector(parentA), propertySelector(parentB));
                 else candidate = MathFunc.GenerateRandomBetween(minValue, maxValue);
                 break;
@@ -202,6 +205,9 @@ public class ModelFunc
     
     public static Model MateModels(Model a, Model b, LocalDateTime birthDate)
     {
+        // When in nudgeMode, the model breeder will be way less drastic in its randomization. This used to be a global
+        // config param, but I want to have it randomly set so we get a good blend of radical and conservative mutation
+        var nudgeMode = (MathFunc.FlipACoin() == CoinFlip.Heads) ? true : false;
         var newGuid = Guid.NewGuid();
         return new Model(){
         
@@ -217,25 +223,25 @@ public class ModelFunc
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = a.SimStartDate,
             SimEndDate = a.SimEndDate,
-            RetirementDate = MateRetirementDate(a, b, birthDate),
-            SocialSecurityStart = MateSocialSecurityStartDate(a, b, birthDate),
-            AusterityRatio = MateAusterityRatio(a, b),
-            ExtremeAusterityRatio = MateExtremeAusterityRatio(a, b),
-            ExtremeAusterityNetWorthTrigger = MateExtremeAusterityNetWorthTrigger(a, b),
-            LivinLargeRatio = MateLivinLargeRatio(a, b),
-            LivinLargeNetWorthTrigger = MateLivinLargeNetWorthTrigger(a, b),
+            RetirementDate = MateRetirementDate(a, b, birthDate, nudgeMode),
+            SocialSecurityStart = MateSocialSecurityStartDate(a, b, birthDate, nudgeMode),
+            AusterityRatio = MateAusterityRatio(a, b, nudgeMode),
+            ExtremeAusterityRatio = MateExtremeAusterityRatio(a, b, nudgeMode),
+            ExtremeAusterityNetWorthTrigger = MateExtremeAusterityNetWorthTrigger(a, b, nudgeMode),
+            LivinLargeRatio = MateLivinLargeRatio(a, b, nudgeMode),
+            LivinLargeNetWorthTrigger = MateLivinLargeNetWorthTrigger(a, b, nudgeMode),
             RebalanceFrequency = MateRebalanceFrequency(a, b),
-            NumMonthsCashOnHand = MateNumMonthsCashOnHand(a, b),
-            NumMonthsMidBucketOnHand = MateNumMonthsMidBucketOnHand(a, b),
-            NumMonthsPriorToRetirementToBeginRebalance = MateNumMonthsPriorToRetirementToBeginRebalance(a, b),
-            RecessionCheckLookBackMonths = MateRecessionCheckLookBackMonths(a, b),
-            RecessionRecoveryPointModifier = MateRecessionRecoveryPointModifier(a, b),
-            DesiredMonthlySpendPreRetirement = MateDesiredMonthlySpendPreRetirement(a, b),
-            DesiredMonthlySpendPostRetirement = MateDesiredMonthlySpendPostRetirement(a, b),
-            Percent401KTraditional = MatePercent401KTraditional(a, b),
+            NumMonthsCashOnHand = MateNumMonthsCashOnHand(a, b, nudgeMode),
+            NumMonthsMidBucketOnHand = MateNumMonthsMidBucketOnHand(a, b, nudgeMode),
+            NumMonthsPriorToRetirementToBeginRebalance = MateNumMonthsPriorToRetirementToBeginRebalance(a, b, nudgeMode),
+            RecessionCheckLookBackMonths = MateRecessionCheckLookBackMonths(a, b, nudgeMode),
+            RecessionRecoveryPointModifier = MateRecessionRecoveryPointModifier(a, b, nudgeMode),
+            DesiredMonthlySpendPreRetirement = MateDesiredMonthlySpendPreRetirement(a, b, nudgeMode),
+            DesiredMonthlySpendPostRetirement = MateDesiredMonthlySpendPostRetirement(a, b, nudgeMode),
+            Percent401KTraditional = MatePercent401KTraditional(a, b, nudgeMode),
             Generation = Math.Max(a.Generation, b.Generation) + 1,
             WithdrawalStrategyType = MateWithdrawalStrategyType(a, b),
-            SixtyFortyLong = MateSixtyFortyLong(a, b),
+            SixtyFortyLong = MateSixtyFortyLong(a, b, nudgeMode),
         };
     }
     
@@ -244,82 +250,93 @@ public class ModelFunc
 
     #region Individual Property Mating Functions
 
-    public static decimal MateAusterityRatio(Model a, Model b) =>
+    public static decimal MateAusterityRatio(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.AusterityRatio,
             ModelConstants.AusterityRatioMin,
-            ModelConstants.AusterityRatioMax);
+            ModelConstants.AusterityRatioMax,
+            nudgeMode);
     
-    public static decimal MateDesiredMonthlySpendPostRetirement(Model a, Model b) =>
+    public static decimal MateDesiredMonthlySpendPostRetirement(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.DesiredMonthlySpendPostRetirement,
             ModelConstants.DesiredMonthlySpendPostRetirementMin,
-            ModelConstants.DesiredMonthlySpendPostRetirementMax);
+            ModelConstants.DesiredMonthlySpendPostRetirementMax,
+            nudgeMode);
     
-    public static decimal MateDesiredMonthlySpendPreRetirement(Model a, Model b) =>
+    public static decimal MateDesiredMonthlySpendPreRetirement(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.DesiredMonthlySpendPreRetirement,
             ModelConstants.DesiredMonthlySpendPreRetirementMin,
-            ModelConstants.DesiredMonthlySpendPreRetirementMax);
+            ModelConstants.DesiredMonthlySpendPreRetirementMax,
+            nudgeMode);
     
-    public static decimal MateExtremeAusterityNetWorthTrigger(Model a, Model b) =>
+    public static decimal MateExtremeAusterityNetWorthTrigger(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.ExtremeAusterityNetWorthTrigger,
             ModelConstants.ExtremeAusterityNetWorthTriggerMin,
-            ModelConstants.ExtremeAusterityNetWorthTriggerMax);
+            ModelConstants.ExtremeAusterityNetWorthTriggerMax,
+            nudgeMode);
     
-    public static decimal MateExtremeAusterityRatio(Model a, Model b) =>
+    public static decimal MateExtremeAusterityRatio(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.ExtremeAusterityRatio,
             ModelConstants.ExtremeAusterityRatioMin,
-            ModelConstants.ExtremeAusterityRatioMax);
+            ModelConstants.ExtremeAusterityRatioMax,
+            nudgeMode);
     
-    public static decimal MateLivinLargeNetWorthTrigger(Model a, Model b) =>
+    public static decimal MateLivinLargeNetWorthTrigger(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.LivinLargeNetWorthTrigger,
             ModelConstants.LivinLargeNetWorthTriggerMin,
-            ModelConstants.LivinLargeNetWorthTriggerMax);
+            ModelConstants.LivinLargeNetWorthTriggerMax,
+            nudgeMode);
     
-    public static decimal MateLivinLargeRatio(Model a, Model b) =>
+    public static decimal MateLivinLargeRatio(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.LivinLargeRatio,
             ModelConstants.LivinLargeRatioMin,
-            ModelConstants.LivinLargeRatioMax);
+            ModelConstants.LivinLargeRatioMax,
+            nudgeMode);
     
-    public static int MateNumMonthsCashOnHand(Model a, Model b) =>
+    public static int MateNumMonthsCashOnHand(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.NumMonthsCashOnHand,
             ModelConstants.NumMonthsCashOnHandMin,
-            ModelConstants.NumMonthsCashOnHandMax);
+            ModelConstants.NumMonthsCashOnHandMax,
+            nudgeMode);
     
-    public static int MateNumMonthsMidBucketOnHand(Model a, Model b) =>
+    public static int MateNumMonthsMidBucketOnHand(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.NumMonthsMidBucketOnHand,
             ModelConstants.NumMonthsMidBucketOnHandMin,
-            ModelConstants.NumMonthsMidBucketOnHandMax);
+            ModelConstants.NumMonthsMidBucketOnHandMax,
+            nudgeMode);
     
-    public static int MateNumMonthsPriorToRetirementToBeginRebalance(Model a, Model b) =>
+    public static int MateNumMonthsPriorToRetirementToBeginRebalance(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.NumMonthsPriorToRetirementToBeginRebalance,
             ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMin,
-            ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax);
+            ModelConstants.NumMonthsPriorToRetirementToBeginRebalanceMax,
+            nudgeMode);
     
-    public static decimal MatePercent401KTraditional(Model a, Model b) =>
+    public static decimal MatePercent401KTraditional(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.Percent401KTraditional,
             ModelConstants.Percent401KTraditionalMin,
-            ModelConstants.Percent401KTraditionalMax);
+            ModelConstants.Percent401KTraditionalMax,
+            nudgeMode);
     
     public static RebalanceFrequency MateRebalanceFrequency(Model a, Model b) =>
         MateProperty(
@@ -336,21 +353,23 @@ public class ModelFunc
                 };
             });
     
-    public static int MateRecessionCheckLookBackMonths(Model a, Model b) =>
+    public static int MateRecessionCheckLookBackMonths(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.RecessionCheckLookBackMonths,
             ModelConstants.RecessionCheckLookBackMonthsMin,
-            ModelConstants.RecessionCheckLookBackMonthsMax);
+            ModelConstants.RecessionCheckLookBackMonthsMax,
+            nudgeMode);
 
-    public static decimal MateRecessionRecoveryPointModifier(Model a, Model b) =>
+    public static decimal MateRecessionRecoveryPointModifier(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.RecessionRecoveryPointModifier,
             ModelConstants.RecessionRecoveryPointModifierMin,
-            ModelConstants.RecessionRecoveryPointModifierMax);
+            ModelConstants.RecessionRecoveryPointModifierMax,
+            nudgeMode);
     
-    public static LocalDateTime MateRetirementDate(Model a, Model b, LocalDateTime birthDate) =>
+    public static LocalDateTime MateRetirementDate(Model a, Model b, LocalDateTime birthDate, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.RetirementDate,
@@ -359,17 +378,19 @@ public class ModelFunc
                     .PlusMonths(ModelConstants.RetirementAgeMin.months),
             birthDate
                     .PlusYears(ModelConstants.RetirementAgeMax.years)
-                    .PlusMonths(ModelConstants.RetirementAgeMax.months)
+                    .PlusMonths(ModelConstants.RetirementAgeMax.months),
+            nudgeMode
             );
     
-    public static decimal MateSixtyFortyLong(Model a, Model b) =>
+    public static decimal MateSixtyFortyLong(Model a, Model b, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.SixtyFortyLong,
             ModelConstants.SixtyFortyLongMin,
-            ModelConstants.SixtyFortyLongMax);
+            ModelConstants.SixtyFortyLongMax,
+            nudgeMode);
     
-    public static LocalDateTime MateSocialSecurityStartDate(Model a, Model b, LocalDateTime birthDate) =>
+    public static LocalDateTime MateSocialSecurityStartDate(Model a, Model b, LocalDateTime birthDate, bool nudgeMode) =>
         MateNumericProperty(
             a, b,
             model => model.SocialSecurityStart,
@@ -378,7 +399,8 @@ public class ModelFunc
                 .PlusMonths(ModelConstants.SocialSecurityElectionStartMin.months),
             birthDate
                 .PlusYears(ModelConstants.SocialSecurityElectionStartMax.years)
-                .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months)
+                .PlusMonths(ModelConstants.SocialSecurityElectionStartMax.months),
+            nudgeMode
             );
     public static WithdrawalStrategyType MateWithdrawalStrategyType(Model a, Model b) =>
         MateProperty(
