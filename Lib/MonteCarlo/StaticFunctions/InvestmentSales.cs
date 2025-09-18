@@ -44,15 +44,6 @@ public static class InvestmentSales
 
         return result;
     }
-    public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)
-    {
-        return strategy switch {
-            WithdrawalStrategyType.BasicBucketsIncomeThreshold => new BasicBucketsIncomeThreshold(),
-            WithdrawalStrategyType.BasicBucketsTaxableFirst => new BasicBucketsTaxableFirst(),
-            WithdrawalStrategyType.SixtyForty => new SixtyForty(),
-            _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null)
-        };
-    }
     public static (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages)
         SellInvestmentsToDollarAmount(
             BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell,
@@ -189,7 +180,7 @@ public static class InvestmentSales
         results.messages.Add(new ReconciliationMessage(currentDate, totalTaxFree, "Total tax free sold"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalTaxableSold, "Total taxable sold"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalLongTermCapitalGains, "Total long term capital gains"));
-        results.messages.Add(new ReconciliationMessage(currentDate, totalLongTermCapitalGains, "Total short term capital gains"));
+        results.messages.Add(new ReconciliationMessage(currentDate, totalShortTermCapitalGains, "Total short term capital gains"));
         results.messages.Add(new ReconciliationMessage(currentDate, totalTaxFree, "Total tax free sold"));
         results.messages.AddRange(depositResults.messages);
         results.messages.AddRange(recordIraResults.messages);

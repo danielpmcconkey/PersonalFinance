@@ -8,6 +8,16 @@ namespace Lib.MonteCarlo.WithdrawalStrategy;
 
 public static class SharedWithdrawalFunctions
 {
+    
+    public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)
+    {
+        return strategy switch {
+            WithdrawalStrategyType.BasicBucketsIncomeThreshold => new BasicBucketsIncomeThreshold(),
+            WithdrawalStrategyType.BasicBucketsTaxableFirst => new BasicBucketsTaxableFirst(),
+            WithdrawalStrategyType.SixtyForty => new SixtyForty(),
+            _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null)
+        };
+    }
     #region Basic Buckets Shared Functions
     
     /// <summary>

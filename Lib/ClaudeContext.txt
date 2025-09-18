@@ -1,0 +1,189 @@
+#Context for Claude
+This file is to provide Claude with sufficient context of this solution so that I don't have to retrain Claude at the 
+start of every session.
+
+Update 2025-09-18 10:00
+
+Current model version: 0.18.0 (Major.Minor.Patch in `ModelConstants`)
+
+##PersonalFinance Solution Overview
+
+This is a C# .NET 8.0 solution using JetBrains Rider IDE on Linux. The solution consists of the following .net projects:
+- ModelTrainer. This project's goal is to employ a strategy similar to model training from the Machine Learning domain
+and run generations of a financial Monte Carlo simulations using different parameters (Lib.DataTypes.MonteCarlo.Model) 
+to determine which parameters yield the most fun points at the end of multiple simulated lives. The parameters encompass
+various aspects of retirement planning, savings, investment, and spending.
+- MonteCarloCLI. This project is a command line application used for debugging the MonteCarlo simulation. It's designed
+to easily provide specific input parameters and debug through a single Monte Carlo simulation run. 
+- PersonalFinance. This project reads the current state of my finances from the PostgreSQL database, uses those as
+inputs into the current best Lib.DataTypes.MonteCarlo.Model parameters (as determined through running the ModelTrainer
+many times), and provide a visualization layer of the current state of my finances and my likely retirement outlook.
+- Lib. This is the library project that encapsulates all the business logic necessary to run the above projects.
+- Lb.Tests. This project encapsulates all unit and regression tests for the Lib project.
+
+##Architecture Overview:
+
+- Uses EFCore for data access, xUnit testing, NodaTime for dates, decimal precision for financial calculations
+- Core namespaces: `Lib.MonteCarlo.StaticFunctions`, `Lib.DataTypes.MonteCarlo`, `Lib.Tests.MonteCarlo.StaticFunctions`
+- Key classes: 
+    - `PgContext`: This is the EFCore context file that describes the relationship between data types in the database.
+    - `ConfigManager`: Provides static methods to read configuration settings from appsettings.json with type-safe
+    parsing for various data types.
+    - `TaxConstants`: Contains static readonly arrays and constants defining federal tax brackets, RMD tables, Social
+    Security thresholds, and other tax-related calculations.
+    - `MonteCarloConfig`: Houses static configuration values that transcend all instances of a simulation run, including
+     debug flags, parallel processing settings, and simulation parameters.
+    - `ModelConstants`: Defines version information and min/max constraints for all model parameters used in Monte Carlo
+    simulation breeding and validation.
+    - `Model`: Represents a complete set of parameters for a Monte Carlo simulation run, including retirement dates,
+    spending ratios, and investment strategies.
+    - `PgPerson`: Entity class representing a person's basic demographic and financial information stored in the
+    PostgreSQL database.
+    - `AccountCalculation`: Static utility class providing methods to calculate various account balances and financial
+    metrics across different account types.
+    - `AccountDebtPayment`: Handles debt payment calculations and operations for various debt account types in the
+    simulation.
+    - `AccountInterestAccrual`: Manages interest accrual calculations for both debt and investment accounts over time
+    periods.
+    - `Simulation`: Interprets and aggregates results from multiple life simulation runs into meaningful statistical
+    metrics.
+    - `SimulationTrigger`: Orchestrates the execution of Monte Carlo simulations, including database operations, model
+    breeding, and batch processing.
+    - `LifeSimulator`: Executes a complete simulated financial life from start to end, processing monthly financial
+    operations and decisions.
+    - `IWithdrawalStrategy`: Interface defining the contract for different retirement withdrawal and investment
+    strategies.
+    - `TaxCalculation`: Provides comprehensive tax calculation methods including federal/state income tax, capital
+    gains, RMDs, and Social Security taxation.
+    - `InvestmentSales`: Handles the complex logic of selling investments in optimal order for tax efficiency and
+    account management.
+    - `AccountCashManagement`: Manages cash account operations including deposits, withdrawals, and cascading
+    liquidation when insufficient cash is available.
+    - `ModelFunc`: Contains utility functions for creating, breeding, and manipulating Monte Carlo simulation models.
+    - `MathFunc`: Provides mathematical utility functions including random number generation and statistical operations
+    for simulations.
+- Common patterns:
+    - **Static classes and functions** I want this to be as functional as possible and seldom have business logic in
+    classes with instance data. This is to avoid unintended side effects
+    - **Creating copies of data structures and returning the copies** Again, this is to be as functional as possible.
+    I'm not sure whether this was a smart idea or not, but it's probably too late to change now
+    - **Returning tuples** Again, this is to be as functional as possible. I don't want large instance classes. I want
+    to pass the data that a static function needs to that static function, have that static function treat the passed in
+    data is immutable, and have it return new (changed) instances of the data 
+    
+##Financial Domain Logic:
+
+- The Monte Carlo simulation Simulates retirement scenarios with multiple account types: Traditional/Roth IRA/401k, HSA,
+Taxable Brokerage, Cash
+- Investment positions have types: LONG_TERM, MID_TERM, SHORT_TERM (affects tax treatment)
+- Tax calculations include: RMDs (start age 73), capital gains (long/short term), IRA distributions
+- Withdrawal strategies implement common concepts for investing and withdrawal
+    - `BasicBucketsIncomeThreshold`: Withdrawal strategy that uses tax-deferred accounts until reaching higher tax
+    brackets, then switches to taxable/tax-free accounts.
+    - `BasicBucketsTaxableFirst`: Withdrawal strategy that prioritizes taxable brokerage accounts first, then
+    tax-deferred, then tax-free accounts.
+    - `SixtyForty`: Simple withdrawal strategy that maintains a configurable split between long-term and mid-term
+    position types. It is named SixtyForty because traditional retirement planning sets that ratio at 60% equities and
+    40% bonds. Though each Model instance can define its own preferred ratio.
+        
+##Monte Carlo logic
+
+The Monte Carlo simulation simulates a specified number of imaginary futures for me (Dan, the author) by taking my 
+current financial state (as of each run) and projecting ahead until my 90th birthday. Each imaginary future life will 
+endure a different set of hypothetical investment growth rates over time. Each imaginary future life will make financial
+decisions based on the parameters in the provided Model instance. 
+
+The hypothetical growth rates are consistently calculated such that Model A's life 5 will have identical hypothetical
+growth rates as Model B's life 5. But each models' life 5 will have different growth rates from their life 6s.
+
+All future dollars are denominated in "today's" dollar value. This means that we don't try to track inflation. If, at 
+the end of a simulated life, you have a net worth of $2MM, that will be $2MM of today's dollars, even though it'll be
+40 years in the future. All hypothetical growth rates are made up of real-world S&P500 growth rates less a real-world
+change in CPI. In other words, all assumed growth is net of inflation.
+
+We try to track as close to real-world financial events as we can. Prior to retirement, I will draw a paycheck, pay for
+insurance, have taxes withheld, pay bills, spend money on fun stuff, etc. After retirement, I will withdraw from my
+accounts to pay for everything. 
+
+The "goal" of model training is to maximize "fun points". When we spend money on fun things, we accrue fun points.
+When we have to go to work to afford fun things, that detracts from our fun points. 
+
+##Data / control flow:
+
+- ModelTrainer project
+    - Fetch the PgPerson object and historical data (S&P500 and consumer price index data since 1980) from the database
+    - Continuously loop. In each loop:
+        - Fetch the best 15 models from the database based on past runs
+        - Generate 5 new random models
+        - Breed all 20 models to each other (resulting in 400 child models) allowing for mutation
+        - Run each child model through 100 simulated lifetimes
+        - Interpret and record the results in the database
+- MonteCarloCli project
+    - Fetch the PgPerson object, a specific model, and historical data (S&P500 and consumer price index data since 1980)
+    from the database
+    - Run 100 simulated lifetimes using that model
+    - Alternately, you can uncomment code to run a specific lifetime for easier debugging
+- PersonalFinance project
+    - Fetch the PgPerson object, a specific model, and historical data (S&P500 and consumer price index data since 1980)
+    from the database
+    - Run 1000 simulated lifetimes using that model
+    - Output an HTML file with graph visualizations of the current financial state of the PgPerson as well as a
+    projected future based on Monte Carlo results 
+
+
+##Recent Issues Resolved:
+
+- Fixed RMD test failures: RMDs start at age 73 (SECURE Act 2.0), not 72
+- Improved statistical test reliability in `GetUnSeededRandomDecimal_IsRandom` with wider tolerances (±10%)
+- Use realistic test amounts ($500k balances) vs small values
+- Identified redundant test removal needs in `TaxCalculationTestsExtended.cs`
+
+##Testing Patterns:
+
+- `TestDataManager.CreateTest*()` helper methods for consistent test data
+- Statistical tests use 100k samples with appropriate tolerance ranges
+- InlineData for parameterized tests with edge case considerations (buckets 0/10 get ~50% hits due to rounding)
+
+##Session History:
+
+### Session 2025-09-17 - Context System Setup
+
+- **Issues Addressed:** Established persistent context system between AI sessions for project continuity
+- **Solutions Applied:** Created living ClaudeContext.txt file with comprehensive project overview and session tracking
+- **Key Discovery:** Minor bug in `InvestmentSales.SellInvestmentsToDollarAmount()` debug messages - line shows "Total
+long term capital gains" for both long-term and short-term capital gains logging.
+- **Testing Patterns Confirmed:** TestDataManager helper methods, realistic $500k+ test amounts, statistical validation
+approaches
+- **Outstanding Items:** Consider fixing debug message accuracy in InvestmentSales method
+
+### Session 2025-09-18 - Context Document Evolution
+
+- **Issues Addressed:** Refined and expanded the ClaudeContext.txt document for better AI assistance
+- **Solutions Applied:** 
+  - Added "Common Patterns" section documenting functional programming approach (static functions, immutable copies, tuple returns)
+  - Added "Monte Carlo Logic" section explaining simulation methodology, inflation-adjusted calculations, and "fun points" optimization goal
+  - Updated timestamp to 2025-09-18 10:00
+- **Key Insights:** 
+  - Confirmed optimal information density - comprehensive domain context without overwhelming implementation details
+  - Established that the functional programming paradigm guides all architectural decisions
+  - Clarified that all financial calculations use "today's dollars" (S&P500 growth minus CPI inflation)
+- **Context Quality:** Document now provides sufficient architectural philosophy and domain knowledge for meaningful AI assistance across sessions
+
+
+#Current Focus Items:
+
+- Ensuring the accuracy of the business logic in the Monte Carlo simulation
+- Increasing runtime efficiency during LifeSimulator runs
+
+#Helpful prompts for Claude:
+
+**Context Update Prompt**
+
+>please generate an update to the ClaudeContext.txt file so that I can ask you to read it when we begin our next session
+to make it faster for you to provide meaningful recommendations in that next session?
+
+
+**Context Restoration Prompt**
+
+>Hello, Claude. Please read the ClaudeContext.txt file to understand the project context before I begin asking questions
+this session.

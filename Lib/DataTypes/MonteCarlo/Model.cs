@@ -132,7 +132,7 @@ public record Model
         get
         {
             if (_withdrawalStrategy is not null) return _withdrawalStrategy;
-            _withdrawalStrategy = InvestmentSales.GetWithdrawalStrategy(WithdrawalStrategyType);
+            _withdrawalStrategy = SharedWithdrawalFunctions.GetWithdrawalStrategy(WithdrawalStrategyType);
             return _withdrawalStrategy!;
         } 
     }

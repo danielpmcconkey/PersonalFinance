@@ -164,7 +164,7 @@ public class InvestmentSalesTestsExtended
     public void GetWithdrawalStrategy_WithValidType_ReturnsCorrectStrategy(WithdrawalStrategyType strategyType)
     {
         // Act
-        var result = InvestmentSales.GetWithdrawalStrategy(strategyType);
+        var result = SharedWithdrawalFunctions.GetWithdrawalStrategy(strategyType);
 
         // Assert
         Assert.NotNull(result);
@@ -179,7 +179,7 @@ public class InvestmentSalesTestsExtended
 
         // Act & Assert
         Assert.Throws<ArgumentOutOfRangeException>(() => 
-            InvestmentSales.GetWithdrawalStrategy(invalidType));
+            SharedWithdrawalFunctions.GetWithdrawalStrategy(invalidType));
     }
 
     #endregion
