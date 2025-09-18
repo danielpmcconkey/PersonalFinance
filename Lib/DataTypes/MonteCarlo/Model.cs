@@ -31,6 +31,9 @@ public record Model
     public Model? ParentB { get; set; }
     public List<Model> ChildrenB { get; set; } = [];
     
+    // Add the champion relationship
+    public ModelChampion? Champion { get; set; }
+    
     [Column("modelcreateddate")]
     public required LocalDateTime ModelCreatedDate { get; set; }
     

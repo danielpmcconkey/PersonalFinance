@@ -175,66 +175,37 @@ public class SimulationTrigger
     public static void CleanUpModelAndRunResultsData()
     {
         using var context = new PgContext();
+    
+        var cutoffDate = LocalDate.FromDateTime(DateTime.Now).PlusDays(-1);
         
-        var childless = context.McModels.FromSqlRaw($"""
-                                        select
-                                          p.*
-                                        from
-                                          personalfinance.montecarlomodel p 
-                                          left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
-                                          left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
-                                        where p.modelcreateddate <= CURRENT_TIMESTAMP - interval '6 hours'
-                                        group by
-                                          p.id
-                                        having
-                                          count(c1.id) = 0 and count(c2.id) = 0
-                                        order by p.modelcreateddate desc
-                                        """);
-        foreach (var parent in childless)
-            context.McModels.Remove(parent);
-        context.SaveChanges();
-        // delete the run results
-        context.Database.ExecuteSql($"""
+        // Find childless models older than the cutoff date
+        var childlessModels = context.McModels
+            .Where(model => model.ModelCreatedDate.Date <= cutoffDate)
+            .Where(model => 
+                !context.McModels.Any(child => child.ParentAId == model.Id) &&
+                !context.McModels.Any(child => child.ParentBId == model.Id))
+            .Where(model => !context.ModelChampions.Any(champion => champion.ModelId == model.Id))
+            .ToList(); // Execute the query to get the models
 
-                                     with childless as (
-                                     	select
-                                     	  p.id,
-                                     	  count(c1.id) as num_sons,
-                                     	  count(c2.id) as num_daughters
-                                     	from
-                                     	  personalfinance.montecarlomodel p 
-                                     	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
-                                     	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
-                                     	  where p.modelcreateddate <= CURRENT_DATE - 1
-                                     	group by
-                                     	  p.id
-                                     	having
-                                     	  count(c1.id) = 0 and count(c2.id) = 0
-                                     )
-                                     delete from personalfinance.singlemodelrunresult
-                                     where modelid in (select id from childless)
-                                     """);
+    
+        if (childlessModels.Count == 0)
+            return; // Nothing to clean up
         
-        // delete the models
-        context.Database.ExecuteSql($@"
-with childless as (
-	select
-	  p.id,
-	  count(c1.id) as num_sons,
-	  count(c2.id) as num_daughters
-	from
-	  personalfinance.montecarlomodel p 
-	  left outer join personalfinance.montecarlomodel c1 on c1.parenta = p.id
-	  left outer join personalfinance.montecarlomodel c2 on c2.parentb = p.id
-	  where p.modelcreateddate <= CURRENT_DATE - 1
-	group by
-	  p.id
-	having
-	  count(c1.id) = 0 and count(c2.id) = 0
-)
-delete from personalfinance.montecarlomodel
-where id in (select id from childless)");
+        // Get the model IDs for deleting run results
+        var modelIds = childlessModels.Select(m => m.Id).ToList();
+    
+        // Delete associated run results first (to maintain referential integrity)
+        var runResultsToDelete = context.SingleModelRunResults
+            .Where(result => modelIds.Contains(result.ModelId))
+            .ToList();
         
+        context.SingleModelRunResults.RemoveRange(runResultsToDelete);
+    
+        // Delete the childless models
+        context.McModels.RemoveRange(childlessModels);
+    
+        // Save all changes
+        context.SaveChanges();
     }
 
     public static List<DataTypes.MonteCarlo.Model> FetchModelsForTrainingByVersion(

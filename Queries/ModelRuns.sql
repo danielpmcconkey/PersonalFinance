@@ -123,6 +123,12 @@ group by generation
 order by generation desc
 limit 1000
 
+select clade, count(id)
+from personalfinance.montecarlomodel
+group by clade
+order by clade desc
+limit 1000
+
 select
 	  p.id,
 	  count(c1.id) + count(c2.id) as num_children

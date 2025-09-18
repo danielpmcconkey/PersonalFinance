@@ -17,6 +17,7 @@ var logger = new Logger(
     logFilePath
 );
 
+SimulationTrigger.CleanUpModelAndRunResultsData();
 logger.Info("Pulling person from the database");
 var danId = ConfigManager.ReadStringSetting("DanId");
 Guid danIdGuid = Guid.Parse(danId);

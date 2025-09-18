@@ -1,6 +1,8 @@
 ﻿using Lib.DataTypes.Postgres;
 using Microsoft.EntityFrameworkCore;
 using Lib.DataTypes.MonteCarlo;
+using Lib.StaticConfig;
+using Microsoft.Extensions.DependencyInjection;
 using Npgsql;
 
 namespace Lib
@@ -24,6 +26,9 @@ namespace Lib
         public DbSet<PgTransaction> PgTransactions { get; set; }
         public DbSet<DataTypes.MonteCarlo.Model> McModels { get; set; }
         public DbSet<SingleModelRunResult> SingleModelRunResults { get; set; }
+        
+        public DbSet<ModelChampion> ModelChampions { get; set; }
+
         
         
         
@@ -70,6 +75,16 @@ namespace Lib
                 .SetPostgresVersion(17, 4)
                 .UseNodaTime()
                     );
+            
+            if (!MonteCarloConfig.DebugMode) return;
+            
+            // log queries to console
+            options.LogTo(Console.WriteLine,
+                [DbLoggerCategory.Database.Command.Name], 
+                    Microsoft.Extensions.Logging.LogLevel.Information);
+            
+
+
         }
         
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -219,6 +234,15 @@ namespace Lib
                     .WithMany(c => c.Transactions)
                     .HasForeignKey(t => t.CategoryId);
             });
+            modelBuilder.Entity<ModelChampion>(e =>
+            {
+                e.HasKey(mc => mc.Id);
+                e.HasOne(mc => mc.Model)
+                    .WithOne(m => m.Champion)
+                    .HasForeignKey<ModelChampion>(mc => mc.ModelId);
+                e.HasIndex(mc => mc.ModelId).IsUnique();
+            });
+
         }
     }
 }
