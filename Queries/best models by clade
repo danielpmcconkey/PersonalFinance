@@ -18,6 +18,13 @@ with ranked_by_model as (
 		, m.percent401ktraditional
 		, m.sixtyfortylong
 		, r.averageincomeinflectionage
+		, m.nummonthscashonhand
+		, m.nummonthsmidbucketonhand
+		, m.recessionchecklookbackmonths
+		, m.recessionrecoverypointmodifier
+		, m.livinlargeratio
+		, m.livinlargenetworthtrigger
+		, m.rebalancefrequency
 		, row_number() over(
 			partition by m.id, m.clade, r.majorversion, r.minorversion 
 			order by r.funpointsatendofsim50 desc, 
@@ -29,7 +36,7 @@ with ranked_by_model as (
 	left join personalfinance.montecarlomodel m on r.modelid = m.id
 	where m.id is not null
 	and r.majorversion = 0
-	and r.minorversion = 16
+	and r.minorversion = 18
 	and r.bankruptcyrateatendofsim <= 0
 ), best_runs_by_model as (
 	select * from ranked_by_model where rank_in_model = 1
@@ -53,6 +60,13 @@ with ranked_by_model as (
 		, extremeausterityratio
 		, percent401ktraditional
 		, sixtyfortylong
+		, nummonthscashonhand
+		, nummonthsmidbucketonhand
+		, recessionchecklookbackmonths
+		, recessionrecoverypointmodifier
+		, livinlargeratio
+		, livinlargenetworthtrigger
+		, rebalancefrequency
 		, row_number() over(
 			partition by clade 
 			order by funpointsatendofsim50 desc, 

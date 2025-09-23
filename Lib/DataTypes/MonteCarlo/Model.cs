@@ -92,6 +92,9 @@ public record Model
     [Column("nummonthspriortoretirementtobeginrebalance")]
     public required int NumMonthsPriorToRetirementToBeginRebalance { get; set; }
     
+    /// <summary>
+    /// The number of months back to check pricing to compare to "today's" price before declaring you are in a recession
+    /// </summary>
     [Column("recessionchecklookbackmonths")]
     public required int RecessionCheckLookBackMonths { get; set; }
 

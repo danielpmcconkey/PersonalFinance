@@ -1,7 +1,7 @@
 
-#Context for Claude
-This file is to provide Claude with sufficient context of this solution so that I don't have to retrain Claude at the 
-start of every session.
+#Context for Agentic AI
+This file is to provide AI agents with sufficient context of this solution so that I don't have to retrain the agent at
+the start of every session.
 
 Update 2025-09-18 16:30
 
@@ -203,14 +203,15 @@ approaches
 - Increasing runtime efficiency during LifeSimulator runs
 - Model champion designation and protection from cleanup processes
 
-#Helpful prompts for Claude:
+#Helpful prompts for Agent:
 
 **Context Update Prompt**
 
->please generate an update to the ClaudeContext.txt file so that I can ask you to read it when we begin our next session
+>please generate an update to the AgentContext.txt file so that I can ask you to read it when we begin our next session
 to make it faster for you to provide meaningful recommendations in that next session?
 
 **Context Restoration Prompt**
 
->Hello, Claude. Please read the ClaudeContext.txt file to understand the project context before I begin asking questions
-this session.
+>Hello. We are going to be working in a large C# solution. Please read the AgentContext.txt file to understand the 
+project context before I begin asking questions this session. Ask me any follow-up questions you would like to help 
+deepen your understanding of this project.
