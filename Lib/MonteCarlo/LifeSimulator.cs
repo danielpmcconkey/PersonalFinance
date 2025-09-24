@@ -46,7 +46,7 @@ public class LifeSimulator
     private decimal _priorInvestmentAccrual = 0;
     private decimal _currentInvestmentAccrual = 0;
     private readonly Dictionary<LocalDateTime, bool> _incomeInflectionCalculationResults = [];
-    private LocalDateTime _firstIncomeInflection = LocalDateTime.MaxIsoValue;
+    private LocalDateTime _firstIncomeInflection;
 
     public LifeSimulator(
         Logger logger, Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
@@ -204,7 +204,8 @@ public class LifeSimulator
             _reconciliationLedger.AddFullReconLine(_simData, "Accruing interest");
         }
 
-        _priorInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
+        if (!MonteCarloConfig.ShouldCheckIncomeInversion) 
+            _priorInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
         
 
         var result = AccountInterestAccrual.AccrueInterest(
@@ -212,7 +213,8 @@ public class LifeSimulator
         _simData.BookOfAccounts = result.newAccounts;
         _simData.LifetimeSpend = result.newSpend;
         
-        _currentInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
+        if (!MonteCarloConfig.ShouldCheckIncomeInversion) 
+            _currentInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
         
         
 #if PERFORMANCEPROFILING
@@ -232,6 +234,8 @@ public class LifeSimulator
     /// </summary>
     private void CheckForInflection()
     {
+        if (!MonteCarloConfig.ShouldCheckIncomeInversion) return;
+        
         var calcResults = Simulation.CalculateIsIncomeInflection(
             _simData.CurrentDateInSim, _priorInvestmentAccrual, _currentInvestmentAccrual,
             _simData.PgPerson);

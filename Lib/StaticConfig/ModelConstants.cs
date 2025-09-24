@@ -16,7 +16,7 @@ public static class ModelConstants
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples
     /// comparisons
     /// </summary>
-    public const int PatchVersion = 1;
+    public const int PatchVersion = 2;
     
     public const decimal FunPenaltyBankruptcy = -35000m;
     public const decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
@@ -24,11 +24,11 @@ public static class ModelConstants
     public const decimal FunPenaltyRetiredInRecessionPercentOfRequiredSpend = 0.5m;
     public const decimal FunPenaltyRetiredInExtremeAusterityPercentOfRequiredSpend = 1m;
     
-    public static (int years, int months) RetirementAgeMin = (59, 6);
-    public static (int years, int months) RetirementAgeMax = (60, 0);
+    public static readonly (int years, int months) RetirementAgeMin = (59, 6);
+    public static readonly (int years, int months) RetirementAgeMax = (60, 0);
     
-    public static (int years, int months) SocialSecurityElectionStartMin = (62, 1);
-    public static (int years, int months) SocialSecurityElectionStartMax = (70, 0);
+    public static readonly (int years, int months) SocialSecurityElectionStartMin = (62, 1);
+    public static readonly (int years, int months) SocialSecurityElectionStartMax = (70, 0);
     
     /// <summary>
     /// the percentage of desired monthly spend that you actually spend when in a recession 

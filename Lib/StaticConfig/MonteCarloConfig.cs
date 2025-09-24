@@ -63,6 +63,7 @@ public static class MonteCarloConfig
     public static LocalDateTime ReconciliationSimStartDate;
     public static LocalDateTime ReconciliationSimEndDate;
     public static string ChampionModelId;
+    public static bool ShouldCheckIncomeInversion;
     
 
     static MonteCarloConfig()
@@ -92,6 +93,7 @@ public static class MonteCarloConfig
         NumberOfModelsToPull = ConfigManager.ReadIntSetting("NumberOfModelsToPull");
         RunTrainingInLoop = ConfigManager.ReadBoolSetting("RunTrainingInLoop");
         ChampionModelId = ConfigManager.ReadStringSetting("ChampionModelId");
+        ShouldCheckIncomeInversion = ConfigManager.ReadBoolSetting("ShouldCheckIncomeInversion");
         
         if (DebugMode) LogLevel = LogLevel.DEBUG;
     }
