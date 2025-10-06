@@ -1,0 +1,24 @@
+﻿@page "/counter"
+@using Lib.DataTypes.MonteCarlo
+@using Lib.MonteCarlo.StaticFunctions
+@rendermode InteractiveServer
+
+<PageTitle>Counter</PageTitle>
+
+<h1>Counter</h1>
+
+<p role="status">Current count: @currentCount</p>
+
+<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+
+@code {
+    private Guid currentCount = Guid.Empty;
+
+    private void IncrementCount()
+    {
+        
+        Model champion = ModelFunc.FetchModelChampion();
+        currentCount = champion.Id;
+    }
+
+}

@@ -1,0 +1,108 @@
+CREATE TABLE personalfinance.montecarlomodelauditlog (
+    id SERIAL PRIMARY KEY,
+	modelid uuid not null,
+	operationtype varchar(25),    
+	changetime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    personid uuid NOT NULL,
+    parenta uuid NOT NULL,
+    parentb uuid NOT NULL,
+    modelcreateddate timestamp without time zone,
+    simstartdate timestamp without time zone,
+    simenddate timestamp without time zone,
+    retirementdate timestamp without time zone,
+    socialsecuritystart timestamp without time zone,
+    austerityratio numeric(6,4) NOT NULL,
+    extremeausterityratio numeric(6,4) NOT NULL,
+    extremeausteritynetworthtrigger numeric(18,4) NOT NULL,
+    rebalancefrequency integer NOT NULL,
+    nummonthscashonhand integer NOT NULL,
+    nummonthsmidbucketonhand integer NOT NULL,
+    nummonthspriortoretirementtobeginrebalance integer NOT NULL,
+    recessionchecklookbackmonths integer NOT NULL,
+    recessionrecoverypointmodifier numeric(18,4) NOT NULL,
+    desiredmonthlyspendpreretirement numeric(18,4),
+    desiredmonthlyspendpostretirement numeric(18,4),
+    percent401ktraditional numeric(5,4),
+    livinlargeratio numeric(5,4) NOT NULL DEFAULT 1.0,
+    livinlargenetworthtrigger numeric(18,4) NOT NULL DEFAULT 4000000.0,
+    generation integer NOT NULL DEFAULT 0,
+    withdrawalstrategy integer NOT NULL DEFAULT 1,
+    sixtyfortylong numeric(6,5) NOT NULL DEFAULT 0.6,
+    clade integer NOT NULL DEFAULT 1    
+);
+
+CREATE OR REPLACE FUNCTION personalfinance.modelinserttriggerfunction() 
+   RETURNS TRIGGER 
+   LANGUAGE PLPGSQL
+AS $$
+BEGIN
+   INSERT INTO personalfinance.montecarlomodelauditlog(
+	modelid, operationtype, changetime, personid, parenta, parentb, 
+	modelcreateddate, simstartdate, simenddate, retirementdate, 
+	socialsecuritystart, austerityratio, extremeausterityratio, 
+	extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, 
+	nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance, 
+	recessionchecklookbackmonths, recessionrecoverypointmodifier, 
+	desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, 
+	percent401ktraditional, livinlargeratio, livinlargenetworthtrigger, 
+	generation, withdrawalstrategy, sixtyfortylong, clade)
+	VALUES (
+	NEW.id, 'insert', CURRENT_TIMESTAMP, NEW.personid, NEW.parenta, NEW.parentb, 
+	NEW.modelcreateddate, NEW.simstartdate, NEW.simenddate, NEW.retirementdate, 
+	NEW.socialsecuritystart, NEW.austerityratio, NEW.extremeausterityratio, 
+	NEW.extremeausteritynetworthtrigger, NEW.rebalancefrequency, NEW.nummonthscashonhand, 
+	NEW.nummonthsmidbucketonhand, NEW.nummonthspriortoretirementtobeginrebalance, 
+	NEW.recessionchecklookbackmonths, NEW.recessionrecoverypointmodifier, 
+	NEW.desiredmonthlyspendpreretirement, NEW.desiredmonthlyspendpostretirement, 
+	NEW.percent401ktraditional, NEW.livinlargeratio, NEW.livinlargenetworthtrigger, 
+	NEW.generation, NEW.withdrawalstrategy, NEW.sixtyfortylong, NEW.clade);
+	return NEW;
+END;
+$$ 
+
+CREATE OR REPLACE FUNCTION personalfinance.modelupdatetriggerfunction() 
+   RETURNS TRIGGER 
+   LANGUAGE PLPGSQL
+AS $$
+BEGIN
+   INSERT INTO personalfinance.montecarlomodelauditlog(
+	modelid, operationtype, changetime, personid, parenta, parentb, 
+	modelcreateddate, simstartdate, simenddate, retirementdate, 
+	socialsecuritystart, austerityratio, extremeausterityratio, 
+	extremeausteritynetworthtrigger, rebalancefrequency, nummonthscashonhand, 
+	nummonthsmidbucketonhand, nummonthspriortoretirementtobeginrebalance, 
+	recessionchecklookbackmonths, recessionrecoverypointmodifier, 
+	desiredmonthlyspendpreretirement, desiredmonthlyspendpostretirement, 
+	percent401ktraditional, livinlargeratio, livinlargenetworthtrigger, 
+	generation, withdrawalstrategy, sixtyfortylong, clade)
+	VALUES (
+	NEW.id, 'update', CURRENT_TIMESTAMP, NEW.personid, NEW.parenta, NEW.parentb, 
+	NEW.modelcreateddate, NEW.simstartdate, NEW.simenddate, NEW.retirementdate, 
+	NEW.socialsecuritystart, NEW.austerityratio, NEW.extremeausterityratio, 
+	NEW.extremeausteritynetworthtrigger, NEW.rebalancefrequency, NEW.nummonthscashonhand, 
+	NEW.nummonthsmidbucketonhand, NEW.nummonthspriortoretirementtobeginrebalance, 
+	NEW.recessionchecklookbackmonths, NEW.recessionrecoverypointmodifier, 
+	NEW.desiredmonthlyspendpreretirement, NEW.desiredmonthlyspendpostretirement, 
+	NEW.percent401ktraditional, NEW.livinlargeratio, NEW.livinlargenetworthtrigger, 
+	NEW.generation, NEW.withdrawalstrategy, NEW.sixtyfortylong, NEW.clade);
+	return NEW;
+END;
+$$ 
+
+CREATE TRIGGER modelinserttrigger 
+AFTER INSERT ON personalfinance.montecarlomodel
+FOR EACH ROW EXECUTE PROCEDURE personalfinance.modelinserttriggerfunction();
+
+
+CREATE TRIGGER modelupdatetrigger 
+AFTER UPDATE ON personalfinance.montecarlomodel
+FOR EACH ROW EXECUTE PROCEDURE personalfinance.modelupdatetriggerfunction();
+
+select * from personalfinance.montecarlomodelauditlog where modelid in (
+select modelid from personalfinance.montecarlomodelauditlog
+where modelid = parenta or modelid = parentb
+)
+order by modelid, changetime
+
+select * from personalfinance.montecarlomodelauditlog where operationtype = 'update' 
+order by changetime desc limit 100

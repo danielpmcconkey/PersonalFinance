@@ -33,6 +33,10 @@ public static class ChartData
                             .First(x => x.Symbol == symbol).Fund;
                         funds.Add(symbol, fund);
                     }
+
+                    var taxBucket = string.Empty;
+                    if(a.TaxBucket != null) taxBucket = a.TaxBucket.Name;
+                    
                     results.Add(new PresInvestmentPosition()
                     {
                         AccountGroupName = ag.Name,
@@ -47,7 +51,7 @@ public static class ChartData
                         Sector = fund.Sector.Name,
                         Region = fund.Region.Name,
                         Objective = fund.Objective.Name,
-                        TaxBucketName = a.TaxBucket?.Name ?? string.Empty,
+                        TaxBucketName = taxBucket,
                     });
                 }
             }

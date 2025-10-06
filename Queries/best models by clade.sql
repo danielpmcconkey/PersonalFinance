@@ -1,6 +1,8 @@
 with ranked_by_model as (
 	select 
 		  m.id as model_id
+		, m.parenta
+		, m.parentb
 		, m.withdrawalstrategy
 		, m.clade
 		, r.majorversion
@@ -25,6 +27,7 @@ with ranked_by_model as (
 		, m.livinlargeratio
 		, m.livinlargenetworthtrigger
 		, m.rebalancefrequency
+		, m.extremeausteritynetworthtrigger
 		, row_number() over(
 			partition by m.id, m.clade, r.majorversion, r.minorversion 
 			order by r.funpointsatendofsim50 desc, 
@@ -43,6 +46,8 @@ with ranked_by_model as (
 ), ranked_models as (
 	select 
 		  model_id
+		--, parenta
+		--, parentb
 		, withdrawalstrategy
 		, clade
 		, majorversion
@@ -67,6 +72,7 @@ with ranked_by_model as (
 		, livinlargeratio
 		, livinlargenetworthtrigger
 		, rebalancefrequency
+		, extremeausteritynetworthtrigger
 		, row_number() over(
 			partition by clade 
 			order by funpointsatendofsim50 desc, 

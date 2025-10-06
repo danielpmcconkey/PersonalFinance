@@ -1,0 +1,308 @@
+﻿@page "/"
+
+@using Lib.DataTypes.MonteCarlo
+@using Lib.MonteCarlo.StaticFunctions
+@using Lib.MonteCarlo.WithdrawalStrategy
+@using Lib.StaticConfig
+@using NodaTime
+@rendermode InteractiveServer
+
+<PageTitle>ModelVisualizer</PageTitle>
+
+<table>
+    <tr>
+        <th>Label</th>
+        <th>Parent A</th>
+        <th>Current model</th>
+        <th>Parent B</th>
+    </tr>
+    <tr>
+        <th>Id</th>
+        <th>@GetParentAIdLabel()</th>
+        <th>@GetModelIdLabel()</th>
+        <th>@GetParentBIdLabel()</th>
+    </tr>
+    <tr>
+        <th></th>
+        <td><button class="btn btn-primary" @onclick="SelectNextA">Select as next</button></td>
+        <td></td>
+        <td><button class="btn btn-primary" @onclick="SelectNextB">Select as next</button></td>
+    </tr>
+    <tr>
+        <th>Generation</th>
+        <td>@GetParentAGenerationLabel()</td>
+        <td>@GetModelGenerationLabel()</td>
+        <td>@GetParentBGenerationLabel()</td>
+    </tr>
+    <tr>
+        <th>Fun points at 50th percentile</th>
+        <td>@GetParentAFunAt50Label()</td>
+        <td>@GetCurrentModelFunAt50Label()</td>
+        <td>@GetParentBFunAt50Label()</td>
+    </tr>
+    @foreach (var property in _properties)
+    {
+        <tr>
+            <th>@property.Label</th>
+            <td>@property.A_value</td>
+            <td>@property.Current_value</td>
+            <td>@property.B_value</td>
+        </tr>
+    }
+</table>
+
+
+
+@code {
+    public struct PropertyComparison
+    {
+        public string Label;
+        public string A_value;
+        public string Current_value;
+        public string B_value;
+    }
+    private Model? _currentModel;
+    private SingleModelRunResult? _currentModelRunResult;
+    private SingleModelRunResult? _parentARunResult;
+    private SingleModelRunResult? _parentBRunResult;
+    private bool _isModelLoaded = false;
+    private string _funPointsTextFormat = "N2";
+    private List<PropertyComparison> _properties = [];
+
+    protected override void OnInitialized()
+    {
+        if (_isModelLoaded) return;
+        var id = Guid.Parse(MonteCarloConfig.ChampionModelId);
+        LoadModel(id);
+        _isModelLoaded = true;
+    }
+    private void SelectNextA()
+    {
+        if (_currentModel is null) return;
+        if (_currentModel.ParentA is null) return;
+        if (_currentModel.ParentAId == Guid.Empty) return;
+        LoadModel(_currentModel.ParentAId);
+    }
+    private void SelectNextB()
+    {
+        if (_currentModel is null) return;
+        if (_currentModel.ParentB is null) return;
+        if (_currentModel.ParentBId == Guid.Empty) return;
+        LoadModel(_currentModel.ParentBId);
+    }
+    
+
+    private void LoadModel(Guid id)
+    {
+        _currentModel = ModelFunc.FetchModelPlusParentsPlusChildrenById(id);
+        _currentModelRunResult = ModelFunc.FetchMostRecentRunResultForModel(_currentModel);
+        if (_currentModel.ParentA is not null) _parentARunResult = 
+            ModelFunc.FetchMostRecentRunResultForModel(_currentModel.ParentA);
+        if (_currentModel.ParentB is not null) _parentBRunResult = 
+            ModelFunc.FetchMostRecentRunResultForModel(_currentModel.ParentB);
+        PopulateProperties();
+    }
+
+    private string GetModelIdLabel()
+    {
+        if( _currentModel is null) return string.Empty;
+        return _currentModel.Id.ToString();
+    }
+
+    private string GetParentAIdLabel()
+    {
+        if(_currentModel is null) return string.Empty;
+        if (_currentModel.ParentA is null) return string.Empty;
+        return _currentModel.ParentA.Id.ToString();
+    }
+
+    private string GetParentBIdLabel()
+    {
+        if(_currentModel is null) return string.Empty;
+        if (_currentModel.ParentB is null) return string.Empty;
+        return _currentModel.ParentB.Id.ToString();
+    }
+
+    private string GetCurrentModelFunAt50Label()
+    {
+        if(_currentModelRunResult is null) return string.Empty;
+        return _currentModelRunResult.FunPointsAtEndOfSim50.ToString(_funPointsTextFormat);
+    }
+
+    private string GetParentAFunAt50Label()
+    {
+        if(_parentARunResult is null) return string.Empty;
+        return _parentARunResult.FunPointsAtEndOfSim50.ToString(_funPointsTextFormat);
+    }
+
+    private string GetParentBFunAt50Label()
+    {
+        if(_parentBRunResult is null) return string.Empty;
+        return _parentBRunResult.FunPointsAtEndOfSim50.ToString(_funPointsTextFormat);
+    }
+    
+    private string GetModelGenerationLabel()
+    {
+        if( _currentModel is null) return string.Empty;
+        return _currentModel.Generation.ToString();
+    }
+    
+    private string GetParentAGenerationLabel()
+    {
+        if(_currentModel is null) return string.Empty;
+        if (_currentModel.ParentA is null) return string.Empty;
+        return _currentModel.ParentA.Generation.ToString();
+    }
+    
+    
+    private string GetParentBGenerationLabel()
+    {
+        if(_currentModel is null) return string.Empty;
+        if (_currentModel.ParentB is null) return string.Empty;
+        return _currentModel.ParentB.Generation.ToString();
+    }
+
+    private PropertyComparison GetPropertyComparison<T>(string label, Func<Model, T> propertySelector)
+    {
+        var returnRow = new PropertyComparison()
+        {
+            Label = label,
+            A_value = string.Empty,
+            B_value = string.Empty,
+            Current_value = string.Empty
+        };
+        if (_currentModel is null) return returnRow;
+        
+        var valMain = propertySelector(_currentModel);
+        var valParentA = _currentModel.ParentA is null 
+            ? propertySelector(_currentModel) 
+            : propertySelector(_currentModel.ParentA);
+        var valParentB = _currentModel.ParentA is null 
+            ? propertySelector(_currentModel) 
+            : propertySelector(_currentModel.ParentA);
+        if (valMain is null) return returnRow;
+        if (typeof(T).FullName == "NodaTime.LocalDateTime")
+        {
+            var dateMain = (LocalDateTime)(object)valMain;
+            returnRow.Current_value = $"{dateMain.Year}-{dateMain.Month:00}";
+            if (valParentA is not null)
+            {
+                var dateA = (LocalDateTime)(object)valParentA;
+                if (dateA.Year != dateMain.Year || dateA.Month != dateMain.Month)
+                    returnRow.A_value = $"{dateA.Year}-{dateA.Month:00}";
+            }
+            if (valParentB is not null)
+            {
+                var dateB = (LocalDateTime)(object)valParentB;
+                if (dateB.Year != dateMain.Year || dateB.Month != dateMain.Month)
+                    returnRow.B_value = $"{dateB.Year}-{dateB.Month:00}";
+            }
+        }
+
+        if (typeof(T) == typeof(int))
+        {
+            var intMain = (int)(object)valMain;
+            returnRow.Current_value = $"{intMain}";
+            if (valParentA is not null)
+            {
+                var intA = (int)(object)valParentA;
+                if (intA != intMain)
+                    returnRow.A_value = $"{intA}";
+            }
+            if (valParentB is not null)
+            {
+                var intB = (int)(object)valParentB;
+                if (intB != intMain)
+                    returnRow.B_value = $"{intB}";
+            }
+        }
+
+        if (typeof(T) == typeof(decimal))
+        {
+            var decimalMain = (decimal)(object)valMain;
+            returnRow.Current_value = decimalMain.ToString(("N4"));
+            if (valParentA is not null)
+            {
+                var decimalA = (decimal)(object)valParentA;
+                if (Math.Round(decimalA, 4) != Math.Round(decimalMain, 4))
+                    returnRow.A_value = decimalA.ToString("N4");
+            }
+            if (valParentB is not null)
+            {
+                var decimalB = (decimal)(object)valParentB;
+                if (Math.Round(decimalB,4) != Math.Round(decimalMain,4))
+                    returnRow.B_value = decimalB.ToString("N4");
+            }
+        }
+        if (typeof(T) == typeof(RebalanceFrequency))
+        {
+            var castMain = (RebalanceFrequency)(object)valMain;
+            returnRow.Current_value = $"{castMain}";
+            if (valParentA is not null)
+            {
+                var castA = (RebalanceFrequency)(object)valParentA;
+                if (castA != castMain)
+                    returnRow.A_value = castA.ToString();
+            }
+            if (valParentB is not null)
+            {
+                var castB = (RebalanceFrequency)(object)valParentB;
+                if (castB != castMain)
+                    returnRow.A_value = castB.ToString();
+            }
+        }
+        
+        
+        if (typeof(T) == typeof(WithdrawalStrategyType))
+        {
+            var castMain = (WithdrawalStrategyType)(object)valMain;
+            returnRow.Current_value = $"{castMain}";
+            if (valParentA is not null)
+            {
+                var castA = (WithdrawalStrategyType)(object)valParentA;
+                if (castA != castMain)
+                    returnRow.A_value = castA.ToString();
+            }
+            if (valParentB is not null)
+            {
+                var castB = (WithdrawalStrategyType)(object)valParentB;
+                if (castB != castMain)
+                    returnRow.A_value = castB.ToString();
+            }
+        }
+
+        return returnRow;
+    }
+
+    private void PopulateProperties()
+    {
+        if (_currentModel is null) return;
+        _properties = [];
+        _properties.Add(GetPropertyComparison("withdrawal strategy", model => model.WithdrawalStrategyType));
+        _properties.Add(GetPropertyComparison("retirement date", model => model.RetirementDate));
+        _properties.Add(GetPropertyComparison("social security start", model => model.SocialSecurityStart));
+        _properties.Add(GetPropertyComparison("desired monthly spend pre retirement", model => model.DesiredMonthlySpendPreRetirement));
+        _properties.Add(GetPropertyComparison("desired monthly spend post retirement", model => model.DesiredMonthlySpendPostRetirement));
+        _properties.Add(GetPropertyComparison("austerity ratio", model => model.AusterityRatio));
+        _properties.Add(GetPropertyComparison("extreme austerity ratio", model => model.ExtremeAusterityRatio));
+        _properties.Add(GetPropertyComparison("extreme austerity net worth trigger", model => model.ExtremeAusterityNetWorthTrigger));
+        _properties.Add(GetPropertyComparison("livin large ratio", model => model.LivinLargeRatio));
+        _properties.Add(GetPropertyComparison("livin large net worth trigger", model => model.LivinLargeNetWorthTrigger));
+        _properties.Add(GetPropertyComparison("rebalance frequency", model => model.RebalanceFrequency));
+        _properties.Add(GetPropertyComparison("num months cash on hand", model => model.NumMonthsCashOnHand));
+        _properties.Add(GetPropertyComparison("num months mid bucket on hand", model => model.NumMonthsMidBucketOnHand));
+        _properties.Add(GetPropertyComparison("num months prior to retirement to begin rebalance", model => model.NumMonthsPriorToRetirementToBeginRebalance));
+        _properties.Add(GetPropertyComparison("recession check look back months", model => model.RecessionCheckLookBackMonths));
+        _properties.Add(GetPropertyComparison("recession recovery point modifier", model => model.RecessionRecoveryPointModifier));
+        _properties.Add(GetPropertyComparison("percent 401k traditional", model => model.Percent401KTraditional));
+        _properties.Add(GetPropertyComparison("generation", model => model.Generation));
+        _properties.Add(GetPropertyComparison("sixty / forty long", model => model.SixtyFortyLong));
+        _properties.Add(GetPropertyComparison("sixty / forty mid", model => model.SixtyFortyMid));
+        _properties.Add(GetPropertyComparison("clade", model => model.Clade));
+    }
+
+    private List<(string, string, string)> GetDifferences(Model a, Model b)
+    {
+        return [];
+    }
+}

@@ -3,6 +3,7 @@ using Lib.DataTypes.MonteCarlo;
 using Lib.MonteCarlo.WithdrawalStrategy;
 using Lib.StaticConfig;
 using Lib.Utils;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
 namespace Lib.MonteCarlo.StaticFunctions;
@@ -202,6 +203,28 @@ public class ModelFunc
                     throw new InvalidDataException($"Champion with ID {champId} doesn't exist.");
         return champ;
     }
+    public static Model FetchModelPlusParentsPlusChildrenById(Guid id)
+    {
+        using var context = new PgContext();
+        var champ = context.McModels
+                        .Include(x => x.ParentA)
+                        .Include(x => x.ParentB)
+                        .Include(x => x.ChildrenA)
+                        .Include(x => x.ChildrenB)
+                        .FirstOrDefault(x => x.Id == id) ??
+            
+                    throw new InvalidDataException($"Champion with ID {id} doesn't exist.");
+        return champ;
+    }
+    
+    public static SingleModelRunResult? FetchMostRecentRunResultForModel(Model m)
+    {
+        using var context = new PgContext();
+        return context.SingleModelRunResults
+            .Where(x => x.ModelId == m.Id)
+            .OrderByDescending(x => x.RunDate)
+            .FirstOrDefault();
+    }
     
     public static Model MateModels(Model a, Model b, LocalDateTime birthDate)
     {
@@ -215,11 +238,11 @@ public class ModelFunc
             Clade = a.Clade,
             PersonId = a.PersonId,
             ParentAId = a.Id,
-            ParentA = a,
-            ChildrenA = a.ChildrenA,
+            //ParentA = a,
+            //ChildrenA = a.ChildrenA,
             ParentBId = b.Id,
-            ParentB = b,
-            ChildrenB = b.ChildrenB,
+            //ParentB = b,
+            //ChildrenB = b.ChildrenB,
             ModelCreatedDate = LocalDateTime.FromDateTime(DateTime.Now),
             SimStartDate = a.SimStartDate,
             SimEndDate = a.SimEndDate,
