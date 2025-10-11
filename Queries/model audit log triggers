@@ -104,5 +104,6 @@ where modelid = parenta or modelid = parentb
 )
 order by modelid, changetime
 
-select * from personalfinance.montecarlomodelauditlog where operationtype = 'update' 
+select * from personalfinance.montecarlomodelauditlog
+where operationtype = 'update' 
 order by changetime desc limit 100
