@@ -248,16 +248,17 @@ public class SimulationTrigger
             """;
         return context.McModels.FromSqlRaw(query).ToList();
     }
-    public static (int majorVersion, int minorVersion) FetchLatestVersionOfTrainingRuns()
+    public static (int majorVersion, int minorVersion) FetchLatestVersionOfTrainingRuns(int clade)
     {
         var maxFromDb = MonteCarloConfig.NumberOfModelsToPull;
         using var context = new PgContext();
 
-        var latestResult =
-            context.SingleModelRunResults
-                .OrderByDescending(x => x.MajorVersion)
-                .ThenByDescending(x => x.MinorVersion)
-                .FirstOrDefault();
+        var latestResult = (from models in context.McModels
+            join results in context.SingleModelRunResults on models.Id equals results.ModelId
+            where models.Clade == clade
+            orderby results.MajorVersion descending,  results.MinorVersion descending
+            select results).FirstOrDefault();
+        
         return latestResult is null ? 
             (ModelConstants.MajorVersion, ModelConstants.MinorVersion) :
             (latestResult.MajorVersion, latestResult.MinorVersion);
@@ -271,7 +272,7 @@ public class SimulationTrigger
         if (dbCount == 0)
         {
             // we might've just changed the version. Try to pull models from the prior version
-            var latestVersion = FetchLatestVersionOfTrainingRuns();
+            var latestVersion = FetchLatestVersionOfTrainingRuns(clade);
             currentChamps = FetchModelsForTrainingByVersion(
                 person, latestVersion.majorVersion, latestVersion.minorVersion, clade);
             dbCount = currentChamps.Count();
