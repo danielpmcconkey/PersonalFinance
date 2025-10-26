@@ -652,7 +652,7 @@ public class SimulationTests
     {
         // Assemble
         var prices = new CurrentPrices();
-        var hypotheticalPrices = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
+        var hypotheticalPrices = Pricing.CreateHypotheticalPricingForARun(14);
         var invalidDate = new LocalDateTime(2024, 1, 1, 0, 0);
         
         // Act
@@ -660,7 +660,7 @@ public class SimulationTests
         
         // Assert
         Assert.Throws<InvalidDataException>(() => 
-            Simulation.SetNewPrices(prices, hypotheticalPrices[0], invalidDate));
+            Simulation.SetNewPrices(prices, hypotheticalPrices, invalidDate));
         
     }
     
@@ -1057,8 +1057,6 @@ public class SimulationTests
         accounts = AccountCashManagement.DepositCash(accounts, 100000m, _testDate).accounts;
         
         
-        var hypotheticalPrices = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
-        
         // gotta set up the logger for this
         string logDir = ConfigManager.ReadStringSetting("LogDir");
         string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
@@ -1070,7 +1068,7 @@ public class SimulationTests
         
         // Act
         var allLivesRuns = SimulationTrigger.ExecuteSingleModelAllLives(
-            logger, model, person, accounts.InvestmentAccounts, accounts.DebtAccounts, hypotheticalPrices);
+            logger, model, person, accounts.InvestmentAccounts, accounts.DebtAccounts);
         
         var results = Simulation.InterpretSimulationResults(model, allLivesRuns, -1, person);
         var bankruptcyRate = results.BankruptcyRateAtEndOfSim;

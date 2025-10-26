@@ -127,20 +127,6 @@ internal static class TestDataManager
         };
     }
     
-    /// <summary>
-    /// this process takes about 15 seconds to run and it always produces the same result. so only do it once
-    /// </summary>
-    internal static Dictionary<LocalDateTime, decimal>[] CreateOrFetchHypotheticalPricingForRuns()
-    {
-        // return it if it already exists
-        if (_hypotheticalPrices != null) return _hypotheticalPrices;
-        
-        // create it
-        var sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
-        _hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(sAndP500HistoricalTrends);
-        return _hypotheticalPrices;
-    }
-    
     internal static PgPerson CreateTestPerson()
     {
         return new PgPerson

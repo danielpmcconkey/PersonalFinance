@@ -40,22 +40,23 @@ public class SimulationTrigger
     /// <returns>an array of SimSnapshot lists. Each element in the array represents one simulated life</returns>
     public static (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[] 
         ExecuteSingleModelAllLives(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
-            List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
-            Dictionary<LocalDateTime, decimal>[] allPricingDicts)
+            List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts)
     {
-        int numLivesPerModelRun = MonteCarloConfig.NumLivesPerModelRun;
+        var numLivesPerModelRun = Pricing.FetchMaxBlockStartFromHypotheticalDbLives();
         var runs = new (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[numLivesPerModelRun];
-        
+
         if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLivesPerModelRun, i =>
         {
             var newPerson = Person.CopyPerson(person, false);
-            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, allPricingDicts[i], i);
+            var prices = Pricing.CreateHypotheticalPricingForARun(i);
+            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, i);
             runs[i] = sim.Run();
         });
         else for(int i = 0; i < numLivesPerModelRun; i++)
         {
             var newPerson = Person.CopyPerson(person, false);
-            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, allPricingDicts[i], i);
+            var prices = Pricing.CreateHypotheticalPricingForARun(i);
+            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, i);
             runs[i] = sim.Run();
         }
         return runs;
@@ -83,31 +84,19 @@ public class SimulationTrigger
     /// </summary>
     public static SingleModelRunResult RunSingleModelSession(
         Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
-        List<McDebtAccount> debtAccounts, decimal[] historicalPrices)
+        List<McDebtAccount> debtAccounts)
     {   
         Stopwatch stopwatch = Stopwatch.StartNew();
-        logger.Info("Creating simulation pricing");
-        
-        /*
-         * create the pricing for all lives
-         */
-        var hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(historicalPrices);
-        
-        stopwatch.Stop();
-        var duration = stopwatch.Elapsed;
-        logger.Info(logger.FormatTimespanDisplay("Created simulation pricing", duration));
-        
-        
-        stopwatch = Stopwatch.StartNew();
         logger.Info("Running all lives for a single model");
         
         /*
          * run all sim lives
          */
         var allLivesRuns = ExecuteSingleModelAllLives(
-            logger, model, person, investmentAccounts, debtAccounts, hypotheticalPrices);
+            logger, model, person, investmentAccounts, debtAccounts);
         
         stopwatch.Stop();
+        var duration = stopwatch.Elapsed;
         logger.Info(logger.FormatTimespanDisplay("Ran all lives for a single model", duration));
         
         logger.Info("Batching up the results into something meaningful");
@@ -123,20 +112,8 @@ public class SimulationTrigger
     /// <returns></returns>
     public static void RunModelTrainingSession(
         Logger logger, PgPerson person, List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts, 
-        decimal[] historicalPrices, int clade)
+        int clade)
     {   
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        logger.Debug("Creating simulation pricing");
-        
-        /*
-         * create the pricing for all lives
-         */
-        var hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(historicalPrices);
-        
-        stopwatch.Stop();
-        var duration = stopwatch.Elapsed;
-        logger.Info(logger.FormatTimespanDisplay("Created simulation pricing", duration));
-        
         
         /*
          * pull the current champs from the DB
@@ -145,7 +122,8 @@ public class SimulationTrigger
         var startDate = MonteCarloConfig.MonteCarloSimStartDate;
         var endDate = MonteCarloConfig.MonteCarloSimEndDate;
         
-        logger.Info(logger.FormatTimespanDisplay("Pulling model champions from DB", duration));
+       
+        logger.Info("Pulling model champions from DB");
         var allModels = FetchOrCreateModelsForTraining(person, clade);
         int maxCounter = FetchMaxRunResult();
         
@@ -163,7 +141,7 @@ public class SimulationTrigger
                 offspring.SimEndDate = endDate;
                 SaveModelToDb(offspring);
                 var allLivesRuns2 = ExecuteSingleModelAllLives(
-                    logger, offspring, person, investmentAccounts, debtAccounts, hypotheticalPrices);
+                    logger, offspring, person, investmentAccounts, debtAccounts);
                 var modelResults = Simulation.InterpretSimulationResults(
                     offspring, allLivesRuns2, ++maxCounter, person);
                 SaveSingleModelRunResultsToDb(modelResults);

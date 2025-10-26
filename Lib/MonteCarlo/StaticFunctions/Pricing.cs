@@ -6,70 +6,50 @@ using NodaTime;
 namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Pricing
-{ 
-    /// <summary>
-    /// creates an array of pricing dictionaries where the dictionary key is the first of the month for every month
-    /// between a date in the past and a date in the future (that I'm not expected to live to). The array represents one
-    /// dictionary for every posible life to be simulated.
-    ///
-    /// This allows all run 0s to use the same pricing and all run 8675s to all use the same pricing. This gives us
-    /// apples-to-apples comparisons when comparing retirement models. Though this is probably overkill. We create
-    /// enough data to supply 10,000 runs, each going for 100 years. 
-    /// </summary>
-    /// <param name="actualHistoricalData">A decimal array of actual S&P 500 data to use as reference. The dates don't
-    /// matter, only that the prices are in actual chronological order</param>
-    public static Dictionary<LocalDateTime, decimal>[] CreateHypotheticalPricingForRuns(
-        decimal [] actualHistoricalData)
+{
+    private static Dictionary<int, Dictionary<LocalDateTime, decimal>> _hypotheticalPricingCache = [];
+    public static int FetchMaxBlockStartFromHypotheticalDbLives()
     {
-        var maxRunsPerBatch = MonteCarloConfig.MaxLivesPerBatch;
+        using var context = new PgContext();
+        var maxRunsPerBatch = 
+            context
+                .HypotheticalLifeTimeGrowthRate
+                .Max(x => x.BlockStart);
+        return maxRunsPerBatch;
+    }
+    public static Dictionary<LocalDateTime, decimal> CreateHypotheticalPricingForARun(int blockStart)
+    {
+        if (_hypotheticalPricingCache.TryGetValue(blockStart, out var run)) return  run;
+        
+        using var context = new PgContext();
+        var hypotheticalLife = 
+            context.HypotheticalLifeTimeGrowthRate
+                .Where(x => x.BlockStart == blockStart)
+                .OrderBy(x => x.Ordinal)
+                .Select(x => x.InflationAdjustedGrowth)
+                .ToArray();
 
-        var prices = new Dictionary<LocalDateTime, decimal>[maxRunsPerBatch];
+        Dictionary<LocalDateTime, decimal> prices = [];
         // create first and last dates that will always be the same, even
         // if the simulation start and end dates change. this will allow
         // us to have an apples to apples comparison to models created years
         // apart
-        var firstDateToCreate = new LocalDateTime(2025,2,1,0,0);
-        var lastDateToCreate = new LocalDateTime(2125,2,1,0,0); // I'll be 150. If I live that long, I'll have figured out my finances by then
-        var historyDataMonthsCount = actualHistoricalData.Length;
-        int seed = 0;
-            
-
-        for (int i = 0; i < maxRunsPerBatch; i++)
+        var firstDateToCreate = MonteCarloConfig.MonteCarloSimStartDate;
+        var lastDateToCreate = MonteCarloConfig.MonteCarloSimEndDate;
+        
+        var dateCursor = firstDateToCreate;
+        var i = 0;
+        
+        while (dateCursor <= lastDateToCreate)
         {
-            var dateCursor = firstDateToCreate;
-            Dictionary<LocalDateTime, Decimal> thisRunsPrices = [];
-            while(dateCursor <= lastDateToCreate)
-            {
-                Random rand = new Random(seed);
-                int historicalTrendsPointer = rand.Next(0, historyDataMonthsCount);
-                decimal thisPrice = actualHistoricalData[historicalTrendsPointer];
-                thisRunsPrices[dateCursor] = thisPrice;
-                dateCursor = dateCursor.PlusMonths(1);
-                seed++;
-            }
-            prices[i] = thisRunsPrices;
+            prices[dateCursor] = hypotheticalLife[i];
+            dateCursor = dateCursor.PlusMonths(1);
+            i++;
         }
+        _hypotheticalPricingCache[blockStart] = prices;
         return prices;
     }
-    /// <summary>
-    /// pulls the actual historical data from the DB
-    /// </summary>
-    public static decimal[] FetchSAndP500HistoricalTrends()
-    {
-        using var context = new PgContext();
-        /*
-         * this is an array of month over month growth of the S&P500 going
-         * back to 1980. we use 1980 because the 50 years prior don't
-         * reflect more modern behavior. I hope.
-         * */
-        var  historicalGrowthRates = context.HistoricalGrowthRates
-            .Where(x => x.Year >= 1980)
-            .OrderBy(x => x.Year)
-            .ThenBy(x => x.Month)
-            .Select(x => x.InflationAdjustedGrowth)
-            .ToArray();
-        return historicalGrowthRates;
-    }
+    
     public static CurrentPrices SetLongTermGrowthRateAndPrices(CurrentPrices prices, decimal longTermGrowthRate)
     {
         var result = Pricing.CopyPrices(prices);

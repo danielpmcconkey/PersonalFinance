@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Xunit;
 using NodaTime;
 using Lib.DataTypes.MonteCarlo;
@@ -8,69 +9,7 @@ namespace Lib.Tests.MonteCarlo.StaticFunctions;
 
 public class PricingTests
 {
-    [Fact]
-    public void CreateHypotheticalPricingForRuns_GeneratesCorrectNumberOfRuns()
-    {
-        // Arrange
-
-        // Act
-        var result = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
-        
-
-        // Assert
-        Assert.Equal(MonteCarloConfig.MaxLivesPerBatch, result.Length);
-    }
-
-    [Fact]
-    public void CreateHypotheticalPricingForRuns_GeneratesCorrectDateRange()
-    {
-        // Arrange
-        var expectedFirstDate = new LocalDateTime(2025, 2, 1, 0, 0);
-        var expectedLastDate = new LocalDateTime(2125, 2, 1, 0, 0);
-
-        // Act
-        var result = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
-
-        // Assert
-        Assert.NotNull(result[0]); // Check first run
-        Assert.Contains(expectedFirstDate, result[0].Keys);
-        Assert.Contains(expectedLastDate, result[0].Keys);
-    }
-
-    [Fact]
-    public void CreateHypotheticalPricingForRuns_GeneratesMonthlyData()
-    {
-        // Arrange
-        var firstDate = new LocalDateTime(2025, 2, 1, 0, 0);
-        var secondDate = new LocalDateTime(2025, 3, 1, 0, 0);
-
-        // Act
-        var result = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
-
-
-        // Assert
-        Assert.NotNull(result[0]);
-        Assert.Contains(firstDate, result[0].Keys);
-        Assert.Contains(secondDate, result[0].Keys);
-    }
     
-    [Theory]
-    [InlineData(1, 2031, 6, -0.0291)]
-    [InlineData(996, 2045, 11, -0.0886)]
-    [InlineData(409, 2029, 1, 0.0070)]
-    public void CreateHypotheticalPricingForRuns_GeneratesTheSameEveryTime(int runNumber, int year, int month, decimal expectedPrice)
-    {
-        // Arrange
-        LocalDateTime date = new LocalDateTime(year, month, 1, 0, 0);
-
-        // Act
-        var result = TestDataManager.CreateOrFetchHypotheticalPricingForRuns();
-
-
-        // Assert
-        var actualPrice  = result[runNumber][date];
-        Assert.Equal(expectedPrice, actualPrice);
-    }
 
     [Fact]
     public void SetLongTermGrowthRateAndPrices_UpdatesAllPricesCorrectly()
@@ -150,5 +89,56 @@ public class PricingTests
         // Short term
         var expectedShortTermPrice = 100m + (100m * (growthRate * InvestmentConfig.ShortTermGrowthRateModifier));
         Assert.Equal(expectedShortTermPrice, prices.CurrentShortTermInvestmentPrice);
+    }
+
+    [Theory]
+    [InlineData(17, 27, 0.0277)]
+    [InlineData(43, 119, -0.0053)]
+    [InlineData(143, 199, -0.0152)]
+    [InlineData(501, 288, -0.0641)]
+    public void CreateHypotheticalPricingForARun_ForVariousScenarios_ReturnsCorrectValues(
+        int blockStart, int ordinal, decimal expected)
+    {
+        // Arrange
+        var start = MonteCarloConfig.MonteCarloSimStartDate;
+        var lookupDate = start.PlusMonths(ordinal);
+        // Act
+        var dict = Pricing.CreateHypotheticalPricingForARun(blockStart);
+        var actual = dict[lookupDate];
+        // Assert
+        Assert.Equal(expected, actual);
+    }
+
+    [Theory]
+    [InlineData(17)]
+    [InlineData(37)]
+    [InlineData(0)]
+    [InlineData(101)]
+    
+    public void CreateHypotheticalPricingForARun_WhenRunASecondTimeWithSameBlockStart_UsesCache(int blockStart)
+    {
+        // Arrange
+        var lookupDate = new LocalDateTime(2041, 6, 1, 0, 0);
+        
+        // Act
+        
+        // first run should take time
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        var prices = Pricing.CreateHypotheticalPricingForARun(blockStart);
+        stopwatch.Stop();
+        var firstRunMs = stopwatch.ElapsedMilliseconds;
+        var firstRunValue = prices[lookupDate];
+        
+        // second run should take less time
+        stopwatch = Stopwatch.StartNew();
+        var newPrices = Pricing.CreateHypotheticalPricingForARun(blockStart);
+        stopwatch.Stop();
+        var secondRunMs = stopwatch.ElapsedMilliseconds;
+        var secondRunValue = newPrices[lookupDate];
+        
+        // Assert
+        Assert.True(secondRunMs < firstRunMs);
+        Assert.Equal(secondRunValue, firstRunValue);
+
     }
 }

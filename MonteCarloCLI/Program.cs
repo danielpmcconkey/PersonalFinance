@@ -26,10 +26,6 @@ var investmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(danId
 var debtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(danIdGuid);
 
 
-logger.Info("Pulling historical pricing data");
-decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
-
-
 logger.Info("Running in single model mode");
 
 logger.Info("Pulling model champion from the database");
@@ -59,7 +55,7 @@ logger.Info(logger.FormatBarSeparator('*'));
  */
 
 var results = SimulationTrigger.RunSingleModelSession(
-    logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
+    logger, champion, dan, investmentAccounts, debtAccounts);
 logger.Info("Single model simulation of all lives completed");
 
 logger.Info(logger.FormatBarSeparator('*'));

@@ -25,8 +25,7 @@ public static class MonteCarloFunctions
         var debtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(danIdGuid);
 
 
-        logger.Info("Pulling historical pricing data");
-        decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
+        
             
         logger.Info("Running in single model mode");
     
@@ -41,7 +40,7 @@ public static class MonteCarloFunctions
         logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));
         logger.Info(logger.FormatBarSeparator('*'));
         var results = SimulationTrigger.RunSingleModelSession(
-            logger, champion, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends);
+            logger, champion, dan, investmentAccounts, debtAccounts);
         logger.Info("Single model simulation of all lives completed");
         return results;
     }

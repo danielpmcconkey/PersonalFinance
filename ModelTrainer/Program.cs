@@ -23,9 +23,6 @@ var investmentAccounts = AccountDbRead.FetchDbInvestmentAccountsByPersonId(danId
 var debtAccounts = AccountDbRead.FetchDbDebtAccountsByPersonId(danIdGuid);
 
 
-logger.Info("Pulling historical pricing data");
-decimal[] sAndP500HistoricalTrends = Pricing.FetchSAndP500HistoricalTrends();
-
 
 logger.Info("Running in model training mode");
 
@@ -41,8 +38,7 @@ while(keepRunning)
     var cladePosition = cladeCounter % activeClades.Length;
     var clade = activeClades[cladePosition];
     logger.Info($"Clade: {clade}");
-    SimulationTrigger.RunModelTrainingSession(
-    logger, dan, investmentAccounts, debtAccounts, sAndP500HistoricalTrends, clade);
+    SimulationTrigger.RunModelTrainingSession(logger, dan, investmentAccounts, debtAccounts, clade);
     logger.Info("Training session completed.");
     logger.Info("Cleaning up unneeded model training data.");
     SimulationTrigger.CleanUpModelAndRunResultsData();

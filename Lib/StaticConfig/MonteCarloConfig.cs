@@ -26,15 +26,6 @@ public static class MonteCarloConfig
     /// that, if you run 100 or 23000 lives, life 78 always uses the same hypothetical pricing 
     /// </summary>
     public static int NumLivesPerModelRun;
-    /// <summary>
-    /// all runs use the MaxLivesPerBatch to create the hypothetics pricing
-    /// array. We build that array out to the max you'd ever want to run
-    /// things at so that we know we always using the same "random" pricing
-    /// for every run. Run 1 for every batch will use the same hypothetical
-    /// pricing. Run 7 will use the same pricing. But run 7 will be 
-    /// different from run 1
-    /// </summary>
-    public static int MaxLivesPerBatch;
 
     /// <summary>
     /// the number of models to pull / create in a training session. Each training session will run
@@ -74,8 +65,7 @@ public static class MonteCarloConfig
         ShouldRunParallel = ConfigManager.ReadBoolSetting("ShouldRunParallel");
         ReconOutputDirectory = ConfigManager.ReadStringSetting("ReconOutputDir");
         LogOutputDirectory = ConfigManager.ReadStringSetting("LogOutputDir");
-        MaxLivesPerBatch = ConfigManager.ReadIntSetting("MaxLivesPerBatch");
-        NumLivesPerModelRun = Math.Min(ConfigManager.ReadIntSetting("NumLivesPerModelRun"), MaxLivesPerBatch);
+        NumLivesPerModelRun = ConfigManager.ReadIntSetting("NumLivesPerModelRun");
         ModelTrainingMode = ConfigManager.ReadBoolSetting("ModelTrainingMode");
         ShouldReconcileInterestAccrual = ConfigManager.ReadBoolSetting("ShouldReconcileInterestAccrual");
         ShouldReconcileTaxCalcs = ConfigManager.ReadBoolSetting("ShouldReconcileTaxCalcs");

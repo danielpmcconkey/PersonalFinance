@@ -10,7 +10,7 @@ namespace Lib
     public class PgContext : DbContext
     {
         #region DBSets
-        public DbSet<HistoricalGrowthRate> HistoricalGrowthRates { get; set; }
+        public DbSet<HypotheticalLifeTimeGrowthRate> HypotheticalLifeTimeGrowthRate { get; set; }
         public DbSet<PgCashAccount> PgCashAccounts { get; set; }
         public DbSet<PgCashPosition> PgCashPositions { get; set; }
         public DbSet<PgCategory> PgCategories { get; set; }
