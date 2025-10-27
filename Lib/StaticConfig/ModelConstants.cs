@@ -16,7 +16,7 @@ public static class ModelConstants
     /// same major and minor versions, but their patch version differs, you can still consider them apples-to-apples
     /// comparisons
     /// </summary>
-    public const int PatchVersion = 0;
+    public const int PatchVersion = 2;
     
     public const decimal FunPenaltyBankruptcy = -35000m;
     public const decimal FunBonusRetirement = 1000m; // just fun points, not a modifier. just "hey, we're free"
