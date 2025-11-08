@@ -39,7 +39,7 @@ with ranked_by_model as (
 	left join personalfinance.montecarlomodel m on r.modelid = m.id
 	where m.id is not null
 	and r.majorversion = 0
-	and r.minorversion = 18
+	and r.minorversion = 20
 	and r.bankruptcyrateatendofsim <= 0
 ), best_runs_by_model as (
 	select * from ranked_by_model where rank_in_model = 1
@@ -92,3 +92,5 @@ order by
 limit 100
 
 
+
+	

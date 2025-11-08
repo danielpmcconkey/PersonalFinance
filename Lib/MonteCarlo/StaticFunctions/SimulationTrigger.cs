@@ -42,11 +42,14 @@ public class SimulationTrigger
         ExecuteSingleModelAllLives(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
             List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts)
     {
-        const int skip = 5;
-        var numLivesPerModelRun = Pricing.FetchMaxBlockStartFromHypotheticalDbLives() / skip;
-        var runs = new (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[numLivesPerModelRun];
+        var numLivesPerModelRunConfig = MonteCarloConfig.NumLivesPerModelRun;
+        var totalBlockStarts = Pricing.FetchMaxBlockStartFromHypotheticalDbLives();
+        var skip = totalBlockStarts / numLivesPerModelRunConfig;
 
-        if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLivesPerModelRun, i =>
+        var numLivesPerModelRunActual = totalBlockStarts / skip;
+        var runs = new (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[numLivesPerModelRunActual];
+
+        if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLivesPerModelRunActual, i =>
         {
             var pointer = i * skip;
             var newPerson = Person.CopyPerson(person, false);
@@ -54,7 +57,7 @@ public class SimulationTrigger
             LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, pointer);
             runs[i] = sim.Run();
         });
-        else for(var i = 0; i < numLivesPerModelRun; i += skip)
+        else for(var i = 0; i < numLivesPerModelRunActual; i += skip)
         {
             var pointer = i * skip;
             var newPerson = Person.CopyPerson(person, false);

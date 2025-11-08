@@ -43,15 +43,3 @@ where year >= 1980 and sp_growth is not null
 )
 select * from final_month_pointers
 )
-/*
-select * from personalfinance.vw_hypothetical_lifetime_growth_rates  
-where 1=1
--- and og_ordinal is null
-and ordinal = 0
-order by block_start, ordinal
-*/
-
-
-select '[InlineData(', block_start, ', ', ordinal, ', ', inflation_adjusted_growth, ')]'
-from personalfinance.vw_hypothetical_lifetime_growth_rates 
-Where block_start = 143 and ordinal = 199
