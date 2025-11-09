@@ -92,10 +92,11 @@ public class PricingTests
     }
 
     [Theory]
+    // note that any time you add new values to the historicalgrowth table, you will throw off any of these that "wrap" by the number of months you added
     [InlineData(17, 27, 0.0277)]
     [InlineData(43, 119, -0.0053)]
     [InlineData(143, 199, -0.0152)]
-    [InlineData(501, 288, -0.0641)]
+    [InlineData(501, 288, -0.0260)]
     public void CreateHypotheticalPricingForARun_ForVariousScenarios_ReturnsCorrectValues(
         int blockStart, int ordinal, decimal expected)
     {
@@ -115,6 +116,7 @@ public class PricingTests
     [InlineData(0)]
     [InlineData(101)]
     
+    // this is a flawed test and will often fail if run at the same time as other tests that might populate the cache
     public void CreateHypotheticalPricingForARun_WhenRunASecondTimeWithSameBlockStart_UsesCache(int blockStart)
     {
         // Arrange

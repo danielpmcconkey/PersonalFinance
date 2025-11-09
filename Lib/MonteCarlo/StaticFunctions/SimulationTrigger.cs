@@ -57,7 +57,7 @@ public class SimulationTrigger
             LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, pointer);
             runs[i] = sim.Run();
         });
-        else for(var i = 0; i < numLivesPerModelRunActual; i += skip)
+        else for(var i = 0; i < numLivesPerModelRunActual; i++)
         {
             var pointer = i * skip;
             var newPerson = Person.CopyPerson(person, false);
