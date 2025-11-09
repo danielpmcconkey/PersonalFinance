@@ -9,11 +9,11 @@ using Lib.Utils;
 using NodaTime;
 using Model = Lib.DataTypes.MonteCarlo.Model;
 
-string logDir = ConfigManager.ReadStringSetting("LogDir");
+string logDir = MonteCarloConfig.LogOutputDirectory;
 string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
 string logFilePath = $"{logDir}MonteCarloLog{timeSuffix}.txt";
 var logger = new Logger(
-    Lib.StaticConfig.MonteCarloConfig.LogLevel,
+    MonteCarloConfig.LogLevel,
     logFilePath
 );
 
@@ -34,6 +34,7 @@ Model champion = ModelFunc.FetchModelChampion();
 // over-write the start and end dates from the DB champion model to use what's in the app config
 champion.SimStartDate = MonteCarloConfig.MonteCarloSimStartDate;
 champion.SimEndDate = MonteCarloConfig.MonteCarloSimEndDate;
+var test = MonteCarloConfig.ShouldCheckIncomeInversion;
 
 logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Beginning Monte Carlo single model session run"));

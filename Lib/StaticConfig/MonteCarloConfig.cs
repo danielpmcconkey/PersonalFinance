@@ -59,9 +59,9 @@ public static class MonteCarloConfig
 
     static MonteCarloConfig()
     {
+        DebugMode = ConfigManager.ReadBoolSetting("IsDebugModeOn");
         MonteCarloSimStartDate = ConfigManager.ReadDateSetting("MonteCarloSimStartDate");
         MonteCarloSimEndDate = ConfigManager.ReadDateSetting("MonteCarloSimEndDate");
-        DebugMode = ConfigManager.ReadBoolSetting("IsDebugModeOn");
         ShouldRunParallel = ConfigManager.ReadBoolSetting("ShouldRunParallel");
         ReconOutputDirectory = ConfigManager.ReadStringSetting("ReconOutputDir");
         LogOutputDirectory = ConfigManager.ReadStringSetting("LogOutputDir");

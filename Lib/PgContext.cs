@@ -28,14 +28,7 @@ namespace Lib
         public DbSet<SingleModelRunResult> SingleModelRunResults { get; set; }
         
         public DbSet<ModelChampion> ModelChampions { get; set; }
-
-        
-        
-        
-        // public DbSet<InvestmentAccount> InvestmentAccounts { get; set; }
-        // public DbSet<DebtAccount> DebtAccounts { get; set; }
-        // public DbSet<InvestmentPosition> InvestmentPositions { get; set; }
-        // public DbSet<DebtPosition> DebtPositions { get; set; }
+        public DbSet<PgConfigValue> PgConfigValues { get; set; }
         public DbSet<PgCategory> Categories { get; set; }
 
         private static NpgsqlDataSource? _dataSource;
@@ -86,7 +79,7 @@ namespace Lib
 
 
         }
-        
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Model>(e =>
@@ -99,7 +92,7 @@ namespace Lib
                     .WithMany(mm => mm.ChildrenB)
                     .HasForeignKey(m => m.ParentBId);
                 e.Property(m => m.WithdrawalStrategyType).HasConversion<int>();
-                
+
 
             });
             modelBuilder.Entity<PgCashAccount>(e =>
@@ -201,15 +194,12 @@ namespace Lib
             modelBuilder.Entity<PgInvestmentAccountGroup>(e =>
             {
                 e.HasKey(ia => ia.Id);
-                
+
                 e.HasMany(iag => iag.InvestmentAccounts)
                     .WithOne(ia => ia.InvestmentAccountGroup)
                     .HasForeignKey(ia => ia.InvestmentAccountGroupId);
             });
-            modelBuilder.Entity<PgPerson>(e =>
-            {
-                e.HasKey(p => p.Id);
-            });
+            modelBuilder.Entity<PgPerson>(e => { e.HasKey(p => p.Id); });
             modelBuilder.Entity<PgPosition>(e =>
             {
                 e.HasKey(p => p.Id);
@@ -242,7 +232,7 @@ namespace Lib
                     .HasForeignKey<ModelChampion>(mc => mc.ModelId);
                 e.HasIndex(mc => mc.ModelId).IsUnique();
             });
-
+            modelBuilder.Entity<PgConfigValue>(e => { e.HasKey(cv => cv.Id); });
         }
     }
 }
