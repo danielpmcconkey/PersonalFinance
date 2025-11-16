@@ -45,12 +45,12 @@ logger.Info(logger.FormatBarSeparator('*'));
 /*
  * use this code to run a specific life for a specific model
  */
-// var model = ModelFunc.FetchModelChampion("7758072c-b455-4352-ace7-6ab2bc478b0f");
-// var hypotheticalPrices = Pricing.CreateHypotheticalPricingForRuns(sAndP500HistoricalTrends);
-// var newPerson = Person.CopyPerson(dan, false);
-// var i = 3;
-// LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, hypotheticalPrices[i], i);
-// var runResults = sim.Run();
+var model = ModelFunc.FetchModelChampion("3724937e-a40c-4631-85b8-8e18be3dcf74");
+var lifePointer = 195;
+var prices = Pricing.CreateHypotheticalPricingForARun(lifePointer);
+var newPerson = Person.CopyPerson(dan, false);
+LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, lifePointer);
+var runResults = sim.Run();
 /*
  * end code to run a specific life for a specific model
  */

@@ -82,15 +82,30 @@ public class NoMidIncomeThreshold : IWithdrawalStrategy
            results.messages.Add(new ReconciliationMessage(
                currentDate, null, "Rebalance: time to move funds"));
        }
-       var sellResults = model.WithdrawalStrategy.SellInvestmentsToDollarAmount(results.accounts, results.ledger, 
+       
+       // sell any mid-term positions if you inherited them from the start-up accounts
+       var sellMidResults = SellInvestmentsToDollarAmount(results.accounts, results.ledger, 
            currentDate, cashNeededToBeMoved, model, null, currentDate.PlusYears(-1),
-           McInvestmentPositionType.LONG_TERM, null);
-       results.accounts = sellResults.accounts;
-       results.ledger = sellResults.ledger;
+           McInvestmentPositionType.MID_TERM, null);
+       results.accounts = sellMidResults.accounts;
+       results.ledger = sellMidResults.ledger;
+       results.messages.AddRange(sellMidResults.messages);
+
+       var amountLeft = cashNeededToBeMoved - sellMidResults.amountSold;
+
+       if (amountLeft > 0)
+       {
+           var sellLongResults = SellInvestmentsToDollarAmount(results.accounts, results.ledger, 
+               currentDate, amountLeft, model, null, currentDate.PlusYears(-1),
+               McInvestmentPositionType.LONG_TERM, null);
+           results.accounts = sellLongResults.accounts;
+           results.ledger = sellLongResults.ledger;
+       }
+       
+       
        if (MonteCarloConfig.DebugMode)
        {
-           results.messages.Add(new ReconciliationMessage(currentDate, null, "Rebalanced long to cash."));
-           results.messages.AddRange(sellResults.messages);
+           results.messages.Add(new ReconciliationMessage(currentDate, null, "Rebalanced to cash."));
        }
 
        return results;

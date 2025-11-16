@@ -609,6 +609,69 @@ public class NoMidIncomeThresholdTests
         Assert.Equal(Math.Round(expectedCapitalGains ,2), Math.Round(actualCapitalGains, 2));
     }
     
+    
+    [Fact]
+    public void RebalancePortfolio_WithMidTermBalances_SellsMidFirst()
+    {
+        // Arrange
+
+        var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.NoMidIncomeThreshold);
+        model.RebalanceFrequency = RebalanceFrequency.MONTHLY;
+        var person = TestDataManager.CreateTestPerson();
+        person.BirthDate = new LocalDateTime(1976, 3, 7, 0, 0);
+        model.RetirementDate = person.BirthDate.PlusYears(62); // the magic age When you are retired but have no medicare
+        var currentDate = model.RetirementDate.PlusMonths(12); // Within rebalance window, post retirement
+        var fiveYearsAgo = currentDate.PlusYears(-5);
+        model.NumMonthsCashOnHand = 18;
+        model.DesiredMonthlySpendPostRetirement = 1000;
+        person.RequiredMonthlySpend = 1000;
+        var accounts = TestDataManager.CreateEmptyBookOfAccounts();
+        var cashNeededTotal = Spend.CalculateCashNeedForNMonths(
+            model, person, accounts, currentDate, model.NumMonthsCashOnHand);
+
+        var midShortfall = 20000m;
+        var desiredLongLeftOver = 10000m;
+        var midTermTotalWanted = cashNeededTotal - midShortfall;
+        var longtermTotalWanted = midShortfall + desiredLongLeftOver;
+        var longPosition = TestDataManager.CreateTestInvestmentPosition(
+            1m, longtermTotalWanted, McInvestmentPositionType.LONG_TERM, 
+            true, 0.5m, fiveYearsAgo );
+        var midPosition = TestDataManager.CreateTestInvestmentPosition(
+            1m, midTermTotalWanted, McInvestmentPositionType.MID_TERM, 
+            true, 0.5m, fiveYearsAgo );
+        accounts.Brokerage.Positions.Add(longPosition);
+        accounts.Brokerage.Positions.Add(midPosition);
+        
+        
+        
+        
+        
+        var expectedCashBalance = cashNeededTotal;
+        var expectedMidBalance = 0m;
+        var expectedLongBalance = desiredLongLeftOver;
+        var expectedCapitalGains = cashNeededTotal * 0.5m;
+        
+        
+    
+        // Act
+        var result = model.WithdrawalStrategy.RebalancePortfolio(
+            currentDate, accounts, new RecessionStats(), new CurrentPrices(), model, new TaxLedger(), person);
+        
+        var actualCashBalance = AccountCalculation.CalculateCashBalance(result.accounts);
+        var actualMidBalance = AccountCalculation.CalculateMidBucketTotalBalance(result.accounts);
+        var actualLongBalance = AccountCalculation.CalculateLongBucketTotalBalance(result.accounts);
+        var actualCapitalGains = result.ledger.LongTermCapitalGains
+            .Where(x => x.earnedDate.Year == currentDate.Year)
+            .Sum(x => x.amount);
+    
+        // Assert
+        Assert.Equal(Math.Round(expectedCashBalance  ,2),  Math.Round(actualCashBalance, 2));
+        Assert.Equal(Math.Round(expectedMidBalance   ,2),   Math.Round(actualMidBalance, 2));
+        Assert.Equal(Math.Round(expectedLongBalance  ,2),  Math.Round(actualLongBalance, 2));
+        Assert.Equal(Math.Round(expectedCapitalGains ,2), Math.Round(actualCapitalGains, 2));
+    }
+    
+    
     [Fact]
     public void SellInvestmentsToRmdAmount_WithAllLongTermPositions_SellsWhatsNeeded()
     {
