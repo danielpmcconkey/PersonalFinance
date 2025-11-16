@@ -141,7 +141,6 @@ public class SimulationTrigger
         {
             for (int i2 = 0; i2 < allModels.Count; i2++)
             {
-                logger.Info($"running {i1} bred with {i2}");
                 var offspring = ModelFunc.MateModels(allModels[i1], allModels[i2], person.BirthDate);
                 offspring.SimStartDate = startDate;
                 offspring.SimEndDate = endDate;
@@ -151,6 +150,9 @@ public class SimulationTrigger
                 var modelResults = Simulation.InterpretSimulationResults(
                     offspring, allLivesRuns2, ++maxCounter, person);
                 SaveSingleModelRunResultsToDb(modelResults);
+                
+                logger.Info($"ran {i1} bred with {i2} -- {modelResults.NumLivesRun} lives run.");
+                
                 modelResults = null; // trying to ensure that we clear up the memory
             }
         }
@@ -160,7 +162,7 @@ public class SimulationTrigger
     {
         using var context = new PgContext();
     
-        var cutoffDate = LocalDate.FromDateTime(DateTime.Now).PlusDays(-1);
+        var cutoffDate = LocalDate.FromDateTime(DateTime.Now).PlusDays(-2);
         
         // Find childless models older than the cutoff date
         var childlessModels = context.McModels

@@ -431,12 +431,13 @@ public class ModelFunc
             model => model.WithdrawalStrategyType,
             () =>
             {
-                var randomInt = MathFunc.GetUnSeededRandomInt(0, 2000);
+                var randomInt = MathFunc.GetUnSeededRandomInt(0, 4000);
                 return randomInt switch
                 {
                     < 1000 => WithdrawalStrategyType.BasicBucketsIncomeThreshold,
                     < 2000 => WithdrawalStrategyType.BasicBucketsTaxableFirst,
-                    _ => WithdrawalStrategyType.SixtyForty
+                    < 3000 => WithdrawalStrategyType.SixtyForty,
+                    _ => WithdrawalStrategyType.NoMidIncomeThreshold
                 };
             });
         
@@ -456,11 +457,13 @@ public class ModelFunc
     
     private static  WithdrawalStrategyType GetRandomWithdrawalStrategyType()
     {
-        return MathFunc.GetUnSeededRandomInt(0, 3000) switch
+        var randomInt = MathFunc.GetUnSeededRandomInt(0, 4000);
+        return randomInt switch
         {
             < 1000 => WithdrawalStrategyType.BasicBucketsIncomeThreshold,
             < 2000 => WithdrawalStrategyType.BasicBucketsTaxableFirst,
-            _ => WithdrawalStrategyType.SixtyForty
+            < 3000 => WithdrawalStrategyType.SixtyForty,
+            _ => WithdrawalStrategyType.NoMidIncomeThreshold
         };
     }
     

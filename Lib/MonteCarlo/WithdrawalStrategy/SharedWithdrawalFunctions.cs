@@ -8,16 +8,17 @@ namespace Lib.MonteCarlo.WithdrawalStrategy;
 
 public static class SharedWithdrawalFunctions
 {
-    
     public static IWithdrawalStrategy GetWithdrawalStrategy(WithdrawalStrategyType strategy)
     {
         return strategy switch {
             WithdrawalStrategyType.BasicBucketsIncomeThreshold => new BasicBucketsIncomeThreshold(),
             WithdrawalStrategyType.BasicBucketsTaxableFirst => new BasicBucketsTaxableFirst(),
             WithdrawalStrategyType.SixtyForty => new SixtyForty(),
+            WithdrawalStrategyType.NoMidIncomeThreshold => new NoMidIncomeThreshold(),
             _ => throw new ArgumentOutOfRangeException(nameof(strategy), strategy, null)
         };
     }
+    
     #region Basic Buckets Shared Functions
     
     /// <summary>
@@ -251,6 +252,114 @@ public static class SharedWithdrawalFunctions
             results.messages.Add(new ReconciliationMessage(
                 currentDate, null, "Rebalance: done moving mid and/or long to cash"));
         return results;
+    }
+
+    #endregion
+
+    #region IncomeThreasholdSharedFunctions
+    
+    public static McInvestmentAccountType[] IncomeThresholdSalesOrderWithNoRoom = [
+        // no tax, period
+        McInvestmentAccountType.HSA,
+        McInvestmentAccountType.ROTH_IRA,
+        McInvestmentAccountType.ROTH_401_K,
+        // tax on growth only
+        McInvestmentAccountType.TAXABLE_BROKERAGE,
+        // tax deferred
+        McInvestmentAccountType.TRADITIONAL_401_K,
+        McInvestmentAccountType.TRADITIONAL_IRA,
+    ];
+    public static McInvestmentAccountType[] IncomeThresholdSalesOrderWithRoom = [
+        // tax deferred
+        McInvestmentAccountType.TRADITIONAL_401_K,
+        McInvestmentAccountType.TRADITIONAL_IRA,
+        // tax on growth only
+        McInvestmentAccountType.TAXABLE_BROKERAGE,
+        // no tax, period
+        McInvestmentAccountType.HSA,
+        McInvestmentAccountType.ROTH_IRA,
+        McInvestmentAccountType.ROTH_401_K,
+    ];
+
+    /// <summary>
+    /// Tries to do a tax-targeted sale of investments. If there's income room, sell tax deferred or taxed investments
+    /// until you've run out of income room. Once you've exhausted your income room, sell tax free. Income room here
+    /// means that you've jumped up to the higher tax bracket. In 2024 tax terms, that's 96k, when you jump from 12% to
+    /// 22%. However, if accountTypeOverride is specified, the sales order will be ignored.
+    /// </summary>
+    /// <returns>
+    /// Note, the amountSold in the return tuple may not be the same as the amountToSell value in the input
+    /// parameters. This is because you many not have enough in the accounts. Handling that discrepancy should be up to
+    /// the consuming method
+    /// </returns>
+    /// <exception cref="InvalidDataException"></exception>
+    public static (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage>messages)
+        IncomeThreasholdSellInvestmentsToDollarAmount(
+            BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell, Model model,
+            LocalDateTime? minDateExclusive, LocalDateTime? maxDateInclusive, 
+            McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null)
+    {
+        if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
+        if (accounts.InvestmentAccounts.Count == 0) return (0, accounts, ledger, []);
+        
+        var oneYearAgo = currentDate.PlusYears(-1);
+        
+        // set up the return tuple
+        (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) 
+            results = (
+                0M, 
+                AccountCopy.CopyBookOfAccounts(accounts), 
+                Tax.CopyTaxLedger(ledger), 
+                []
+                );
+        var incomeRoom = TaxCalculation.CalculateIncomeRoom(ledger, currentDate);
+        McInvestmentPositionType[] positionTypes = positionTypeOverride is null 
+            ? [McInvestmentPositionType.LONG_TERM, McInvestmentPositionType.MID_TERM] 
+            : [(McInvestmentPositionType) positionTypeOverride];
+
+        if (incomeRoom > 0)
+        {
+            // we have income room. sell tax deferred positions, up to the incomeRoom amount
+            var amountToSellWithinRoom = Math.Min(amountToSell, incomeRoom);
+            var accountTypesWithRoom = accountTypeOverride is null ?
+                SharedWithdrawalFunctions.IncomeThresholdSalesOrderWithRoom : 
+                new [] { (McInvestmentAccountType) accountTypeOverride };
+            results = IncomeThreasholdSellHelper(amountToSellWithinRoom, results.accounts, results.ledger, currentDate, 
+                positionTypes, accountTypesWithRoom, true, minDateExclusive, maxDateInclusive);
+        }
+        if (results.amountSold >= amountToSell) return results;
+        
+        // we don't have any more income room and we still have sellin to do. sell taxed and tax-free positions, up to
+        // the amountNeeded
+        var amountStillNeeded = amountToSell - results.amountSold;
+        var accountTypesNoRoom = accountTypeOverride is null ?
+            SharedWithdrawalFunctions.IncomeThresholdSalesOrderWithNoRoom : 
+            new [] { (McInvestmentAccountType) accountTypeOverride };
+        var noRoomResult = IncomeThreasholdSellHelper(amountStillNeeded, results.accounts, results.ledger, 
+            currentDate, positionTypes, accountTypesNoRoom, true, minDateExclusive, maxDateInclusive);
+        
+        results.amountSold += noRoomResult.amountSold;
+        results.accounts = noRoomResult.accounts;
+        results.ledger = noRoomResult.ledger;
+        
+        if (!MonteCarloConfig.DebugMode) return results;
+        results.messages.AddRange(noRoomResult.messages);
+        results.messages.Add(new ReconciliationMessage(
+            currentDate, results.amountSold, $"Amount sold in investment accounts"));
+
+        return results;
+    }
+    
+    private static (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage>messages) 
+        IncomeThreasholdSellHelper(decimal amountToSell, BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, 
+            McInvestmentPositionType[] positionTypes, McInvestmentAccountType[] accountTypes, bool orderByAccountType,
+            LocalDateTime? minDateExclusive, LocalDateTime? maxDateInclusive)
+    {
+        var salesOrder = orderByAccountType ?
+            InvestmentSales.CreateSalesOrderAccountTypeFirst(positionTypes, accountTypes) :
+            InvestmentSales.CreateSalesOrderPositionTypeFirst(positionTypes, accountTypes);
+        return InvestmentSales.SellInvestmentsToDollarAmount(accounts, ledger, currentDate, amountToSell, salesOrder,
+            minDateExclusive, maxDateInclusive);
     }
 
     #endregion

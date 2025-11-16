@@ -680,6 +680,65 @@ public class ModelFuncTests
     }
     
     [Fact]
+    public void MateWithdrawalStrategyType_WithIdenticalParentsAndManyRuns_ShowsCorrectStatisticalVariation()
+    {
+        // Arrange
+        const int totalTests = 10000;
+        const decimal tolerance = 0.15m;
+        var modelA = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
+        var modelB = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
+
+        const decimal oddsOfUsingHeredity = .8m;
+        const decimal oddsOfUsingRandom = 1.0m - oddsOfUsingHeredity;
+        const int numRandomOptions = 4;
+
+        var expectedBasicBucketsIncomeThreshold =
+            totalTests * (oddsOfUsingHeredity + (oddsOfUsingRandom / numRandomOptions));
+        var expectedBasicBucketsIncomeThresholdHigh = expectedBasicBucketsIncomeThreshold * (1m + tolerance);
+        var expectedBasicBucketsIncomeThresholdLow = expectedBasicBucketsIncomeThreshold * (1m - tolerance);
+        
+        var expectedBasicBucketsTaxableFirst =
+            totalTests * (oddsOfUsingRandom / numRandomOptions);
+        var expectedBasicBucketsTaxableFirstHigh = expectedBasicBucketsTaxableFirst * (1m + tolerance);
+        var expectedBasicBucketsTaxableFirstLow = expectedBasicBucketsTaxableFirst * (1m - tolerance);
+        
+        var expectedSixtyForty =
+            totalTests * (oddsOfUsingRandom / numRandomOptions);
+        var expectedSixtyFortyHigh = expectedSixtyForty * (1m + tolerance);
+        var expectedSixtyFortyLow = expectedSixtyForty * (1m - tolerance);
+        
+        var expectedNoMidIncomeThreshold =
+            totalTests * (oddsOfUsingRandom / numRandomOptions);
+        var expectedNoMidIncomeThresholdHigh = expectedNoMidIncomeThreshold * (1m + tolerance);
+        var expectedNoMidIncomeThresholdLow = expectedNoMidIncomeThreshold * (1m - tolerance);
+
+        // Act
+        var actualCountAtBasicBucketsIncomeThreshold = 0;
+        var actualCountAtBasicBucketsTaxableFirst = 0;
+        var actualCountAtSixtyForty = 0;
+        var actualCountAtNoMidIncomeThreshold = 0;
+        for (var i = 0; i < totalTests; i++)
+        {
+            var child = ModelFunc.MateModels(modelA, modelB, _birthdate);
+
+            if (child.WithdrawalStrategyType == WithdrawalStrategyType.BasicBucketsIncomeThreshold) actualCountAtBasicBucketsIncomeThreshold++;
+            else if (child.WithdrawalStrategyType == WithdrawalStrategyType.BasicBucketsTaxableFirst) actualCountAtBasicBucketsTaxableFirst++;
+            else if (child.WithdrawalStrategyType == WithdrawalStrategyType.SixtyForty) actualCountAtSixtyForty++;
+            else if (child.WithdrawalStrategyType == WithdrawalStrategyType.NoMidIncomeThreshold) actualCountAtNoMidIncomeThreshold++;
+        }
+            
+        // Assert
+        Assert.InRange(actualCountAtBasicBucketsIncomeThreshold,
+            expectedBasicBucketsIncomeThresholdLow, expectedBasicBucketsIncomeThresholdHigh);
+        Assert.InRange(actualCountAtBasicBucketsTaxableFirst,
+            expectedBasicBucketsTaxableFirstLow, expectedBasicBucketsTaxableFirstHigh);
+        Assert.InRange(actualCountAtSixtyForty,
+            expectedSixtyFortyLow, expectedSixtyFortyHigh);
+        Assert.InRange(actualCountAtNoMidIncomeThreshold,
+            expectedNoMidIncomeThresholdLow, expectedNoMidIncomeThresholdHigh);
+    }
+    
+    [Fact]
     public void MateModels_WithIdenticalParentsAndManyRuns_ShowsCorrectStatisticalVariation()
     {
         // Arrange
