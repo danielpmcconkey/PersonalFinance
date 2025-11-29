@@ -126,8 +126,11 @@ public class LifeSimulator
                 
                 if (MonteCarloConfig.DebugMode)
                 {
-                    _reconciliationLedger.AddFullReconLine(
-                        _simData, $"Starting new month: {_simData.CurrentDateInSim}");
+                    if (_isReconcilingTime)
+                    {
+                        _reconciliationLedger.AddFullReconLine(
+                            _simData, $"Starting new month: {_simData.CurrentDateInSim}");
+                    }
                     _simData.Log.Debug($"Starting new month: {_simData.CurrentDateInSim}");
                 }
 

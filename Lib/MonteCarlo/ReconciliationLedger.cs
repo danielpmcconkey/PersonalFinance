@@ -19,7 +19,7 @@ public class ReconciliationLedger
         
         string timeSuffix = DateTime.Now.ToString("yyyy-MM-dd HHmmss");
         string filePath = $"{StaticConfig.MonteCarloConfig.ReconOutputDirectory}MonteCarloRecon{timeSuffix}.xlsx";
-        List<SpreadsheetColumn> columns =
+                List<SpreadsheetColumn> columns =
         [
             new SpreadsheetColumn(){ Ordinal = 0, ColumnType = SpreadsheetColumnType.Integer, Header = "#", PropertyName = "Ordinal" },
             new SpreadsheetColumn(){ Ordinal = 1, ColumnType = SpreadsheetColumnType.DateTime, Header = "Date", PropertyName = "Date" },
@@ -33,19 +33,22 @@ public class ReconciliationLedger
             new SpreadsheetColumn(){ Ordinal = 9, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Mid Term Investment", PropertyName = "TotalMidTermInvestment" },
             new SpreadsheetColumn(){ Ordinal = 10, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Short Term Investment", PropertyName = "TotalShortTermInvestment" },
             new SpreadsheetColumn(){ Ordinal = 11, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Cash", PropertyName = "TotalCash" },
-            new SpreadsheetColumn(){ Ordinal = 12, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt", PropertyName = "TotalDebt" },
-            new SpreadsheetColumn(){ Ordinal = 13, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Spend Lifetime", PropertyName = "TotalSpendLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 14, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Investment Accrual Lifetime", PropertyName = "TotalInvestmentAccrualLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 15, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt Accrual Lifetime", PropertyName = "TotalDebtAccrualLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 16, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Social Security Wage Lifetime", PropertyName = "TotalSocialSecurityWageLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 17, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt Paid Lifetime", PropertyName = "TotalDebtPaidLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 18, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Fun Points Lifetime", PropertyName = "TotalFunPointsLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 19, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Health Care Spend Lifetime", PropertyName = "TotalHealthCareSpendLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 20, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Tax Paid Lifetime", PropertyName = "TotalTaxPaidLifetime" },
-            new SpreadsheetColumn(){ Ordinal = 21, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Retired", PropertyName = "IsRetired" },
-            new SpreadsheetColumn(){ Ordinal = 22, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Bankrupt", PropertyName = "IsBankrupt" },
-            new SpreadsheetColumn(){ Ordinal = 23, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In A Recession", PropertyName = "AreWeInARecession" },
-            new SpreadsheetColumn(){ Ordinal = 24, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In Extreme Austerity Measures", PropertyName = "AreWeInExtremeAusterityMeasures" },
+            new SpreadsheetColumn(){ Ordinal = 12, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Tax Deferred", PropertyName = "TotalTaxDeferred" },
+            new SpreadsheetColumn(){ Ordinal = 13, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Tax Free", PropertyName = "TotalTaxFree" },
+            new SpreadsheetColumn(){ Ordinal = 14, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Taxable", PropertyName = "TotalTaxable" },
+            new SpreadsheetColumn(){ Ordinal = 15, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt", PropertyName = "TotalDebt" },
+            new SpreadsheetColumn(){ Ordinal = 16, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Spend Lifetime", PropertyName = "TotalSpendLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 17, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Investment Accrual Lifetime", PropertyName = "TotalInvestmentAccrualLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 18, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt Accrual Lifetime", PropertyName = "TotalDebtAccrualLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 19, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Social Security Wage Lifetime", PropertyName = "TotalSocialSecurityWageLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 20, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Debt Paid Lifetime", PropertyName = "TotalDebtPaidLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 21, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Fun Points Lifetime", PropertyName = "TotalFunPointsLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 22, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Health Care Spend Lifetime", PropertyName = "TotalHealthCareSpendLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 23, ColumnType = SpreadsheetColumnType.Decimal, Header = "Total Tax Paid Lifetime", PropertyName = "TotalTaxPaidLifetime" },
+            new SpreadsheetColumn(){ Ordinal = 24, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Retired", PropertyName = "IsRetired" },
+            new SpreadsheetColumn(){ Ordinal = 25, ColumnType = SpreadsheetColumnType.Boolean, Header = "Is Bankrupt", PropertyName = "IsBankrupt" },
+            new SpreadsheetColumn(){ Ordinal = 26, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In A Recession", PropertyName = "AreWeInARecession" },
+            new SpreadsheetColumn(){ Ordinal = 27, ColumnType = SpreadsheetColumnType.Boolean, Header = "Are We In Extreme Austerity Measures", PropertyName = "AreWeInExtremeAusterityMeasures" },
         ];
         
         SpreadsheetWriter writer = new SpreadsheetWriter(filePath, "Reconciliation", columns);
@@ -66,27 +69,7 @@ public class ReconciliationLedger
             message.Date, 
             null,
             message.Amount, 
-            message.Description, 
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
+            message.Description
         );
         _reconciliationLineItems.Add(line);
     }
@@ -133,7 +116,19 @@ public class ReconciliationLedger
             simData.RecessionStats.AreWeInExtremeAusterityMeasures,
             simData.LifetimeSpend.TotalFunPointsLifetime,
             simData.LifetimeSpend.TotalLifetimeHealthCareSpend,
-            simData.TaxLedger.TotalTaxPaidLifetime
+            simData.TaxLedger.TotalTaxPaidLifetime,
+            // tax deferred
+            AccountCalculation.CalculateTotalBalanceByMultipleFactors(simData.BookOfAccounts, [
+                McInvestmentAccountType.TRADITIONAL_401_K, McInvestmentAccountType.TRADITIONAL_IRA
+            ]),
+            // tax free
+            AccountCalculation.CalculateTotalBalanceByMultipleFactors(simData.BookOfAccounts, [
+                McInvestmentAccountType.HSA, McInvestmentAccountType.ROTH_401_K, McInvestmentAccountType.ROTH_IRA, 
+            ]),
+            // taxable
+            AccountCalculation.CalculateTotalBalanceByMultipleFactors(simData.BookOfAccounts, [
+                McInvestmentAccountType.TAXABLE_BROKERAGE 
+            ])
         );
         return line;
     }

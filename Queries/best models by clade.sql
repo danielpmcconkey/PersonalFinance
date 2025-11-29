@@ -83,7 +83,9 @@ with ranked_by_model as (
 	from best_runs_by_model
 )
 select * from ranked_models 
-where rank_in_clade <= 5 
+where 1=1
+--and withdrawalstrategy = 4
+and rank_in_clade <= 5 
 order by 
 	funpointsatendofsim50 desc, 
 	networthatendofsim50 desc, 

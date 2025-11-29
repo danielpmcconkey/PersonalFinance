@@ -17,7 +17,7 @@ var logger = new Logger(
     logFilePath
 );
 
-SimulationTrigger.CleanUpModelAndRunResultsData();
+
 logger.Info("Pulling person from the database");
 var danId = ConfigManager.ReadStringSetting("DanId");
 Guid danIdGuid = Guid.Parse(danId);
@@ -45,7 +45,8 @@ logger.Info(logger.FormatBarSeparator('*'));
 /*
  * use this code to run a specific life for a specific model
  */
-var model = ModelFunc.FetchModelChampion("3724937e-a40c-4631-85b8-8e18be3dcf74");
+var model = ModelFunc.FetchModelChampion("cd8d33dc-6850-4779-a499-48c6ddba34c3"); // 4
+// var model = ModelFunc.FetchModelChampion("a65e5d0b-f920-402e-9f00-27f041b5aec6"); // 3
 var lifePointer = 195;
 var prices = Pricing.CreateHypotheticalPricingForARun(lifePointer);
 var newPerson = Person.CopyPerson(dan, false);

@@ -47,8 +47,6 @@ public class NoMidIncomeThreshold : IWithdrawalStrategy
             LocalDateTime currentDate, BookOfAccounts accounts, RecessionStats recessionStats,
             CurrentPrices currentPrices, Model model, TaxLedger ledger, PgPerson person)
     {
-       // return SharedWithdrawalFunctions.BasicBucketsRebalance(
-       //     currentDate, accounts, recessionStats, currentPrices, model, ledger, person); 
        if (!Rebalance.CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))
        {
            if (!MonteCarloConfig.DebugMode) return (accounts, ledger, []);
@@ -100,6 +98,7 @@ public class NoMidIncomeThreshold : IWithdrawalStrategy
                McInvestmentPositionType.LONG_TERM, null);
            results.accounts = sellLongResults.accounts;
            results.ledger = sellLongResults.ledger;
+           results.messages.AddRange(sellLongResults.messages);
        }
        
        

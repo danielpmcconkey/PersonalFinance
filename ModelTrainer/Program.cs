@@ -32,7 +32,7 @@ logger.Info(logger.FormatHeading($"Version {ModelConstants.MajorVersion}.{ModelC
 logger.Info(logger.FormatBarSeparator('*'));
 var keepRunning = true;
 int cladeCounter = 0;
-int[] activeClades = [8, 6, 1, 2, 3];
+int[] activeClades = [9, 8, 6, 3, 1, 2];
 while(keepRunning)
 {
     var cladePosition = cladeCounter % activeClades.Length;
