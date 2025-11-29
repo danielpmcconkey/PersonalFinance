@@ -40,8 +40,7 @@ while(keepRunning)
     logger.Info($"Clade: {clade}");
     SimulationTrigger.RunModelTrainingSession(logger, dan, investmentAccounts, debtAccounts, clade);
     logger.Info("Training session completed.");
-    logger.Info("Cleaning up unneeded model training data.");
-    SimulationTrigger.CleanUpModelAndRunResultsData();
+    
     if (MonteCarloConfig.RunTrainingInLoop)
     {
         logger.Info("Starting another training session");
@@ -53,6 +52,12 @@ while(keepRunning)
     }
 
     cladeCounter++;
+    if(cladePosition == activeClades.Length - 1)
+    {
+        // only clean up after you've gone through an entire loop of clades
+        logger.Info("Cleaning up unneeded model training data.");
+        SimulationTrigger.CleanUpModelAndRunResultsData();
+    }
 }
 logger.Info(logger.FormatBarSeparator('*'));
 logger.Info(logger.FormatHeading("Exiting"));
