@@ -139,6 +139,9 @@ public class SimulationTrigger
         //List<(McModel model, SingleModelRunResult result)> results = [];
         for(int i1 = 0; i1 < allModels.Count; i1++)
         {
+            // check to see if the clutch is set and pause if so
+            PauseIfClutchIsSet(logger);
+            
             for (int i2 = 0; i2 < allModels.Count; i2++)
             {
                 var offspring = ModelFunc.MateModels(allModels[i1], allModels[i2], person.BirthDate);
@@ -284,5 +287,18 @@ public class SimulationTrigger
         var query = "select * from personalfinance.singlemodelrunresult order by counter desc limit 1";
         var maxRun = context.SingleModelRunResults.FromSqlRaw(query).First();
         return maxRun.Counter;
+    }
+
+    public static void PauseIfClutchIsSet(Logger logger)
+    {
+        var isClutchSet = ConfigManager.ReadBoolSetting("MonteCarloClutch", true);
+        while (isClutchSet)
+        {
+            var sleepTimeInMinutes = 2;
+            var sleepTimeInMilliseconds = sleepTimeInMinutes * 60 * 1000;
+            logger.Info($"Clutch is set. Pausing for {sleepTimeInMinutes} minutes");
+            Thread.Sleep(sleepTimeInMilliseconds);
+            isClutchSet = ConfigManager.ReadBoolSetting("MonteCarloClutch", true);
+        }
     }
 }

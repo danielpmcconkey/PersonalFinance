@@ -33,41 +33,72 @@ public static class ConfigManager
         }
         return dict;
     }
-    private static string ReadSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    private static string ReadSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
         // try local override from config file first
         var value = _root[key];
         if (value is not null) return value;
+        
+        // see if we need to update the db cache first
+        if (shouldForceDbCacheUpdate) _cache = FetchDbCache();
         
         // try to reach from db cache
         if (_cache is null) _cache = FetchDbCache(); // don't move this into the constructor because creating the context needs config from files
         if(!_cache.TryGetValue(key, out value)) throw new InvalidDataException();
         return value;
     }
-    public static bool ReadBoolSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    public static bool ReadBoolSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
-        return bool.Parse(ReadSetting(key));
+        return bool.Parse(ReadSetting(key, shouldForceDbCacheUpdate));
     }
-    public static int ReadIntSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    public static int ReadIntSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
-        return int.Parse(ReadSetting(key));
+        return int.Parse(ReadSetting(key, shouldForceDbCacheUpdate));
     }
-    public static decimal ReadDecimalSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    public static decimal ReadDecimalSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
-        return decimal.Parse(ReadSetting(key));
+        return decimal.Parse(ReadSetting(key, shouldForceDbCacheUpdate));
     }
-    public static long ReadLongSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    public static long ReadLongSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
-        return Int64.Parse(ReadSetting(key));
+        return Int64.Parse(ReadSetting(key, shouldForceDbCacheUpdate));
     }
 
-    public static string ReadStringSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    public static string ReadStringSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
-        return ReadSetting(key);
+        return ReadSetting(key, shouldForceDbCacheUpdate);
     }
-    public static NodaTime.LocalDateTime ReadDateSetting(string key)
+    
+    /// <summary>
+    /// warning: shouldForceDbCacheUpdate is not threadsafe. only use it outside of multi-threaded contexts 
+    /// </summary>
+    public static NodaTime.LocalDateTime ReadDateSetting(string key, bool shouldForceDbCacheUpdate = false)
     {
-        var dt = DateTime.Parse(ReadSetting(key));
+        var dt = DateTime.Parse(ReadSetting(key, shouldForceDbCacheUpdate));
         return NodaTime.LocalDateTime.FromDateTime(dt);
     }
 }
