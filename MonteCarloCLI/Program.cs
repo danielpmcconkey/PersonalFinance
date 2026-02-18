@@ -4,6 +4,7 @@ using Lib.DataTypes.MonteCarlo;
 using System.Diagnostics;
 using System.Reflection;
 using Lib.MonteCarlo.StaticFunctions;
+using Lib.MonteCarlo.Var;
 using Lib.StaticConfig;
 using Lib.Utils;
 using NodaTime;
@@ -17,6 +18,32 @@ var logger = new Logger(
     logFilePath
 );
 
+
+// ── VAR diagnostic mode ───────────────────────────────────────────────────────────────────────
+// When GenerateVarDiagnostics is true in appsettings.json (or the DB config table), fit the
+// VAR model and emit a self-contained HTML file showing 5 hypothetical lifetime trajectories
+// overlaid against actual historical data.  Open the file in any browser to visually validate
+// that the synthetic series look like plausible economic histories.
+// Set GenerateVarDiagnostics back to false to resume normal simulation runs.
+if (ConfigManager.ReadBoolSetting("GenerateVarDiagnostics"))
+{
+    var diagOutputPath = ConfigManager.ReadStringSetting("VarDiagnosticsOutputPath");
+    logger.Info($"VAR diagnostic mode — fitting model and writing charts to: {diagOutputPath}");
+
+    using var diagContext = new PgContext();
+    var historicalObs = diagContext.HistoricalGrowthData
+        .Where(x => x.Year >= 1980 && x.SpGrowth != null && x.CpiGrowth != null && x.TreasuryGrowth != null)
+        .OrderBy(x => x.Year).ThenBy(x => x.Month)
+        .Select(x => new double[] { (double)x.SpGrowth!.Value, (double)x.CpiGrowth!.Value, (double)x.TreasuryGrowth!.Value })
+        .ToList();
+
+    var diagVarModel = VarFitter.Fit(historicalObs);
+    VarDiagnosticsWriter.Write(diagOutputPath, diagVarModel, historicalObs);
+
+    logger.Info($"Done. Open {diagOutputPath} in a browser to review the charts.");
+    return;
+}
+// ─────────────────────────────────────────────────────────────────────────────────────────────
 
 logger.Info("Pulling person from the database");
 var danId = ConfigManager.ReadStringSetting("DanId");
