@@ -314,7 +314,7 @@ public class BasicBucketsIncomeThresholdTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         
         
@@ -362,7 +362,7 @@ public class BasicBucketsIncomeThresholdTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = baseDate.PlusYears(1);
@@ -430,7 +430,7 @@ public class BasicBucketsIncomeThresholdTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsIncomeThreshold);
         model.RetirementDate = currentDate.PlusYears(27);

@@ -88,7 +88,7 @@ public static class Investment
         {
             McInvestmentPositionType.SHORT_TERM => prices.CurrentShortTermInvestmentPrice,
             McInvestmentPositionType.MID_TERM => prices.CurrentMidTermInvestmentPrice,
-            McInvestmentPositionType.LONG_TERM => prices.CurrentLongTermInvestmentPrice,
+            McInvestmentPositionType.LONG_TERM => prices.CurrentEquityInvestmentPrice,
             _ => throw new InvalidDataException(),
         };
         decimal price = getPrice();
@@ -137,7 +137,7 @@ public static class Investment
                 {
                     McInvestmentPositionType.MID_TERM => (decimal)prices.CurrentMidTermInvestmentPrice,
                     McInvestmentPositionType.SHORT_TERM => (decimal)prices.CurrentShortTermInvestmentPrice,
-                    _ => (decimal)prices.CurrentLongTermInvestmentPrice
+                    _ => (decimal)prices.CurrentEquityInvestmentPrice
                 };
 
                 var newQuantity = (totalValue / newPrice);

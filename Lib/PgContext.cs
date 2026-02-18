@@ -10,7 +10,7 @@ namespace Lib
     public class PgContext : DbContext
     {
         #region DBSets
-        public DbSet<HypotheticalLifeTimeGrowthRate> HypotheticalLifeTimeGrowthRate { get; set; }
+        public DbSet<HistoricalDataPoint> HistoricalGrowthData { get; set; }
         public DbSet<PgCashAccount> PgCashAccounts { get; set; }
         public DbSet<PgCashPosition> PgCashPositions { get; set; }
         public DbSet<PgCategory> PgCategories { get; set; }
@@ -233,6 +233,10 @@ namespace Lib
                 e.HasIndex(mc => mc.ModelId).IsUnique();
             });
             modelBuilder.Entity<PgConfigValue>(e => { e.HasKey(cv => cv.Id); });
+            modelBuilder.Entity<HistoricalDataPoint>(e =>
+            {
+                e.HasKey(h => new { h.Year, h.Month });
+            });
         }
     }
 }

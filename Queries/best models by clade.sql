@@ -25,9 +25,9 @@ with ranked_by_model as (
 		, m.recessionchecklookbackmonths
 		, m.recessionrecoverypointmodifier
 		, m.livinlargeratio
-		, m.livinlargenetworthtrigger
+		, round(m.livinlargenetworthtrigger, 2) as livinlargenetworthtrigger
 		, m.rebalancefrequency
-		, m.extremeausteritynetworthtrigger
+		, round(m.extremeausteritynetworthtrigger, 2) as extremeausteritynetworthtrigger
 		, row_number() over(
 			partition by m.id, m.clade, r.majorversion, r.minorversion 
 			order by r.funpointsatendofsim50 desc, 

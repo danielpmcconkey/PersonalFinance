@@ -42,27 +42,22 @@ public class SimulationTrigger
         ExecuteSingleModelAllLives(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
             List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts)
     {
-        var numLivesPerModelRunConfig = MonteCarloConfig.NumLivesPerModelRun;
-        var totalBlockStarts = Pricing.FetchMaxBlockStartFromHypotheticalDbLives();
-        var skip = totalBlockStarts / numLivesPerModelRunConfig;
+        var varModel = Pricing.LoadAndFitVarModel();
+        var numLives = MonteCarloConfig.NumLivesPerModelRun;
+        var runs = new (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[numLives];
 
-        var numLivesPerModelRunActual = totalBlockStarts / skip;
-        var runs = new (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection)[numLivesPerModelRunActual];
-
-        if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLivesPerModelRunActual, i =>
+        if(MonteCarloConfig.ShouldRunParallel) Parallel.For(0, numLives, i =>
         {
-            var pointer = i * skip;
             var newPerson = Person.CopyPerson(person, false);
-            var prices = Pricing.CreateHypotheticalPricingForARun(pointer);
-            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, pointer);
+            var prices = Pricing.CreateHypotheticalPricingForARun(varModel, i);
+            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, i);
             runs[i] = sim.Run();
         });
-        else for(var i = 0; i < numLivesPerModelRunActual; i++)
+        else for(var i = 0; i < numLives; i++)
         {
-            var pointer = i * skip;
             var newPerson = Person.CopyPerson(person, false);
-            var prices = Pricing.CreateHypotheticalPricingForARun(pointer);
-            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, pointer);
+            var prices = Pricing.CreateHypotheticalPricingForARun(varModel, i);
+            LifeSimulator sim = new(logger, model, newPerson, investmentAccounts, debtAccounts, prices, i);
             runs[i] = sim.Run();
         }
         return runs;
@@ -74,7 +69,7 @@ public class SimulationTrigger
     /// </summary>
     public static (List<SimSnapshot> snapshots, LocalDateTime firstIncomeInflection) ExecuteSingleModelSingleLife(Logger logger, DataTypes.MonteCarlo.Model model, PgPerson person, 
         List<McInvestmentAccount> investmentAccounts, List<McDebtAccount> debtAccounts,
-        Dictionary<LocalDateTime, Decimal> hypotheticalPrices)
+        Dictionary<LocalDateTime, HypotheticalLifeTimeGrowthRate> hypotheticalPrices)
     {
         LifeSimulator sim = new LifeSimulator(
             logger, model, person, investmentAccounts, debtAccounts, hypotheticalPrices, 0);
@@ -153,8 +148,16 @@ public class SimulationTrigger
                 var modelResults = Simulation.InterpretSimulationResults(
                     offspring, allLivesRuns2, ++maxCounter, person);
                 SaveSingleModelRunResultsToDb(modelResults);
+
+                if (i1 == 0 && i2 == 0)
+                {
+                    logger.Info($"ran {i1} bred with {i2} -- {modelResults.NumLivesRun} lives run.");
+                }
+                else
+                {
+                    logger.Info($"ran {i1} bred with {i2}.");
+                }
                 
-                logger.Info($"ran {i1} bred with {i2} -- {modelResults.NumLivesRun} lives run.");
                 
                 modelResults = null; // trying to ensure that we clear up the memory
             }

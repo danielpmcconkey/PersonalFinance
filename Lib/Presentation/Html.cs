@@ -1,5 +1,6 @@
 using System.Text;
 using Lib.DataTypes.Presentation;
+using Lib.StaticConfig;
 
 namespace Lib.Presentation;
 
@@ -30,9 +31,6 @@ public static class Html
                         <ul class="nav nav-tabs" id="myTab" role="tablist">
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link active" id="wealth-tab" data-bs-toggle="tab" data-bs-target="#wealth-tab-pane" type="button" role="tab" aria-controls="wealth-tab-pane" aria-selected="true">Net worth and investments</button>
-                            </li>
-                            <li class="nav-item" role="presentation">
-                                <button class="nav-link" id="spend-tab" data-bs-toggle="tab" data-bs-target="#spend-tab-pane" type="button" role="tab" aria-controls="spend-tab-pane" aria-selected="false">Budgets and spending</button>
                             </li>
                             <li class="nav-item" role="presentation">
                                 <button class="nav-link" id="chart-tab" data-bs-toggle="tab" data-bs-target="#chart-tab-pane" type="button" role="tab" aria-controls="chart-tab-pane" aria-selected="false">Charts</button>
@@ -252,6 +250,8 @@ public static class Html
     public static string CreateChartBody(List<PresChart> charts)
     {
         StringBuilder output = new StringBuilder();
+        
+        output.AppendLine($"    <p class=\"chartSpace\">Model champion: {MonteCarloConfig.ChampionModelId}</p>");
 
         foreach (var c in charts.OrderBy(x => x.Ordinal))
         {

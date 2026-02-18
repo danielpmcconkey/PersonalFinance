@@ -313,7 +313,7 @@ public class BasicBucketsTaxableFirstTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         
         
@@ -361,7 +361,7 @@ public class BasicBucketsTaxableFirstTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsTaxableFirst);
         model.RetirementDate = baseDate.PlusYears(1);
@@ -429,7 +429,7 @@ public class BasicBucketsTaxableFirstTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.BasicBucketsTaxableFirst);
         model.RetirementDate = currentDate.PlusYears(27);

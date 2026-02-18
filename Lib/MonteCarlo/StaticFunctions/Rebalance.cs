@@ -53,11 +53,11 @@ public static class Rebalance
             McInvestmentPositionType.MID_TERM :
             McInvestmentPositionType.LONG_TERM;
         var newPriceAtSource = sourceType == McInvestmentPositionType.LONG_TERM ?
-            prices.CurrentLongTermInvestmentPrice :
+            prices.CurrentEquityInvestmentPrice :
             prices.CurrentMidTermInvestmentPrice;
         var newPriceAtDestination = sourceType == McInvestmentPositionType.LONG_TERM ?
             prices.CurrentMidTermInvestmentPrice :
-            prices.CurrentLongTermInvestmentPrice;
+            prices.CurrentEquityInvestmentPrice;
         
         // set up return tuple
         (decimal amountMoved, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage> messages) 

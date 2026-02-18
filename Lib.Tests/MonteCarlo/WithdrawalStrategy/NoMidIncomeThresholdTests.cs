@@ -243,7 +243,7 @@ public class NoMidIncomeThresholdTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         
         
@@ -291,7 +291,7 @@ public class NoMidIncomeThresholdTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.NoMidIncomeThreshold);
         model.RetirementDate = baseDate.PlusYears(1);
@@ -359,7 +359,7 @@ public class NoMidIncomeThresholdTests
         });
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 100m
+            CurrentEquityInvestmentPrice = 100m
         };
         var model = TestDataManager.CreateTestModel(WithdrawalStrategyType.NoMidIncomeThreshold);
         model.RetirementDate = currentDate.PlusYears(27);

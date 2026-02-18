@@ -596,7 +596,7 @@ public static class Simulation
         return results;
     }
     
-    public static CurrentPrices SetNewPrices(CurrentPrices prices, Dictionary<LocalDateTime, Decimal>  hypotheticalPrices,
+    public static CurrentPrices SetNewPrices(CurrentPrices prices, Dictionary<LocalDateTime, HypotheticalLifeTimeGrowthRate>  hypotheticalPrices,
         LocalDateTime currentDate)
     {
         if (!hypotheticalPrices.TryGetValue(currentDate, out var priceGrowthRate))

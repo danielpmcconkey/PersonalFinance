@@ -12,7 +12,7 @@ public class InvestmentTests
     private readonly LocalDateTime _testDate = new LocalDateTime(2025, 1, 1, 12, 0);
     private readonly CurrentPrices _testPrices = new()
     {
-        CurrentLongTermInvestmentPrice = 100m,
+        CurrentEquityInvestmentPrice = 100m,
         CurrentMidTermInvestmentPrice = 50m,
         CurrentShortTermInvestmentPrice = 25m
     };
@@ -137,9 +137,9 @@ public class InvestmentTests
         Assert.Single(result.Brokerage.Positions);
         var position = result.Brokerage.Positions[0];
         Assert.Equal(investmentAmount, position.InitialCost);
-        Assert.Equal(_testPrices.CurrentLongTermInvestmentPrice, position.Price);
+        Assert.Equal(_testPrices.CurrentEquityInvestmentPrice, position.Price);
         Assert.Equal(
-            Math.Round(investmentAmount / _testPrices.CurrentLongTermInvestmentPrice, 4), 
+            Math.Round(investmentAmount / _testPrices.CurrentEquityInvestmentPrice, 4), 
             position.Quantity);
         Assert.True(position.IsOpen);
         Assert.Equal(_testDate, position.Entry);
@@ -187,7 +187,7 @@ public class InvestmentTests
 
         // Assert
         var normalizedPosition = result.InvestmentAccounts[0].Positions[0];
-        Assert.Equal(_testPrices.CurrentLongTermInvestmentPrice, normalizedPosition.Price);
+        Assert.Equal(_testPrices.CurrentEquityInvestmentPrice, normalizedPosition.Price);
         
         // Check that the total value remains the same
         var originalValue = 75m * 10m;

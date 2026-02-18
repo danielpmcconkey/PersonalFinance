@@ -22,8 +22,8 @@ public class RecessionTests
     {
         return new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = currentPrice,
-            LongRangeInvestmentCostHistory = history ?? new List<decimal>()
+            CurrentEquityInvestmentPrice = currentPrice,
+            EquityCostHistory = history ?? new List<decimal>()
         };
     }
 
@@ -130,7 +130,7 @@ public class RecessionTests
         var currentStats = new RecessionStats();
         var currentPrices = new CurrentPrices
         {
-            LongRangeInvestmentCostHistory = new List<decimal> { 100m, 95m } // Less than required history
+            EquityCostHistory = new List<decimal> { 100m, 95m } // Less than required history
         };
         var model = CreateTestModel();
         model.ExtremeAusterityNetWorthTrigger = 100000m;
@@ -207,8 +207,8 @@ public class RecessionTests
             };
         var currentPrices = new CurrentPrices
         {
-            LongRangeInvestmentCostHistory = fullHistory[0..(position + 1)].ToList(),
-            CurrentLongTermInvestmentPrice = fullHistory[position ]
+            EquityCostHistory = fullHistory[0..(position + 1)].ToList(),
+            CurrentEquityInvestmentPrice = fullHistory[position ]
             
         };
         var model = CreateTestModel();
@@ -229,13 +229,13 @@ public class RecessionTests
             var currentStats = new RecessionStats();
             var currentPrices = new CurrentPrices
             {
-                CurrentLongTermInvestmentPrice = 90m,
-                LongRangeInvestmentCostHistory = new List<decimal>()
+                CurrentEquityInvestmentPrice = 90m,
+                EquityCostHistory = new List<decimal>()
             };
             // Add 13 months of history
             for (int i = 0; i < 14; i++)
             {
-                currentPrices.LongRangeInvestmentCostHistory.Add(100m);
+                currentPrices.EquityCostHistory.Add(100m);
             }
             var model = CreateTestModel();
             model.ExtremeAusterityNetWorthTrigger = 100000m;
@@ -261,12 +261,12 @@ public class RecessionTests
             };
             var currentPrices = new CurrentPrices
             {
-                CurrentLongTermInvestmentPrice = 120m // Above recovery point * modifier
+                CurrentEquityInvestmentPrice = 120m // Above recovery point * modifier
             };
             // Add 13 months of history
             for (int i = 0; i < 13; i++)
             {
-                currentPrices.LongRangeInvestmentCostHistory.Add(90m);
+                currentPrices.EquityCostHistory.Add(90m);
             }
             var model = CreateTestModel();
             model.ExtremeAusterityNetWorthTrigger = 100000m;
@@ -294,7 +294,7 @@ public class RecessionTests
             };
             var currentPrices = new CurrentPrices
             {
-                CurrentLongTermInvestmentPrice = 90m // Below recovery point
+                CurrentEquityInvestmentPrice = 90m // Below recovery point
             };
             var model = CreateTestModel();
             model.ExtremeAusterityNetWorthTrigger = 100000m;
@@ -319,13 +319,13 @@ public class RecessionTests
         };
         var currentPrices = new CurrentPrices
         {
-            CurrentLongTermInvestmentPrice = 110m,
-            LongRangeInvestmentCostHistory = new List<decimal>()
+            CurrentEquityInvestmentPrice = 110m,
+            EquityCostHistory = new List<decimal>()
         };
         // Add 13 months of history with increasing prices
         for (int i = 0; i < 14; i++)
         {
-            currentPrices.LongRangeInvestmentCostHistory.Add(90m + i);
+            currentPrices.EquityCostHistory.Add(90m + i);
         }
         var model = CreateTestModel();
         model.ExtremeAusterityNetWorthTrigger = 100000m;
@@ -402,12 +402,12 @@ public class RecessionTests
             RecessionRecoveryPoint = oldHighWaterMark, 
         };
         var currentPrices = new CurrentPrices();
-        currentPrices.CurrentLongTermGrowthRate = .05m;
-        currentPrices.CurrentLongTermInvestmentPrice = newHighWaterMark; 
-        // currentPrices.LongRangeInvestmentCostHistory.Add(oldHighWaterMark);
+        currentPrices.CurrentEquityGrowthRate = .05m;
+        currentPrices.CurrentEquityInvestmentPrice = newHighWaterMark; 
+        // currentPrices.EquityCostHistory.Add(oldHighWaterMark);
         // for (var i = 88m; i < (newHighWaterMark + 1); i++)
         // {
-        //     currentPrices.LongRangeInvestmentCostHistory.Add(i);
+        //     currentPrices.EquityCostHistory.Add(i);
         // };
         
         // act
@@ -438,8 +438,8 @@ public class RecessionTests
             RecessionDurationCounter = oldDownYearCounter,
         };
         var currentPrices = new CurrentPrices();
-        currentPrices.CurrentLongTermGrowthRate = .05m;
-        currentPrices.CurrentLongTermInvestmentPrice = oldHighWaterMark; // haven't moved
+        currentPrices.CurrentEquityGrowthRate = .05m;
+        currentPrices.CurrentEquityInvestmentPrice = oldHighWaterMark; // haven't moved
         
         // act
         var result = Recession.CalculateRecessionStats(
@@ -468,12 +468,12 @@ public class RecessionTests
             RecessionRecoveryPoint = lastYearsPrice, 
         };
         var currentPrices = new CurrentPrices();
-        currentPrices.CurrentLongTermGrowthRate = .05m;
-        currentPrices.CurrentLongTermInvestmentPrice = currentPrice; 
-        currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice);
+        currentPrices.CurrentEquityGrowthRate = .05m;
+        currentPrices.CurrentEquityInvestmentPrice = currentPrice; 
+        currentPrices.EquityCostHistory.Add(lastYearsPrice);
         for (var i = 0; i < model.RecessionCheckLookBackMonths; i++)
         {
-            currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice - i);
+            currentPrices.EquityCostHistory.Add(lastYearsPrice - i);
         };
         
         // act
@@ -501,12 +501,12 @@ public class RecessionTests
             RecessionRecoveryPoint = lastYearsPrice, 
         };
         var currentPrices = new CurrentPrices();
-        currentPrices.CurrentLongTermGrowthRate = .05m;
-        currentPrices.CurrentLongTermInvestmentPrice = currentPrice; 
-        currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice);
+        currentPrices.CurrentEquityGrowthRate = .05m;
+        currentPrices.CurrentEquityInvestmentPrice = currentPrice; 
+        currentPrices.EquityCostHistory.Add(lastYearsPrice);
         for (var i = 0; i < model.RecessionCheckLookBackMonths; i++)
         {
-            currentPrices.LongRangeInvestmentCostHistory.Add(lastYearsPrice + i);
+            currentPrices.EquityCostHistory.Add(lastYearsPrice + i);
         };
         
         // act

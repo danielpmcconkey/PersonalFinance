@@ -119,11 +119,11 @@ internal static class TestDataManager
     {
         return new CurrentPrices()
         {
-            CurrentLongTermGrowthRate = longTermGrowthRate,
-            CurrentLongTermInvestmentPrice = longTermInvestmentPrice,
+            CurrentEquityGrowthRate = longTermGrowthRate,
+            CurrentEquityInvestmentPrice = longTermInvestmentPrice,
             CurrentMidTermInvestmentPrice = midTermInvestmentPrice,
             CurrentShortTermInvestmentPrice = shortTermInvestmentPrice,
-            LongRangeInvestmentCostHistory = []
+            EquityCostHistory = []
         };
     }
     

@@ -186,7 +186,7 @@ public static class AccountInterestAccrual
         {
             McInvestmentPositionType.MID_TERM => (decimal)prices.CurrentMidTermInvestmentPrice,
             McInvestmentPositionType.SHORT_TERM => (decimal)prices.CurrentShortTermInvestmentPrice,
-            _ => (decimal)prices.CurrentLongTermInvestmentPrice
+            _ => (decimal)prices.CurrentEquityInvestmentPrice
         };
         results.newPosition.Price = newPrice;
         

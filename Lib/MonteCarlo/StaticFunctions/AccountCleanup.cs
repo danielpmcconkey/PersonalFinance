@@ -70,8 +70,8 @@ public static class AccountCleanup
             InvestmentPositionType = McInvestmentPositionType.LONG_TERM,
             InitialCost = taxableLongLongCost,
             IsOpen = true,
-            Price = prices.CurrentLongTermInvestmentPrice,
-            Quantity = taxableLongLongTotal / prices.CurrentLongTermInvestmentPrice,
+            Price = prices.CurrentEquityInvestmentPrice,
+            Quantity = taxableLongLongTotal / prices.CurrentEquityInvestmentPrice,
             Name = "Taxable long-held long-term position"
         };
         var midLongPosition = new McInvestmentPosition()
@@ -119,8 +119,8 @@ public static class AccountCleanup
             InvestmentPositionType = McInvestmentPositionType.LONG_TERM,
             InitialCost = 0, // doesn't matter for Roth. It's all taxed as income
             IsOpen = true,
-            Price = prices.CurrentLongTermInvestmentPrice,
-            Quantity = longTotal / prices.CurrentLongTermInvestmentPrice ,
+            Price = prices.CurrentEquityInvestmentPrice,
+            Quantity = longTotal / prices.CurrentEquityInvestmentPrice ,
             Name = "Tax deferred long term position"
         };
         var midPosition = new McInvestmentPosition()
@@ -168,8 +168,8 @@ public static class AccountCleanup
             InvestmentPositionType = McInvestmentPositionType.LONG_TERM,
             InitialCost = 0, // doesn't matter for Roth. It's all tax free
             IsOpen = true,
-            Price = prices.CurrentLongTermInvestmentPrice,
-            Quantity = longTotal / prices.CurrentLongTermInvestmentPrice,
+            Price = prices.CurrentEquityInvestmentPrice,
+            Quantity = longTotal / prices.CurrentEquityInvestmentPrice,
             Name = "Tax free long term position"
         };
         var midPosition = new McInvestmentPosition()

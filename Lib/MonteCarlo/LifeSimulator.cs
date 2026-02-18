@@ -20,7 +20,7 @@ public class LifeSimulator
     /// <summary>
     /// our list of hypothetical price history to be used, passed in by whatever created the simulation
     /// </summary>
-    private Dictionary<LocalDateTime, Decimal> _hypotheticalPrices;
+    private Dictionary<LocalDateTime, HypotheticalLifeTimeGrowthRate> _hypotheticalPrices;
 
     /// <summary>
     /// our month-over-month net worth measurements 
@@ -50,7 +50,7 @@ public class LifeSimulator
 
     public LifeSimulator(
         Logger logger, Model model, PgPerson person, List<McInvestmentAccount> investmentAccounts,
-        List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, Decimal> hypotheticalPrices, int lifeNum)
+        List<McDebtAccount> debtAccounts, Dictionary<LocalDateTime, HypotheticalLifeTimeGrowthRate> hypotheticalPrices, int lifeNum)
     {
 #if PERFORMANCEPROFILING
         // set up a run that will last
@@ -599,7 +599,7 @@ public class LifeSimulator
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePricingGrowth && _isReconcilingTime)
         {
             _reconciliationLedger.AddMessageLine(new ReconciliationMessage(
-                _simData.CurrentDateInSim, _simData.CurrentPrices.CurrentLongTermGrowthRate,
+                _simData.CurrentDateInSim, _simData.CurrentPrices.CurrentEquityGrowthRate,
                 "Updated prices with new long term growth rate"));
         }
         

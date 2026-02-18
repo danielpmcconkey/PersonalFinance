@@ -652,7 +652,7 @@ public class SimulationTests
     {
         // Assemble
         var prices = new CurrentPrices();
-        var hypotheticalPrices = Pricing.CreateHypotheticalPricingForARun(14);
+        var hypotheticalPrices = new Dictionary<LocalDateTime, HypotheticalLifeTimeGrowthRate>();
         var invalidDate = new LocalDateTime(2024, 1, 1, 0, 0);
         
         // Act

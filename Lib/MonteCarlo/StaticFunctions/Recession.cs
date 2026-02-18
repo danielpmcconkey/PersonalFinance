@@ -66,14 +66,14 @@ public static class Recession
         {
             // we were previously in a down year. Let's see if we've made
             // it out yet
-            if (currentPrices.CurrentLongTermInvestmentPrice >
+            if (currentPrices.CurrentEquityInvestmentPrice >
                 (currentStats.RecessionRecoveryPoint * model.RecessionRecoveryPointModifier))
             {
                 // we've eclipsed the prior recovery point, we've made it
                 // out. go ahead and set the recovery point to today's cost
                 // just to keep it near a modern number
                 result.areWeInARecession = false;
-                result.recessionRecoveryPoint = currentPrices.CurrentLongTermInvestmentPrice;
+                result.recessionRecoveryPoint = currentPrices.CurrentEquityInvestmentPrice;
                 result.recessionDurationCounter = 0M;
             }
             else
@@ -86,14 +86,14 @@ public static class Recession
         {
             // we weren't previously in a down year. check to see if stocks
             // have gone down year over year
-            var numMonthsOfHistory = currentPrices.LongRangeInvestmentCostHistory.Count;
+            var numMonthsOfHistory = currentPrices.EquityCostHistory.Count;
             // if we don't have 13 months of history, we can't check last
             // year's price and won't know if we need to do any rebalancing yet
             if (numMonthsOfHistory <= model.RecessionCheckLookBackMonths) return result; // not enough data yet
             
-            var lookbackPrice = currentPrices.LongRangeInvestmentCostHistory[
+            var lookbackPrice = currentPrices.EquityCostHistory[
                 numMonthsOfHistory - model.RecessionCheckLookBackMonths - 1]; // the minus 1 is because the array is zero-indexed
-            if (lookbackPrice > currentPrices.CurrentLongTermInvestmentPrice)
+            if (lookbackPrice > currentPrices.CurrentEquityInvestmentPrice)
             {
                 // prices are down year over year. Set the recovery point
                 result.areWeInARecession = true;
@@ -105,8 +105,8 @@ public static class Recession
                 // we're not in a down year update the recovery point if
                 // it's a new high water mark
                 result.recessionRecoveryPoint =
-                    (currentPrices.CurrentLongTermInvestmentPrice > result.recessionRecoveryPoint)
-                        ? currentPrices.CurrentLongTermInvestmentPrice
+                    (currentPrices.CurrentEquityInvestmentPrice > result.recessionRecoveryPoint)
+                        ? currentPrices.CurrentEquityInvestmentPrice
                         : result.recessionRecoveryPoint;
             }
         }
