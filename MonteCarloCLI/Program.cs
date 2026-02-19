@@ -31,14 +31,24 @@ if (ConfigManager.ReadBoolSetting("GenerateVarDiagnostics"))
     logger.Info($"VAR diagnostic mode — fitting model and writing charts to: {diagOutputPath}");
 
     using var diagContext = new PgContext();
-    var historicalObs = diagContext.HistoricalGrowthData
-        .Where(x => x.Year >= 1980 && x.SpGrowth != null && x.CpiGrowth != null && x.TreasuryGrowth != null)
+    var diagRawData = diagContext.HistoricalGrowthData
+        .Where(x => x.Year >= 1980
+                 && x.SpGrowth != null && x.CpiGrowth != null
+                 && x.TreasuryGrowth != null && x.TreasuryCurrentValue != null)
         .OrderBy(x => x.Year).ThenBy(x => x.Month)
-        .Select(x => new double[] { (double)x.SpGrowth!.Value, (double)x.CpiGrowth!.Value, (double)x.TreasuryGrowth!.Value })
+        .Select(x => new
+        {
+            Obs   = new double[] { (double)x.SpGrowth!.Value, (double)x.CpiGrowth!.Value, (double)x.TreasuryGrowth!.Value },
+            Level = (double)x.TreasuryCurrentValue!.Value / 100.0
+        })
         .ToList();
 
-    var diagVarModel = VarFitter.Fit(historicalObs);
-    VarDiagnosticsWriter.Write(diagOutputPath, diagVarModel, historicalObs);
+    var historicalObs          = diagRawData.Select(r => r.Obs).ToList();
+    var diagTreasuryLevels     = diagRawData.Select(r => r.Level).ToArray();
+    double firstTreasuryRate   = diagTreasuryLevels.First();
+
+    var diagVarModel = VarFitter.Fit(historicalObs, diagTreasuryLevels);
+    VarDiagnosticsWriter.Write(diagOutputPath, diagVarModel, historicalObs, firstTreasuryRate);
 
     logger.Info($"Done. Open {diagOutputPath} in a browser to review the charts.");
     return;

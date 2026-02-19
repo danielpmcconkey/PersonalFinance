@@ -52,13 +52,22 @@ public static class Pricing
         // whether including earlier data makes synthetic lifetime trajectories more or less
         // realistic before committing to a different cutoff.
         // ─────────────────────────────────────────────────────────────────────────────────────
-        var observations = context.HistoricalGrowthData
-            .Where(x => x.Year >= 1980 && x.SpGrowth != null && x.CpiGrowth != null && x.TreasuryGrowth != null)
+        var rawData = context.HistoricalGrowthData
+            .Where(x => x.Year >= 1980
+                     && x.SpGrowth != null && x.CpiGrowth != null
+                     && x.TreasuryGrowth != null && x.TreasuryCurrentValue != null)
             .OrderBy(x => x.Year).ThenBy(x => x.Month)
-            .Select(x => new double[] { (double)x.SpGrowth!.Value, (double)x.CpiGrowth!.Value, (double)x.TreasuryGrowth!.Value })
+            .Select(x => new
+            {
+                Obs   = new double[] { (double)x.SpGrowth!.Value, (double)x.CpiGrowth!.Value, (double)x.TreasuryGrowth!.Value },
+                Level = (double)x.TreasuryCurrentValue!.Value / 100.0  // convert % to decimal (e.g. 4.0 → 0.04)
+            })
             .ToList();
 
-        _varModelCache = VarFitter.Fit(observations);
+        var observations    = rawData.Select(r => r.Obs).ToList();
+        var treasuryLevels  = rawData.Select(r => r.Level).ToArray();
+
+        _varModelCache = VarFitter.Fit(observations, treasuryLevels);
         return _varModelCache;
     }
 
@@ -99,8 +108,9 @@ public static class Pricing
         result.CurrentEquityInvestmentPrice += (result.CurrentEquityInvestmentPrice * rates.SpGrowth);
         // add the new equity price to history
         result.EquityCostHistory.Add(result.CurrentEquityInvestmentPrice);
-        // update bond coupon
-        result.CurrentTreasuryCoupon += (result.CurrentTreasuryCoupon * rates.TreasuryGrowth);
+        // update bond coupon — additive because TreasuryGrowth is an absolute monthly change
+        // in decimal form (e.g. 0.001 = rate rose by 0.1 percentage point), not a percentage change
+        result.CurrentTreasuryCoupon += rates.TreasuryGrowth;
         // calculate mid and short-term growth rates based on long-term growth rate
         var midTermGrowthRate   = rates * InvestmentConfig.MidTermGrowthRateModifier;
         var shortTermGrowthRate = rates * InvestmentConfig.ShortTermGrowthRateModifier;
@@ -116,11 +126,12 @@ public static class Pricing
     {
         return new CurrentPrices()
         {
-            CurrentEquityGrowthRate        = originalPrices.CurrentEquityGrowthRate,
-            CurrentEquityInvestmentPrice   = originalPrices.CurrentEquityInvestmentPrice,
-            CurrentMidTermInvestmentPrice  = originalPrices.CurrentMidTermInvestmentPrice,
+            CurrentEquityGrowthRate         = originalPrices.CurrentEquityGrowthRate,
+            CurrentEquityInvestmentPrice    = originalPrices.CurrentEquityInvestmentPrice,
+            CurrentMidTermInvestmentPrice   = originalPrices.CurrentMidTermInvestmentPrice,
             CurrentShortTermInvestmentPrice = originalPrices.CurrentShortTermInvestmentPrice,
-            EquityCostHistory              = originalPrices.EquityCostHistory,
+            CurrentTreasuryCoupon           = originalPrices.CurrentTreasuryCoupon,
+            EquityCostHistory               = originalPrices.EquityCostHistory,
         };
     }
 }

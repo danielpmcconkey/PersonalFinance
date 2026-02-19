@@ -12,10 +12,17 @@ public static class VarFitter
     /// </summary>
     /// <param name="observations">
     /// T observations, each a double[] of length K (K = number of variables, e.g. 3 for SP/CPI/Treasury).
+    /// observations[i][2] must be the absolute monthly change in the treasury rate in decimal form
+    /// (e.g. a move from 4.0 % → 4.1 % is stored as 0.001).
+    /// </param>
+    /// <param name="treasuryLevels">
+    /// Optional array of T treasury rate levels in decimal form (e.g. 0.04 = 4 %).
+    /// When provided, Ornstein-Uhlenbeck parameters (kappa, theta) are estimated via OLS so the
+    /// generator can apply mean reversion.  When null, safe defaults are used.
     /// </param>
     /// <param name="lagCount">Number of lags p (default 3).</param>
     /// <returns>A fitted <see cref="VarModel"/>.</returns>
-    public static VarModel Fit(IReadOnlyList<double[]> observations, int lagCount = 3)
+    public static VarModel Fit(IReadOnlyList<double[]> observations, double[]? treasuryLevels = null, int lagCount = 3)
     {
         int T = observations.Count;
         int K = observations[0].Length;    // number of variables (3)
@@ -75,12 +82,57 @@ public static class VarFitter
         for (int i = 0; i < lagCount; i++)
             seed[i] = (double[])observations[T - lagCount + i].Clone();
 
+        // ── Ornstein-Uhlenbeck parameters for the treasury rate ─────────────────────────────
+        // Regress monthly rate change (delta_r) on lagged rate level (r_{t-1}) using simple
+        // univariate OLS: delta_r[t] = alpha + beta * r[t-1] + ε
+        //   kappa = -beta  (positive → mean-reverting)
+        //   theta = alpha / kappa  (long-run equilibrium level)
+        // observations[i][2] already contains delta_r in decimal form.
+        double ouTheta;
+        double ouKappa;
+        double initialTreasuryRate;
+
+        if (treasuryLevels != null && treasuryLevels.Length >= lagCount + 2)
+        {
+            // x[i] = r_{t-1},  y[i] = delta_r[t],  aligned over t = lagCount..T-1
+            // (skip the first lagCount rows that the VAR itself skips, so indices match)
+            int n = rows; // rows = T - lagCount
+            double sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+            for (int i = 0; i < n; i++)
+            {
+                double x = treasuryLevels[i + lagCount - 1]; // r_{t-1}
+                double y = observations[i + lagCount][2];    // delta_r[t]
+                sumX  += x;
+                sumY  += y;
+                sumXY += x * y;
+                sumXX += x * x;
+            }
+            double denom = n * sumXX - sumX * sumX;
+            double beta  = Math.Abs(denom) > 1e-12 ? (n * sumXY - sumX * sumY) / denom : 0.0;
+            double alpha = (sumY - beta * sumX) / n;
+
+            ouKappa = Math.Max(-beta, 1e-4); // must be positive; floor avoids divide-by-zero
+            ouTheta = ouKappa > 1e-4 ? alpha / ouKappa : sumX / n;
+            initialTreasuryRate = treasuryLevels[^1];
+        }
+        else
+        {
+            // Safe defaults: mild mean reversion toward 4.5 %, starting at 4 %
+            ouTheta = 0.045;
+            ouKappa = 0.02;
+            initialTreasuryRate = 0.04;
+        }
+        // ────────────────────────────────────────────────────────────────────────────────────
+
         return new VarModel
         {
             LagCount           = lagCount,
             CoefficientMatrix  = B,
             ResidualCholesky   = L,
             SeedObservations   = seed,
+            TreasuryOuTheta    = ouTheta,
+            TreasuryOuKappa    = ouKappa,
+            InitialTreasuryRate = initialTreasuryRate,
         };
     }
 }

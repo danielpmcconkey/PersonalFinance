@@ -22,12 +22,17 @@ public static class VarDiagnosticsWriter
     /// <param name="historicalObs">
     ///   The raw training observations used to fit the model.
     ///   Each element is a double[3]: [SpGrowth, CpiGrowth, TreasuryGrowth].
+    ///   TreasuryGrowth is an absolute monthly change in decimal form (e.g. 0.001 = +0.1 pp).
     ///   Hypothetical lifetimes will be generated to the same length so the axes are directly
     ///   comparable.
     /// </param>
+    /// <param name="firstHistoricalTreasuryRate">
+    ///   The treasury rate at the start of the historical window, in decimal form (e.g. 0.1175 = 11.75 %).
+    ///   Used to anchor the historical treasury chart line.
+    /// </param>
     /// <param name="numLifetimes">Number of synthetic lifetimes to overlay (default 5).</param>
     public static void Write(string outputPath, VarModel model,
-        IReadOnlyList<double[]> historicalObs, int numLifetimes = 5)
+        IReadOnlyList<double[]> historicalObs, double firstHistoricalTreasuryRate, int numLifetimes = 5)
     {
         int months = historicalObs.Count;
 
@@ -37,17 +42,24 @@ public static class VarDiagnosticsWriter
             .ToArray();
 
         // ── Cumulative series: historical ─────────────────────────────────────────
+        // SP and CPI use multiplicative compounding (they are percentage growth rates).
+        // Treasury uses additive accumulation: TreasuryGrowth is an absolute monthly change
+        // in decimal form, so we sum the changes onto the starting rate level.
+        // Multiply by 100 to display as percentages on the chart.
         double[] histSp  = Cumulative(historicalObs.Select(o => o[0]), 100.0);
         double[] histCpi = Cumulative(historicalObs.Select(o => o[1]), 100.0);
-        double[] histTsy = Cumulative(historicalObs.Select(o => o[2]), 4.0);
+        double[] histTsy = CumulativeAdditive(
+            historicalObs.Select(o => o[2] * 100.0), firstHistoricalTreasuryRate * 100.0);
 
         // ── Cumulative series: hypothetical ───────────────────────────────────────
         double[][] hypoSp  = hypotheticals
-            .Select(h => Cumulative(h.Select(r => (double)r.SpGrowth),       100.0)).ToArray();
+            .Select(h => Cumulative(h.Select(r => (double)r.SpGrowth),  100.0)).ToArray();
         double[][] hypoCpi = hypotheticals
-            .Select(h => Cumulative(h.Select(r => (double)r.CpiGrowth),      100.0)).ToArray();
+            .Select(h => Cumulative(h.Select(r => (double)r.CpiGrowth), 100.0)).ToArray();
         double[][] hypoTsy = hypotheticals
-            .Select(h => Cumulative(h.Select(r => (double)r.TreasuryGrowth), 4.0  )).ToArray();
+            .Select(h => CumulativeAdditive(
+                h.Select(r => (double)r.TreasuryGrowth * 100.0),
+                model.InitialTreasuryRate * 100.0)).ToArray();
 
         // ── Write file ────────────────────────────────────────────────────────────
         var dir = Path.GetDirectoryName(outputPath);
@@ -61,12 +73,25 @@ public static class VarDiagnosticsWriter
 
     /// <summary>
     /// Compounds a sequence of monthly growth rates into a cumulative price / index series.
+    /// Used for SP500 and CPI, which are multiplicative processes.
     /// </summary>
     private static double[] Cumulative(IEnumerable<double> rates, double start)
     {
         var result = new List<double>();
         double v = start;
         foreach (var r in rates) { v *= 1.0 + r; result.Add(v); }
+        return [.. result];
+    }
+
+    /// <summary>
+    /// Accumulates a sequence of absolute monthly changes into a running level series.
+    /// Used for the treasury rate, which is mean-reverting and updated additively.
+    /// </summary>
+    private static double[] CumulativeAdditive(IEnumerable<double> deltas, double startLevel)
+    {
+        var result = new List<double>();
+        double v = startLevel;
+        foreach (var d in deltas) { v += d; result.Add(v); }
         return [.. result];
     }
 
@@ -132,8 +157,8 @@ public static class VarDiagnosticsWriter
   </div>
 
   <div class=""card"">
-    <h2>Treasury Coupon Rate (%)</h2>
-    <p>Starting at 4.0&nbsp;% and compounding each month&rsquo;s treasury growth rate. Reflects the prevailing interest-rate environment used to reprice bond positions.</p>
+    <h2>2-Year Treasury Coupon Rate (%)</h2>
+    <p>Actual rate level in percent, evolved by adding each month&rsquo;s absolute change with Ornstein-Uhlenbeck mean reversion toward the historical long-run average. Rates are bounded between 0.1&nbsp;% and 20&nbsp;%.</p>
     <div class=""chart-box""><canvas id=""tsyChart""></canvas></div>
   </div>
 </div>

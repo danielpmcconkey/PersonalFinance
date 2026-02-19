@@ -24,6 +24,15 @@ public static class VarLifetimeGenerator
         for (int i = 0; i < p; i++)
             lags[i] = (double[])model.SeedObservations[p - 1 - i].Clone();
 
+        // ── OU state: running treasury rate level in decimal form (e.g. 0.04 = 4 %) ──
+        // Each month the VAR produces a raw absolute delta for the treasury rate.  We then
+        // add an OU correction that pulls the rate toward its long-run mean (TreasuryOuTheta).
+        // The raw VAR delta (not the corrected one) is stored back into the lag buffer so the
+        // autoregressive terms see unadjusted history and mean reversion is not double-counted.
+        const double RateFloor   = 0.001; // 0.1 % — no negative nominal rates for US treasuries
+        const double RateCeiling = 0.20;  // 20 %  — well above the historical 1981 peak of 16.7 %
+        double currentTreasuryRate = model.InitialTreasuryRate;
+
         var result = new HypotheticalLifeTimeGrowthRate[months];
 
         for (int month = 0; month < months; month++)
@@ -55,14 +64,28 @@ public static class VarLifetimeGenerator
             for (int k = 0; k < K; k++)
                 Y[k] = mean[k] + shock[k];
 
+            // ── Apply OU mean reversion to the treasury rate ─────────────────────
+            // Y[2] is the raw VAR monthly delta (absolute change in decimal form).
+            // Add the OU correction: kappa * (theta - current_rate).
+            // Then clamp the resulting rate level to [RateFloor, RateCeiling].
+            // The actual applied delta (after clamping) becomes TreasuryGrowth so
+            // that CurrentTreasuryCoupon += TreasuryGrowth always stays in range.
+            double priorTreasuryRate  = currentTreasuryRate;
+            double ouCorrection       = model.TreasuryOuKappa * (model.TreasuryOuTheta - currentTreasuryRate);
+            double unclamped          = currentTreasuryRate + Y[2] + ouCorrection;
+            currentTreasuryRate       = Math.Clamp(unclamped, RateFloor, RateCeiling);
+            double appliedTreasuryDelta = currentTreasuryRate - priorTreasuryRate;
+
             result[month] = new HypotheticalLifeTimeGrowthRate
             {
                 SpGrowth       = (decimal)Y[0],
                 CpiGrowth      = (decimal)Y[1],
-                TreasuryGrowth = (decimal)Y[2],
+                TreasuryGrowth = (decimal)appliedTreasuryDelta,
             };
 
-            // ── Shift lag buffer: new observation becomes lag 1 ──────────────────
+            // ── Shift lag buffer ──────────────────────────────────────────────────
+            // Store the raw VAR output Y (not the OU-corrected delta) so that the
+            // autoregressive terms in subsequent months see unmodified history.
             var newLags = new double[p][];
             newLags[0] = Y;
             for (int i = 1; i < p; i++)

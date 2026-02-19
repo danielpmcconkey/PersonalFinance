@@ -19,4 +19,7 @@ public record HistoricalDataPoint
 
     [Column("treasury_growth")]
     public decimal? TreasuryGrowth { get; init; }
+
+    [Column("treasury_current_value")]
+    public decimal? TreasuryCurrentValue { get; init; }
 }

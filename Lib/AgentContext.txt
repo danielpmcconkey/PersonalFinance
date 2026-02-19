@@ -129,17 +129,35 @@ inflation) from the data and generates plausible synthetic sequences.
 
 **Key files:**
 - `Lib/MonteCarlo/Var/MatrixMath.cs` — double[,] helpers: Multiply, Transpose, Invert (Gauss-Jordan), CholeskyDecompose
-- `Lib/MonteCarlo/Var/VarFitter.cs` — OLS fitting: B=(X'X)⁻¹X'Y, residual covariance Σ, Cholesky factor L
-- `Lib/MonteCarlo/Var/VarLifetimeGenerator.cs` — generates months via: mean_t = x_t × B, shock = L × z (Box-Muller)
-- `Lib/DataTypes/MonteCarlo/VarModel.cs` — immutable record: CoefficientMatrix (10×3), ResidualCholesky (3×3), SeedObservations
-- `Lib/DataTypes/MonteCarlo/HistoricalDataPoint.cs` — EF entity for `personalfinance.historicalgrowth` table
+- `Lib/MonteCarlo/Var/VarFitter.cs` — OLS fitting: B=(X'X)⁻¹X'Y, residual covariance Σ, Cholesky factor L; also estimates
+  Ornstein-Uhlenbeck parameters (kappa, theta) for treasury via univariate OLS of delta_r on r_{t-1}
+- `Lib/MonteCarlo/Var/VarLifetimeGenerator.cs` — generates months via: mean_t = x_t × B, shock = L × z (Box-Muller);
+  applies OU mean reversion to treasury rate with floor 0.1% / ceiling 20%
+- `Lib/DataTypes/MonteCarlo/VarModel.cs` — immutable record: CoefficientMatrix (10×3), ResidualCholesky (3×3),
+  SeedObservations, plus TreasuryOuTheta, TreasuryOuKappa, InitialTreasuryRate
+- `Lib/DataTypes/MonteCarlo/HistoricalDataPoint.cs` — EF entity for `personalfinance.historicalgrowth` table;
+  includes TreasuryCurrentValue (used to pass rate levels to VarFitter for OU estimation)
 
 **Generation flow (Pricing.cs → SimulationTrigger.cs):**
-1. `Pricing.LoadAndFitVarModel()` — loads historicalgrowth rows (year≥1980, all 3 columns non-null), fits VAR(3), caches result
-2. `Pricing.CreateHypotheticalPricingForARun(VarModel, lifeIndex)` — calls VarLifetimeGenerator with `new Random(lifeIndex)` seed; same index = same life across runs
+1. `Pricing.LoadAndFitVarModel()` — loads historicalgrowth rows (year≥1980, all 4 columns non-null including
+   TreasuryCurrentValue), converts levels to decimal form (/100), fits VAR(3) with OU params, caches result
+2. `Pricing.CreateHypotheticalPricingForARun(VarModel, lifeIndex)` — calls VarLifetimeGenerator with `new Random(lifeIndex)`
+   seed; same index = same life across runs
 3. `SimulationTrigger.ExecuteSingleModelAllLives()` — fits model once, then iterates lifeIndex 0..NumLivesPerModelRun-1
 
-**HypotheticalLifeTimeGrowthRate** is no longer a DB entity — it's a plain record with SpGrowth, CpiGrowth, TreasuryGrowth (all decimal) and an `operator *(r, m) => r.SpGrowth * m` for scaling mid/short-term rates.
+**HypotheticalLifeTimeGrowthRate** is a plain record with SpGrowth, CpiGrowth, TreasuryGrowth (all decimal) and an
+`operator *(r, m) => r.SpGrowth * m` for scaling mid/short-term rates.
+- SpGrowth, CpiGrowth — monthly percentage growth rates (multiplicative)
+- TreasuryGrowth — absolute monthly change in decimal form (additive); e.g. 0.001 = rate rose 0.1 percentage point
+
+**Treasury rate representation (important for future bond work):**
+- `personalfinance.historicalgrowth.treasury_growth` stores `(current - prior) / 100` — absolute monthly change
+  in decimal form. A move from 4.0% → 4.1% stores 0.001.
+- `CurrentPrices.CurrentTreasuryCoupon` is in decimal form (0.04 = 4%) and is updated additively each month:
+  `CurrentTreasuryCoupon += rates.TreasuryGrowth`
+- `CurrentTreasuryCoupon` is correctly propagated through `CopyPrices` (bug was fixed 2026-02-19)
+- `CurrentTreasuryCoupon` is currently **dead code** — it is computed and propagated correctly but not yet
+  consumed by any downstream calculation. Bond asset class implementation will wire it in.
 
 We try to track as close to real-world financial events as we can. Prior to retirement, I will draw a paycheck, pay for
 insurance, have taxes withheld, pay bills, spend money on fun stuff, etc. After retirement, I will withdraw from my
@@ -290,12 +308,44 @@ approaches
 - **Commit:** `456a53a` — "Replace SQL view Monte Carlo with VAR(3) model"
 - **Note:** `git push` requires GPG passphrase entered interactively; push manually from terminal
 
+### Session 2026-02-19 - Treasury Rate OU Mean Reversion Fix
+
+- **Issues Addressed:** VAR-generated treasury rates collapsed to near-zero in all hypothetical lifetimes
+- **Root Causes Found (two bugs):**
+  1. `treasury_growth` in DB was stored as `(prior - current) / prior` — sign inverted relative to
+     standard growth convention. Rising rates produced negative values; falling rates produced positive.
+  2. The VAR treated treasury rates like stock prices (multiplicative compounding). Treasury rates are
+     mean-reverting; over 46 years with a slightly negative historical mean drift (driven by the 1980-1982
+     Volcker spike), all synthetic scenarios converged to zero.
+- **Database Changes (user ran two SQL updates):**
+  1. Sign fix: `SET treasury_growth = (treasury_current_value - treasury_prior_value) / treasury_prior_value`
+  2. Unit fix: `SET treasury_growth = (treasury_current_value - treasury_prior_value) / 100`
+     (converts to absolute decimal change, consistent with CurrentTreasuryCoupon decimal representation)
+- **Code Changes:**
+  - `HistoricalDataPoint.cs` — added `TreasuryCurrentValue` property
+  - `VarModel.cs` — added `TreasuryOuTheta`, `TreasuryOuKappa`, `InitialTreasuryRate`
+  - `VarFitter.cs` — added `double[]? treasuryLevels` parameter; estimates OU kappa/theta via OLS
+    regression of delta_r on r_{t-1}: `kappa = -beta`, `theta = alpha/kappa`
+  - `VarLifetimeGenerator.cs` — tracks running rate level; applies OU correction each month:
+    `correctedDelta = varDelta + kappa*(theta - currentRate)`, clamps to [0.1%, 20%];
+    raw VAR delta (not corrected) stored in lag buffer to avoid double-counting mean reversion
+  - `Pricing.cs` — three changes: query now fetches TreasuryCurrentValue; treasury update changed
+    from multiplicative to additive (`+= rates.TreasuryGrowth`); `CopyPrices` now copies `CurrentTreasuryCoupon`
+  - `VarDiagnosticsWriter.cs` — added `CumulativeAdditive` helper; treasury chart uses additive
+    accumulation (in % display) with `firstHistoricalTreasuryRate` parameter
+  - `MonteCarloCLI/Program.cs` — diagnostic branch updated to query and pass treasury levels/first rate
+- **Outcome:** 0 build errors; all 1089 tests pass. Diagnostic shows treasury rates starting ~3.5%
+  and fluctuating in plausible 0.1–10% range across all 5 hypothetical lifetimes. No collapse to zero.
+- **Upcoming work:** Implement 2-year treasury notes as an asset class. Dan wants to model the financial
+  trade-offs of holding some portfolio in treasuries vs. pure equities, and create new withdrawal/savings
+  strategies that incorporate the treasury coupon (`CurrentTreasuryCoupon`).
+
 #Current Focus Items:
 
+- Implementing 2-year treasury notes as an asset class (CurrentTreasuryCoupon infrastructure is ready)
+- Designing withdrawal and savings strategies that incorporate treasury bond positions
 - Ensuring the accuracy of the business logic in the Monte Carlo simulation
 - Increasing runtime efficiency during LifeSimulator runs
-- Model champion designation and protection from cleanup processes
-- Validating VAR(3) model outputs produce economically plausible growth sequences
 
 #Helpful prompts for Agent:
 
