@@ -334,6 +334,44 @@ approaches
   `TaxLedger.QualifiedDividendsReceived` — no tax form changes needed
 - **Outcome:** 0 build errors; all tests pass
 
+### Session 2026-02-19 - Regression Test Coverage (36 C-Gap Items)
+
+- **Goal:** Write xUnit regression tests for all 36 "C – Not covered" items identified in
+  `Lib.Tests/TestStrategy/GapAnalysis.md`
+- **Test files created (in order):**
+  - `PayrollTaxExtendedTests.cs` — §2: Additional Medicare surcharge (0.9% above $250k salary)
+  - `DividendReinvestmentTests.cs` — §4.3: All 10 dividend reinvestment outcomes; 2 tests
+    marked `[KNOWN CODE BUG — EXPECTED FAIL]` because `AccrueMidTermDividendsOnPosition`
+    updates Quantity on the existing position instead of creating a new DRIP position
+  - `AccountDebtPaymentExtendedTests.cs` — §5: Investment liquidation when cash insufficient;
+    debited = credited invariant; net worth conserved by debt paydown
+  - `InvestmentSalesExtendedTests2.cs` — §6.1: CASH and PRIMARY_RESIDENCE excluded from sales
+  - `RebalanceExtendedTests.cs` — §7.3: Partial long-to-mid conversion creates two positions;
+    mid-term target already met → no movement
+  - `WithdrawalStrategyExtendedTests.cs` — §7.4: Account type override bypasses income room logic
+  - `AccountCleanupExtendedTests.cs` — §8: No PRIMARY_RESIDENCE input → none added to output
+  - `AccountCalculationExtendedTests.cs` — §9: `CalculateDebtPaydownAmounts` clips MonthlyPayment
+    to CurrentBalance via `Math.Min()` (tested with payment=$500, balance=$200 → $200)
+  - `SpendExtendedTests.cs` — §10.3: Medicare Part A cost higher at age 75 than 65 (hospital
+    admissions increase by 1/decade over 65); §10.4 was already covered by existing
+    `CalculateExtremeAusterityMeasures_AboveTrigger_ExitsAusterityAtRightTime`
+  - `VarPricingExtendedTests.cs` — §14: Treasury coupon additive (positive and negative delta);
+    same lifeIndex → identical sequence; different lifeIndex → different sequence; floor clamp
+    (theta=-0.10 → rate stays ≥ 0.001); ceiling clamp (theta=0.50 → rate stays ≤ 0.20);
+    OU reversion (kappa=0.5, theta=0.04, initial=0.15 → converges to within 1% of theta in 12
+    months with zero shocks); CopyPrices propagates CurrentTreasuryCoupon
+  - `TaxCalculationExtendedTests2.cs` — §15: Empty ledger → income room = $94,300 + $29,200 = $123,500
+- **Key patterns / discoveries:**
+  - After `AccrueMidTermDividends` (and similar functions that replace `InvestmentAccounts` list),
+    access results via `result.newAccounts.InvestmentAccounts.First(a => a.AccountType == ...)`,
+    NOT via named properties like `.RothIra` (those go stale when the list is replaced)
+  - `TestDataManager.CreateTestPerson()` uses `BirthDate = DateTime.Now.AddYears(-30)`; create
+    person inline with fixed BirthDate when age-sensitive calculations are needed
+  - For minimal `VarModel` in tests: use `LagCount=1`, zero `CoefficientMatrix` (4×3), diagonal
+    `ResidualCholesky` (3×3); set `cholTreasury=0.0` for deterministic OU-only tests
+  - GapAnalysis item §10.4 was misclassified as C; it is already covered
+- **Outcome:** 0 build errors; 1140 tests total; 1138 pass; 2 known expected failures (§4.3 DRIP bug)
+
 ### Session 2026-02-19 - Treasury Rate OU Mean Reversion Fix
 
 - **Issues Addressed:** VAR-generated treasury rates collapsed to near-zero in all hypothetical lifetimes

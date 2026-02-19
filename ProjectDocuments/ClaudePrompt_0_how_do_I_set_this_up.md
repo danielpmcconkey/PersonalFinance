@@ -2,7 +2,11 @@
 
 ## My high-level ask
 
-Read the AgentContext file the root of the Lib project. I would like to start creating a pipeline for developing new features in this application. The goal for this is for me to operate in Claude Code. Claude code will act as the lead agent, with me as his customer. It is most important that I be able to re-use this pipeline through the development of many new features while also retaining the ability to improve the process as we go. I am asking you here to provide prompts for me to use in future to set this up successfully and according to all my goals.
+Read the AgentContext file the root of the Lib project. I would like to start creating a pipeline for developing new
+features in this application. The goal for this is for me to operate in Claude Code. Claude code will act as the lead 
+agent, with me as his customer. It is most important that I be able to re-use this pipeline through the development of
+many new features while also retaining the ability to improve the process as we go. I am asking you here to provide 
+prompts for me to use in future to set this up successfully and according to all my goals.
 
 
 ## Agents and roles
