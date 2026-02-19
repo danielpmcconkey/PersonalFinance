@@ -308,6 +308,32 @@ approaches
 - **Commit:** `456a53a` — "Replace SQL view Monte Carlo with VAR(3) model"
 - **Note:** `git push` requires GPG passphrase entered interactively; push manually from terminal
 
+### Session 2026-02-19 - Mid-Term Quarterly Dividend Reinvestment
+
+- **Feature Added:** Quarterly dividend reinvestment for all mid-term (`MID_TERM`) investment positions
+- **Design Decisions:**
+  - Dividends paid in all account types (taxable brokerage, traditional 401k/IRA, Roth, HSA)
+  - All dividends are reinvested (position Quantity increases; no cash deposited)
+  - Tax-advantaged accounts (traditional, Roth, HSA): reinvest silently — no TaxLedger entry
+  - Taxable brokerage accounts: reinvest AND record in `TaxLedger.DividendsReceived` and
+    `TaxLedger.QualifiedDividendsReceived` (95% qualified per `DividendPercentQualified`)
+  - Payment months: March, June, September, December (standard U.S. quarterly cadence)
+  - `MidTermGrowthRateModifier` will be lowered separately by Dan to avoid double-counting
+    price-return vs. total-return in the underlying SpGrowth series
+- **Code Changes:**
+  - `TaxConstants.cs` — added `MidTermAnnualDividendYield = 0.0334m`
+  - `AccountInterestAccrual.cs` — added three new methods:
+    - `AccrueMidTermDividends(currentDate, bookOfAccounts, taxLedger)` — public entry point; no-ops
+      on non-quarter months; returns `(BookOfAccounts, TaxLedger, messages)`
+    - `AccrueMidTermDividendsOnAccount(...)` — private; branches on `TAXABLE_BROKERAGE` vs. other
+    - `AccrueMidTermDividendsOnPosition(...)` — private; computes `CurrentValue * (yield / 4)`,
+      adds shares via `Quantity += dividendAmount / Price`
+  - `LifeSimulator.cs` — `AccrueInterest()` calls `AccrueMidTermDividends` after existing price
+    accrual; writes back `BookOfAccounts` and `TaxLedger`; dividend messages flow to reconciliation ledger
+- **Tax flow:** `QualifiedDividendsAndCapitalGainTaxWorksheet` was already fully wired to consume
+  `TaxLedger.QualifiedDividendsReceived` — no tax form changes needed
+- **Outcome:** 0 build errors; all tests pass
+
 ### Session 2026-02-19 - Treasury Rate OU Mean Reversion Fix
 
 - **Issues Addressed:** VAR-generated treasury rates collapsed to near-zero in all hypothetical lifetimes
@@ -342,6 +368,8 @@ approaches
 
 #Current Focus Items:
 
+- Lower `InvestmentConfig.MidTermGrowthRateModifier` (currently 0.5M) to avoid double-counting
+  dividend yield now that mid-term dividends are paid separately from price growth
 - Implementing 2-year treasury notes as an asset class (CurrentTreasuryCoupon infrastructure is ready)
 - Designing withdrawal and savings strategies that incorporate treasury bond positions
 - Ensuring the accuracy of the business logic in the Monte Carlo simulation

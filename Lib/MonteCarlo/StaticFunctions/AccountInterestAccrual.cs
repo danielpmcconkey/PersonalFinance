@@ -166,8 +166,102 @@ public static class AccountInterestAccrual
         return results;
     }
     
-    public static (McInvestmentPosition newPosition, LifetimeSpend newSpend, List<ReconciliationMessage> messages) 
-        AccrueInterestOnInvestmentPosition(LocalDateTime currentDate, McInvestmentPosition position, 
+    // ── Mid-term quarterly dividends ──────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Accrues quarterly dividends on all mid-term positions across all investment accounts.
+    /// Dividends are reinvested (position quantity increases). Taxable brokerage accounts also
+    /// record the dividend in the TaxLedger for year-end tax calculation.
+    /// Only runs in March, June, September, and December.
+    /// </summary>
+    public static (BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages)
+        AccrueMidTermDividends(LocalDateTime currentDate, BookOfAccounts bookOfAccounts, TaxLedger taxLedger)
+    {
+        (BookOfAccounts newAccounts, TaxLedger newLedger, List<ReconciliationMessage> messages) result = (
+            AccountCopy.CopyBookOfAccounts(bookOfAccounts), taxLedger, []);
+
+        if (currentDate.Month is not (3 or 6 or 9 or 12))
+            return result;
+        if (result.newAccounts.InvestmentAccounts is null || result.newAccounts.InvestmentAccounts.Count == 0)
+            return result;
+
+        var updatedAccounts = new List<McInvestmentAccount>();
+        foreach (var account in result.newAccounts.InvestmentAccounts)
+        {
+            if (account.AccountType is McInvestmentAccountType.PRIMARY_RESIDENCE or McInvestmentAccountType.CASH)
+            {
+                updatedAccounts.Add(account);
+                continue;
+            }
+            var accountResult = AccrueMidTermDividendsOnAccount(currentDate, account, result.newLedger);
+            updatedAccounts.Add(accountResult.newAccount);
+            result.newLedger = accountResult.newLedger;
+            result.messages.AddRange(accountResult.messages);
+        }
+        result.newAccounts.InvestmentAccounts = updatedAccounts;
+        return result;
+    }
+
+    private static (McInvestmentAccount newAccount, TaxLedger newLedger, List<ReconciliationMessage> messages)
+        AccrueMidTermDividendsOnAccount(LocalDateTime currentDate, McInvestmentAccount account, TaxLedger taxLedger)
+    {
+        if (account.Positions is null) throw new InvalidDataException("Positions is null");
+        if (account.Positions.Count == 0) return (account, taxLedger, []);
+
+        bool isTaxable = account.AccountType == McInvestmentAccountType.TAXABLE_BROKERAGE;
+
+        (McInvestmentAccount newAccount, TaxLedger newLedger, List<ReconciliationMessage> messages) result = (
+            AccountCopy.CopyInvestmentAccount(account), taxLedger, []);
+        result.newAccount.Positions = [];
+
+        foreach (var position in account.Positions)
+        {
+            if (position.InvestmentPositionType != McInvestmentPositionType.MID_TERM)
+            {
+                result.newAccount.Positions.Add(position);
+                continue;
+            }
+            var positionResult = AccrueMidTermDividendsOnPosition(currentDate, position, result.newLedger, isTaxable);
+            result.newAccount.Positions.Add(positionResult.newPosition);
+            result.newLedger = positionResult.newLedger;
+            result.messages.AddRange(positionResult.messages);
+        }
+        return result;
+    }
+
+    private static (McInvestmentPosition newPosition, TaxLedger newLedger, List<ReconciliationMessage> messages)
+        AccrueMidTermDividendsOnPosition(LocalDateTime currentDate, McInvestmentPosition position,
+            TaxLedger taxLedger, bool isTaxable)
+    {
+        (McInvestmentPosition newPosition, TaxLedger newLedger, List<ReconciliationMessage> messages) result = (
+            AccountCopy.CopyInvestmentPosition(position), taxLedger, []);
+
+        decimal dividendAmount = position.CurrentValue * (TaxConstants.MidTermAnnualDividendYield / 4m);
+        if (dividendAmount == 0m) return result;
+
+        // Reinvest: buy additional shares at the current price
+        result.newPosition.Quantity += dividendAmount / position.Price;
+
+        if (isTaxable)
+        {
+            result.newLedger.DividendsReceived.Add((currentDate, dividendAmount));
+            result.newLedger.QualifiedDividendsReceived.Add(
+                (currentDate, dividendAmount * TaxConstants.DividendPercentQualified));
+        }
+
+        if (!MonteCarloConfig.DebugMode) return result;
+
+        result.messages.Add(new ReconciliationMessage(currentDate, dividendAmount,
+            $"Mid-term dividend reinvested for position {position.Name}" +
+            (isTaxable ? " (taxable — recorded in ledger)" : " (tax-advantaged)")));
+
+        return result;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────────
+
+    public static (McInvestmentPosition newPosition, LifetimeSpend newSpend, List<ReconciliationMessage> messages)
+        AccrueInterestOnInvestmentPosition(LocalDateTime currentDate, McInvestmentPosition position,
             CurrentPrices prices, LifetimeSpend lifetimeSpend)
     {
         /*

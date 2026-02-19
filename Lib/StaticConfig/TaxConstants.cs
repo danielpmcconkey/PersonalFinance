@@ -86,6 +86,7 @@ public static class TaxConstants
     public const decimal ScheduleDMaximumCapitalLoss = -3000m;
     public const decimal FederalWorksheetVsTableThreshold = 100000m; // below this amount, use the table; above or equal, use the worksheet
     public const decimal FxaixAnnualDividendYield = 0.012m; // based on July 20, 2025 // todo: take dividends out of stock price and record them for tax purposes
+    public const decimal MidTermAnnualDividendYield = 0.0334m; // quarterly dividend yield for mid-term (dividend) positions
     public const decimal DividendPercentQualified = 0.95m; // 5% ordinary, 95% qualified
     
     #endregion

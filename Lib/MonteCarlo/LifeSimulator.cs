@@ -215,19 +215,25 @@ public class LifeSimulator
             _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.CurrentPrices, _simData.LifetimeSpend);
         _simData.BookOfAccounts = result.newAccounts;
         _simData.LifetimeSpend = result.newSpend;
-        
-        if (!MonteCarloConfig.ShouldCheckIncomeInversion) 
+
+        if (!MonteCarloConfig.ShouldCheckIncomeInversion)
             _currentInvestmentAccrual = _simData.LifetimeSpend.TotalInvestmentAccrualLifetime;
-        
-        
+
+        var dividendResult = AccountInterestAccrual.AccrueMidTermDividends(
+            _simData.CurrentDateInSim, _simData.BookOfAccounts, _simData.TaxLedger);
+        _simData.BookOfAccounts = dividendResult.newAccounts;
+        _simData.TaxLedger = dividendResult.newLedger;
+
+
 #if PERFORMANCEPROFILING
         stopwatch.Stop();
         _sim.Log.Debug($"Accruing interest took {stopwatch.ElapsedMilliseconds} ms");
-#endif 
+#endif
 
         if (!MonteCarloConfig.DebugMode || !MonteCarloConfig.ShouldReconcileInterestAccrual || !_isReconcilingTime) return;
 
         _reconciliationLedger.AddMessages(result.messages);
+        _reconciliationLedger.AddMessages(dividendResult.messages);
         _reconciliationLedger.AddFullReconLine(_simData, "Accrued interest");
     }
     
