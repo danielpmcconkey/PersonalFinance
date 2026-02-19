@@ -93,8 +93,8 @@ public static class TaxConstants
 
     #region Paycheck deductions
 
-    public const decimal OasdiBasePercent = 0.062m; // https://www.ssa.gov/OACT/COLA/cbb.html
-    public const decimal OasdiMax = 10918.2m; // https://www.ssa.gov/OACT/COLA/cbb.html
+    public const decimal OasdiBasePercent = 0.062m; // https://www.ssa.gov/OACT/COLA/cbb.html . This is the rate you would pay for any taxable W2 income up to the max 
+    public const decimal OasdiMax = 11439.0m; // https://www.ssa.gov/OACT/COLA/cbb.html . This is the maximum you would pay annually to SSA. The code takes the lesser of this value or the calculated percentage.
     public const decimal StandardMedicareTaxRate = 0.0145m; // 1.45 of your W2 income // https://www.retireguide.com/medicare/costs-and-coverage/tax/additional-medicare-tax/
     public const decimal AdditionalMedicareTaxRate = 0.009m; // 0.9% on W2 income above $250k // https://www.retireguide.com/medicare/costs-and-coverage/tax/additional-medicare-tax/
     public const decimal AdditionalMedicareThreshold = 250000m; // 0.9% on W2 income above $250k // https://www.retireguide.com/medicare/costs-and-coverage/tax/additional-medicare-tax/
