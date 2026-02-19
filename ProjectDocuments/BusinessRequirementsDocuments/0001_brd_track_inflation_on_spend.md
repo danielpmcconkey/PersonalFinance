@@ -1,5 +1,8 @@
-# Track inflation on spend
-Reference number: 0001
+# BRD-0001: Track inflation on spend
+
+**Author:** Dan
+**Date:** 2026-02-19 18:45 EST
+**Status:** Draft
 
 ## Background / problem statement
 The current version of the Monte Carlo simulation denominates everything in terms of today's dollars. But this is not 
@@ -50,6 +53,13 @@ Flat-fee payroll deductions like dental, health, life insurance, etc. will need 
 ### BR-9 Savings values increase
 401k and HSA savings that are triggered by payday events while still working (not retired) should also increase per
 inflation
+
+## Out of Scope
+- updates to the database tables where some of the initial spend values originate
+- updates to any constants defined in code or config that initialize values pre-simulation start
+
+## Open Questions
+TBD
 
 ## General comment to the agent
 Please help this become a world-class BRD. Feel free to make suggestions of requirements you think I've missed that
