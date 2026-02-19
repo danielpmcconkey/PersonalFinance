@@ -180,7 +180,7 @@ This document is the input to the gap-analysis prompt (Prompt 2).
 - **Tax-advantaged accounts (Traditional, Roth, HSA): no TaxLedger entries.** DividendsReceived and
   QualifiedDividendsReceived lists are unchanged for non-taxable accounts.
 - **Non-MID_TERM positions are not affected by this function.** LONG_TERM and SHORT_TERM positions pass
-  through unchanged. (See Ambiguity I — scope may expand.)
+  through unchanged. Dividends are intentionally limited to MID_TERM positions only.
 - **Cash and PRIMARY_RESIDENCE accounts are skipped entirely.**
 - **Multiple MID_TERM positions in the same account all receive dividends.** Each position is processed
   independently; each generates its own new DRIP position.
@@ -287,9 +287,6 @@ This document is the input to the gap-analysis prompt (Prompt 2).
   positions are bought.** The proceeds go through cash first.
 - **Mid-term target already met: no movement.** If the mid-bucket already has enough for N months, no
   assets are moved.
-- **Net worth is conserved by rebalancing.** Total net worth before any rebalancing step equals total
-  net worth after; the operation reclassifies assets without creating or destroying value. Tolerance:
-  within floating-point rounding.
 
 ### 7.4 Income Threshold Withdrawal Order
 - **With income room: traditional accounts sold first, up to income room.** The function prioritizes
@@ -299,6 +296,13 @@ This document is the input to the gap-analysis prompt (Prompt 2).
   that account type is used regardless of income room.
 - **Position type override limits which position types are sold.** When positionTypeOverride is
   specified, only that position type is eligible.
+
+### 7.5 Universal Net Worth Conservation
+- **Net worth is conserved by every rebalancing strategy.** Regardless of which withdrawal strategy
+  or bucket rebalance is executed (cash top-up, long-to-mid conversion, income threshold withdrawal,
+  or any combination), total net worth before the operation equals total net worth after. The
+  operation reclassifies or moves assets; it does not create or destroy value. Tolerance: within
+  floating-point rounding.
 
 ---
 
@@ -319,6 +323,9 @@ This document is the input to the gap-analysis prompt (Prompt 2).
   IsOpen == false.
 - **Primary residence: copied unchanged.** If present, it appears in the output unchanged.
 - **No primary residence: not added.** If no PRIMARY_RESIDENCE account exists, none is created.
+- **Net worth is conserved by account cleanup.** Total net worth before consolidation equals total
+  net worth after. Consolidating positions changes their count and grouping but not their aggregate
+  value. Tolerance: within floating-point rounding.
 
 ---
 
@@ -469,21 +476,4 @@ attempts sales in the following order, stopping as soon as enough cash is raised
 
 ## Open Ambiguities
 
-The following items require clarification before tests can be designed with full confidence.
-
-### I. Scope of dividend reinvestment across position types
-
-The current implementation pays quarterly dividends only on MID_TERM positions. It is unclear whether
-the intent is to also pay dividends on LONG_TERM and SHORT_TERM positions.
-
-- **LONG_TERM**: `TaxConstants.FxaixAnnualDividendYield = 0.012m` (1.2% annual) exists with a TODO
-  comment ("take dividends out of stock price and record them for tax purposes"), suggesting this is
-  planned but not yet implemented.
-- **SHORT_TERM**: No dividend yield constant is defined. SHORT_TERM models a cash-equivalent; dividends
-  on this type would be unusual.
-
-If LONG_TERM dividends are added, the same new-position creation mechanism used for MID_TERM should
-apply. The LONG_TERM dividend should also be recorded in TaxLedger for taxable brokerage accounts.
-
-**Clarification needed**: Should LONG_TERM positions also receive quarterly dividends using
-FxaixAnnualDividendYield? Should SHORT_TERM positions receive any dividend?
+No open ambiguities at this time. All design questions have been resolved.
