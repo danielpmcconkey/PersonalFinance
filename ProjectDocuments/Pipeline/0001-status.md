@@ -7,5 +7,5 @@ Last updated: 2026-02-20 09:00
 |-------|-------------------|-------------|-----------------------------------------------|
 | 0     | BRD Analysis      | COMPLETE    | Pipeline/0001-brd-analysis.md                 |
 | 1     | FSD               | COMPLETE    | FSDs/0001-fsd.md                              |
-| 2     | Test Planning     | NOT STARTED |                                               |
+| 2     | Test Planning     | COMPLETE    | Pipeline/0001-test-strategy.md + Lib.Tests/MonteCarlo/StaticFunctions/InflationAdjustmentTests.cs |
 | 3     | Implementation    | NOT STARTED |                                               |

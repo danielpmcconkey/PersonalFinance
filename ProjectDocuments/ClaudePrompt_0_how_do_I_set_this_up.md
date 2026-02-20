@@ -315,12 +315,13 @@ then asks:
 **Trigger:** Your approval to proceed from Phase 1.
 
 **What the lead agent does:**
-1. Spawns a **general-purpose sub-agent** to update BusinessOutcomes.md:
+1. Spawns a **general-purpose sub-agent** with this Task prompt:
 
 ```
 You are a test planner for a C# .NET 8.0 financial simulation. Your job has
-two parts: (1) update BusinessOutcomes.md with new outcome rows, and (2) write
-the xUnit test stubs. Do NOT write implementation code.
+three parts: (1) write a standalone test strategy document, (2) update
+BusinessOutcomes.md with new outcome rows, and (3) write full xUnit tests.
+Do NOT write any implementation code.
 
 Read these files in full before writing anything:
   - /media/dan/fdrive/codeprojects/PersonalFinance/Lib/AgentContext.txt
@@ -330,43 +331,90 @@ Read these files in full before writing anything:
   - Lib.Tests/TestDataManager.cs  (to know what test helpers exist)
   - [2-3 existing test files most similar to what this feature needs]
 
-For each FSD-NNN item:
-  - Identify every distinct observable business outcome that a test should assert.
-  - Add a row to the appropriate section of BusinessOutcomes.md with status C.
-  - Include the FSD-NNN and BRD-NNN trace in the Notes column.
+--- PART 1: Test Strategy Document ---
 
-Then write the test file(s):
-  - One test class per logical group (follow existing naming conventions).
-  - Use [Fact(DisplayName = "§X.Y — description")] for traceability.
-  - Write the full test body — not stubs — with realistic assertions.
-  - Follow the immutable-result patterns: access results via
-    result.newAccounts.InvestmentAccounts.First(...), not named properties,
-    after any function that replaces the InvestmentAccounts list.
-  - If a test depends on behavior not yet implemented, mark it
-    [Fact(Skip = "Not yet implemented — FSD-NNN")] with an explanation.
+Write a standalone test strategy document to:
+  ProjectDocuments/Pipeline/[FEATURE_ID]-test-strategy.md
+
+Structure it as follows:
+  ## What This Feature Does (Test Perspective)
+  One paragraph on the core invariant being tested.
+
+  ## Scope
+  In scope / Out of scope subsections.
+
+  ## Test Groups and Rationale
+  One subsection per logical test group. For each group:
+    - Why this group of behavior must be tested
+    - Key scenarios covered
+    - Edge cases and their rationale
+    - Any confirmed no-ops and why they need no test
+
+  ## Pre-Implementation Notes
+  Document any method signatures that do not yet exist (because implementation
+  is not written), so the implementer has a clear checklist.
+
+  ## BusinessOutcomes.md Coverage
+  Summary of rows added and their status.
+
+--- PART 2: Update BusinessOutcomes.md ---
+
+Add a new numbered section (e.g., ## 16. Feature Name) to BusinessOutcomes.md.
+For each FSD-NNN item:
+  - Add a row with status C and FSD-NNN / BR-N trace in the Notes column.
+  - For confirmed no-ops (where the FSD documents that no code change is needed),
+    add a note row explaining the no-op rather than leaving a gap.
+
+--- PART 3: Write the test file(s) ---
+
+Write tests to: Lib.Tests/MonteCarlo/StaticFunctions/[FeatureName]Tests.cs
+
+Rules:
+  - Namespace: Lib.Tests.MonteCarlo.StaticFunctions
+  - Use [Fact(DisplayName = "§X.Y — description")] for traceability
+  - Write the full test body with realistic assertions — not stubs
+  - Since implementation is not written yet, ALL tests must be marked:
+    [Fact(Skip = "Not yet implemented — FSD-NNN", DisplayName = "§X.Y — description")]
+  - Include a file-level summary comment listing every method that does not yet
+    have its new signature, with the current file:line reference
+  - Use decimal literals with m suffix; use NodaTime.LocalDateTime for dates
+  - Do NOT use TestDataManager.CreateTestPerson() for age-sensitive tests —
+    create PgPerson inline with a fixed BirthDate
 
 After writing tests, update each BusinessOutcomes.md row you added from C → A,
-citing the test class and method name.
+citing the test class name and §X.Y section number.
 
-Verify the build compiles before finishing: run
+--- PART 4: Build verification ---
+
+Run:
   dotnet build Lib.Tests/Lib.Tests.csproj --no-restore -v q
-and fix any errors before reporting back.
+Fix any errors. If new method signatures do not yet exist, comment out the
+call in the test body and replace with Assert.True(false, "Not yet implemented — FSD-NNN").
+
+Report: total tests, new tests added, skipped count, build status.
 ```
 
-2. Reads the new test file and BusinessOutcomes.md changes.
-3. **Immediately** writes any coverage gaps or unresolved test design questions as comments
-   directly in BusinessOutcomes.md (e.g., a row with status `?` and a note explaining what
-   is missing) **before presenting anything to Dan.**
-4. Presents coverage summary to you: how many FSD items have tests, any gaps.
-5. Acts as scribe: resolves gap rows in BusinessOutcomes.md as Dan provides direction.
+2. Reads the test file, test strategy doc, and BusinessOutcomes.md changes.
+3. **Immediately** writes any coverage gaps or unresolved test design questions as:
+   - A row with status `?` in BusinessOutcomes.md, AND
+   - A note in the test strategy doc's "Pre-Implementation Notes" section
+   **before presenting anything to Dan.**
+4. Presents coverage summary to Dan: FSD items covered, any gaps, skipped count.
+5. Acts as scribe: resolves gap rows in BusinessOutcomes.md and updates test strategy doc
+   as Dan provides direction.
 
-**Loose-ends rule:** Any coverage gap or ambiguity must appear as an explicit row or note in
-BusinessOutcomes.md before being raised in chat. Do not describe gaps only verbally.
+**Loose-ends rule:** Any coverage gap or ambiguity must appear in both BusinessOutcomes.md
+and the test strategy doc before being raised in chat. Do not describe gaps only verbally.
 
 **Phase gate:** Lead agent updates `Pipeline/[FEATURE_ID]-status.md` (Phase 2 → COMPLETE),
-then asks:
+updating the artifact column to list both files:
+```
+| 2 | Test Planning | COMPLETE | Pipeline/[FEATURE_ID]-test-strategy.md + Lib.Tests/.../[Name]Tests.cs |
+```
+Then asks:
 > "[N] test cases written covering all FSD items. Build passes. [M] tests are
-> skipped pending implementation. Shall I proceed to implementation planning?"
+> skipped pending implementation. Test strategy at Pipeline/[FEATURE_ID]-test-strategy.md.
+> Shall I proceed to implementation planning?"
 
 ---
 

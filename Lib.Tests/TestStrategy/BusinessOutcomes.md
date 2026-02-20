@@ -474,6 +474,43 @@ attempts sales in the following order, stopping as soon as enough cash is raised
 
 ---
 
+## 16. Inflation Adjustment (FSD-0001 / BRD-0001)
+
+| Outcome description | Status | Notes |
+|---|---|---|
+| `CalculateMonthlyRequiredSpend` multiplies non-debt standard spend by `cumulativeCpiMultiplier` — base spend $3,000 × multiplier 1.05 = $3,150 | A | Traces to FSD-001 / BR-1. InflationAdjustmentTests: §16.1 |
+| `CalculateMonthlyRequiredSpend` with multiplier=1.0 returns the same result as the current baseline (no regression) | A | Traces to FSD-001 / BR-1. InflationAdjustmentTests: §16.1b |
+| `CalculateMonthlyFunSpend` with multiplier=1.10 returns 10% more than multiplier=1.0 | A | Traces to FSD-002 / BR-1. InflationAdjustmentTests: §16.2 |
+| `CalculateMonthlyFunSpend` with multiplier=1.0 returns the same value as the no-multiplier baseline | A | Traces to FSD-002 / BR-1. InflationAdjustmentTests: §16.2b |
+| `CalculateMonthlyHealthSpend` in Medicare band with multiplier=2.0 returns double the value vs multiplier=1.0 (all hardcoded Medicare constants scale) | A | Traces to FSD-003 / BR-1 (Q3). InflationAdjustmentTests: §16.3 |
+| `CalculateMonthlyHealthSpend` pre-age-65 (retired) with multiplier scales `RequiredMonthlySpendHealthCare` | A | Traces to FSD-003 / BR-1. InflationAdjustmentTests: §16.3b |
+| `CalculateCashNeedForNMonths` with 1% monthly CPI growth produces a larger total than with 0% CPI | A | Traces to FSD-004 / BR-2. InflationAdjustmentTests: §16.4 |
+| `CalculateCashNeedForNMonths` compounds the multiplier correctly per month: month 0 uses multiplier, month 1 uses multiplier×1.01, month 2 uses multiplier×1.01² | A | Traces to FSD-004 / BR-2. InflationAdjustmentTests: §16.4b |
+| `CalculateFunPointsForSpend` with multiplier=2.0 earns half the fun points compared to multiplier=1.0 for the same dollar spend | A | Traces to FSD-005 / BR-3. InflationAdjustmentTests: §16.5 |
+| `CalculateFunPointsForSpend` with multiplier=1.0 returns the same value as the no-multiplier baseline | A | Traces to FSD-005 / BR-3. InflationAdjustmentTests: §16.5b |
+| **FSD-006 / BR-4 — CONFIRMED NO-OP:** Debt monthly payments are NOT inflated. `Spend.cs` lines 163–166 read fixed `MonthlyPayment` from each open debt position. No code change is required; this row documents the confirmed exclusion. No test written. | — | Traces to FSD-006 / BR-4. Confirmed no-op per BRD Phase 0 analysis. |
+| `CalculateTaxLiabilityForYear` with multiplier=2.0 yields lower tax liability because federal and NC standard deductions are doubled | A | Traces to FSD-007, FSD-008 / BR-5. InflationAdjustmentTests: §16.6 |
+| SS worksheet threshold scales with multiplier: combined income just above the base $32,000 threshold becomes below threshold when multiplier=1.5 | A | Traces to FSD-009 / BR-5. InflationAdjustmentTests: §16.7 |
+| ScheduleD capital loss limit with multiplier=1.5 becomes −$4,500 (more negative), yielding a larger deduction and lower tax | A | Traces to FSD-010 / BR-5. InflationAdjustmentTests: §16.8 |
+| `WithholdTaxesFromPaycheck` with multiplier=2.0 doubles the OASDI cap and Medicare surcharge threshold; a $300k salary no longer triggers the 0.9% surcharge | A | Traces to FSD-011, FSD-012 / BR-5. InflationAdjustmentTests: §16.9 |
+| Tax bracket dollar thresholds scale with multiplier: income at the old 22% boundary stays in the 12% bracket at higher multiplier, yielding lower tax | A | Traces to FSD-013 / BR-5. InflationAdjustmentTests: §16.10 |
+| `FederalWorksheetVsTableThreshold` scales with multiplier: income just above the old $100,000 threshold uses the tax table (not the worksheet) at multiplier=2.0 without error | A | Traces to FSD-014 / BR-5. InflationAdjustmentTests: §16.10b |
+| `ProcessSocialSecurityCheck` with multiplier=1.20 deposits 20% more cash than multiplier=1.0; base monthly SS × multiplier | A | Traces to FSD-015 / BR-6. InflationAdjustmentTests: §16.11 |
+| `DeductPreTax` with multiplier=1.5 deducts 50% more for pre-tax health insurance | A | Traces to FSD-016 / BR-8. InflationAdjustmentTests: §16.12 |
+| `AddPaycheckRelatedRetirementSavings` with multiplier=1.10 invests 10% more in HSA | A | Traces to FSD-017 / BR-8/BR-9. InflationAdjustmentTests: §16.13 |
+| `AddPaycheckRelatedRetirementSavings` with multiplier=1.10 invests 10% more in Roth 401k | A | Traces to FSD-018 / BR-8/BR-9. InflationAdjustmentTests: §16.14 |
+| 401k contribution below the IRS limit: full scaled amount is contributed (not capped) | A | Traces to FSD-019 / BR-9. InflationAdjustmentTests: §16.15a |
+| 401k contribution above the IRS limit: contribution is capped at `Math.Min(baseContribution, irsLimit) × multiplier` | A | Traces to FSD-019 / BR-9. InflationAdjustmentTests: §16.15b |
+| `DeductPostTax` with multiplier=1.25 deducts 25% more for post-tax insurance | A | Traces to FSD-020 / BR-8. InflationAdjustmentTests: §16.16 |
+| `SetLongTermGrowthRateAndPrices` with CpiGrowth=0.01 on a prices struct with multiplier=1.05 yields CumulativeCpiMultiplier=1.0605 | A | Traces to FSD-021 / BR-1/BR-2. InflationAdjustmentTests: §16.17 |
+| `CopyPrices` preserves `CumulativeCpiMultiplier` — guards against the omission bug noted in FSD-021 | A | Traces to FSD-021 / BR-1/BR-2. InflationAdjustmentTests: §16.17b |
+| `CurrentPrices.CumulativeCpiMultiplier` defaults to 1.0m (renamed from `CurrentCpi`) | A | Traces to FSD-021 / BR-1/BR-2. InflationAdjustmentTests: §16.17c |
+| `SetLongTermGrowthRateAndPrices` with negative CpiGrowth correctly decreases the multiplier (deflation scenario: 1.05 × 0.99 = 1.0395) | A | Traces to FSD-021 / BR-1/BR-2. InflationAdjustmentTests: §16.17d |
+| `CalculateIncomeRoom` with multiplier=2.0 returns double the baseline headroom ($247,000 vs $123,500 with empty ledger) | A | Traces to FSD-013 / BR-5. InflationAdjustmentTests: §16.19 |
+| **BR-7 — CONFIRMED NO-OP:** VAR generator already emits `SpGrowth` (gross S&P500, not net-of-CPI) as a separate field from `CpiGrowth`. `Pricing.cs` line 108 applies `rates.SpGrowth` directly. Dan confirmed DB column `sp_growth` stores gross growth. No code change needed. | — | Traces to BR-7. Confirmed no-op per FSD BR-7 Verification section and Dan's OPEN DECISION 1 answer. |
+
+---
+
 ## Open Ambiguities
 
 No open ambiguities at this time. All design questions have been resolved.
