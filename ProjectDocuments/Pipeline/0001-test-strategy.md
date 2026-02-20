@@ -54,7 +54,9 @@ multiplier, the simulation silently produces wrong results with no error.
 - Each function with multiplier > 1.0 scales the output proportionally
 - `CalculateCashNeedForNMonths` compounds the multiplier forward per month, not flat
 - `CalculateFunPointsForSpend` *divides* by the multiplier (not multiplies)
-- `CalculateMonthlyHealthSpend` with multiplier=2.0 returns double (hardcoded Medicare constants scale)
+- `CalculateMonthlyHealthSpend`: two `[Theory]` tests with concrete known inputs assert exact expected outputs
+  - Path A (pre-65) and Path B (age 88+): `[InlineData]` rows supply birth year, test year, and multiplier; expected value is a hardcoded decimal computed from the formula (e.g., 800 × 1.5 = 1200 for pre-65)
+  - Path C (Medicare band, ages 65–87): `[MemberData]` rows supply birth year, test year, and multiplier; expected value is computed by `MedicareBandExpected()`, a private helper that independently encodes the Spend.cs formula (Part A deductible scaled by multiplier × admissions, Part B and Part D constants scaled by multiplier); verified at ages 65 and 70, multipliers 1.0, 1.5, and 2.0
 
 **Edge cases:**
 - Multiplier=1.0 → no change (no regression)
@@ -127,16 +129,22 @@ fail for the wrong reason. These tests verify the accumulator independently.
 
 ## Pre-Implementation Notes
 
-All 28 tests are marked `[Fact(Skip = "Not yet implemented — FSD-NNN")]`. Each test body
-contains a `Assert.True(false, "Not yet implemented — FSD-NNN")` assertion and a detailed
-comment block showing the exact call signature expected after implementation.
+All 28 test methods are marked `[Fact(Skip = "Not yet implemented — FSD-NNN")]` or
+`[Theory(Skip = "Not yet implemented — FSD-NNN")]`. Each test body contains an
+`Assert.True(false, "Not yet implemented — FSD-NNN")` assertion and a detailed comment block
+showing the exact call signature expected after implementation.
+
+The §16.3 test methods use `[Theory]` rather than `[Fact]`: one uses `[InlineData]` for
+the pre-65 and age-88+ paths (4 rows), and one uses `[MemberData]` for the Medicare band
+path (4 rows), for a total of 8 test cases exercised once §16.3 is un-skipped.
 
 The file header (`InflationAdjustmentTests.cs` lines 1–33) documents every source-file method
 that does not yet have its new signature, with the current `file:line` reference. This serves
 as a checklist for the implementer.
 
-**To un-skip a test after implementing a method:** Remove the `Skip =` portion of the `[Fact]`
-attribute and replace the `Assert.True(false, ...)` assertion with the actual call.
+**To un-skip a test after implementing a method:** Remove the `Skip =` portion of the
+`[Fact]` or `[Theory]` attribute and replace the `Assert.True(false, ...)` assertion with
+the actual call.
 
 ---
 

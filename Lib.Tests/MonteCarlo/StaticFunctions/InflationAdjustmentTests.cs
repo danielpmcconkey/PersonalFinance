@@ -175,49 +175,123 @@ public class InflationAdjustmentTests
     // §16.3 — FSD-003 (BR-1): Medicare constants × cumulativeCpiMultiplier
     // ─────────────────────────────────────────────────────────────────────────
 
-    [Fact(Skip = "Not yet implemented — FSD-003",
-          DisplayName = "§16.3 — CalculateMonthlyHealthSpend in Medicare band with multiplier=2.0 returns double the value vs multiplier=1.0")]
-    public void CalculateMonthlyHealthSpend_MedicareBand_MultiplierDoubles()
+    /// <summary>
+    /// Computes the exact expected result for CalculateMonthlyHealthSpend in the Medicare band
+    /// (ages 65–87) using the same formula as Spend.cs lines 131–155, with each hardcoded dollar
+    /// constant scaled by cumulativeCpiMultiplier. numHospitalAdmissionsPerYear is age-derived
+    /// and is NOT scaled by the multiplier.
+    ///
+    /// Constants sourced from Spend.cs (as of FSD-003 baseline):
+    ///   partADeductiblePerAdmission         = 1676m
+    ///   age65NumberOfHospitalAdmissionsPerYear = 1.5m
+    ///   numberOfHospitalAdmissionsIncreaseByDecade = 1m
+    ///   partBPremiumMonthly                 = 370m
+    ///   partBAnnualDeductible               = 514m
+    ///   partDPremiumMonthly                 = 93m
+    ///   partDAverageMonthlyDrugCost         = 150m
+    /// </summary>
+    private static decimal MedicareBandExpected(int age, decimal cumulativeCpiMultiplier)
+    {
+        const decimal partADeductiblePerAdmission                  = 1676m;
+        const decimal age65NumberOfHospitalAdmissionsPerYear       = 1.5m;
+        const decimal numberOfHospitalAdmissionsIncreaseByDecade   = 1m;
+        const decimal partBPremiumMonthly                          = 370m;
+        const decimal partBAnnualDeductible                        = 514m;
+        const decimal partDPremiumMonthly                          = 93m;
+        const decimal partDAverageMonthlyDrugCost                  = 150m;
+
+        var yearsOver65             = age - 65;
+        var decadesOver65           = yearsOver65 / 10m;
+        var numHospitalAdmissions   = age65NumberOfHospitalAdmissionsPerYear
+                                      + decadesOver65 * numberOfHospitalAdmissionsIncreaseByDecade;
+
+        var totalPartACostPerMonth  = partADeductiblePerAdmission * cumulativeCpiMultiplier
+                                      * numHospitalAdmissions / 12m;
+        var totalPartBCostPerMonth  = partBPremiumMonthly * cumulativeCpiMultiplier
+                                      + partBAnnualDeductible * cumulativeCpiMultiplier / 12m;
+        var totalPartDCostPerMonth  = partDPremiumMonthly * cumulativeCpiMultiplier
+                                      + partDAverageMonthlyDrugCost * cumulativeCpiMultiplier;
+
+        return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
+    }
+
+    public static IEnumerable<object[]> MedicareBandTestCases()
+    {
+        // Each row: (birthYear, testYear, cumulativeCpiMultiplier)
+        // Expected result is computed by MedicareBandExpected(age, multiplier).
+        // Two ages and two multiplier values are chosen to verify both age-scaling of
+        // numHospitalAdmissions and dollar-constant scaling by cumulativeCpiMultiplier.
+        yield return [1965, 2030, 1.0m];  // age 65, baseline multiplier
+        yield return [1965, 2030, 2.0m];  // age 65, doubled multiplier
+        yield return [1960, 2030, 1.0m];  // age 70, baseline multiplier
+        yield return [1960, 2030, 1.5m];  // age 70, 1.5× multiplier
+    }
+
+    /// <summary>
+    /// §16.3 — CalculateMonthlyHealthSpend: pre-65 (Path A) and age-88+ (Path B) paths
+    /// produce exact known outputs for given inputs.
+    ///
+    /// Path A (age &lt; 65, retired): result = RequiredMonthlySpendHealthCare * multiplier
+    /// Path B (age >= 88):            result = RequiredMonthlySpendHealthCare * 2m * multiplier
+    ///
+    /// CreatePersonBornIn sets RequiredMonthlySpendHealthCare = 800m.
+    /// </summary>
+    [Theory(Skip = "Not yet implemented — FSD-003")]
+    [InlineData(1985, 2030, 1.0,  800.0)]   // Path A: age 45, multiplier 1.0 → 800 × 1.0  = 800
+    [InlineData(1985, 2030, 1.5, 1200.0)]   // Path A: age 45, multiplier 1.5 → 800 × 1.5  = 1200
+    [InlineData(1940, 2030, 1.0, 1600.0)]   // Path B: age 90, multiplier 1.0 → 800 × 2 × 1.0 = 1600
+    [InlineData(1940, 2030, 2.0, 3200.0)]   // Path B: age 90, multiplier 2.0 → 800 × 2 × 2.0 = 3200
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Usage", "xUnit1042", Justification = "decimal parameters passed as double in InlineData; cast is safe for these exact values")]
+    public void CalculateMonthlyHealthSpend_PreMedicareAndAssistedLiving_KnownInputsMatchExpected(
+        int birthYear, int testYear, double multiplierDouble, double expectedDouble)
     {
         // TODO: implement FSD-003
-        // Source: Spend.cs lines 132-138 contain the hardcoded Medicare constants that must inflate.
-        // Person born 1960 → age 70 in 2030 → inside Medicare band (65-88).
-        //
         // Signature expected after implementation:
         //   Spend.CalculateMonthlyHealthSpend(model, person, currentDate, cumulativeCpiMultiplier)
         //
-        // var person = CreatePersonBornIn(1960);
-        // person.RequiredMonthlySpendHealthCare = 800m;
-        // var model  = TestDataManager.CreateTestModel();
-        // model.RetirementDate = new LocalDateTime(2025, 1, 1, 0, 0); // already retired
-        // var testDate = new LocalDateTime(2030, 1, 1, 0, 0);         // age 70 → Medicare band
+        // var multiplier = (decimal)multiplierDouble;
+        // var expected   = (decimal)expectedDouble;
         //
-        // var atOne = Spend.CalculateMonthlyHealthSpend(model, person, testDate, 1.0m);
-        // var atTwo = Spend.CalculateMonthlyHealthSpend(model, person, testDate, 2.0m);
+        // var person   = CreatePersonBornIn(birthYear);  // RequiredMonthlySpendHealthCare = 800m
+        // var model    = TestDataManager.CreateTestModel();
+        // model.RetirementDate = new LocalDateTime(2025, 1, 1, 0, 0);  // already retired
+        // var testDate = new LocalDateTime(testYear, 1, 1, 0, 0);
         //
-        // // All Medicare constants (Part A deductible, Part B, Part D) must scale with multiplier
-        // Assert.Equal(atOne * 2.0m, atTwo);
+        // var result = Spend.CalculateMonthlyHealthSpend(model, person, testDate, multiplier);
+        //
+        // Assert.Equal(expected, result);
         Assert.True(false, "Not yet implemented — FSD-003");
     }
 
-    [Fact(Skip = "Not yet implemented — FSD-003",
-          DisplayName = "§16.3b — CalculateMonthlyHealthSpend pre-age-65 with multiplier scales RequiredMonthlySpendHealthCare")]
-    public void CalculateMonthlyHealthSpend_PreMedicare_MultiplierScalesHealthCare()
+    /// <summary>
+    /// §16.3 — CalculateMonthlyHealthSpend: Medicare band (Path C, ages 65–87) produces exact
+    /// known outputs for given inputs.
+    ///
+    /// The expected output is computed by MedicareBandExpected(), which encodes the same formula
+    /// as Spend.cs lines 131–155 with each hardcoded dollar constant scaled by cumulativeCpiMultiplier.
+    /// numHospitalAdmissionsPerYear is derived from age and is NOT scaled by the multiplier.
+    ///
+    /// Test data supplied by MedicareBandTestCases(): two ages (65 and 70) × two multiplier values.
+    /// </summary>
+    [Theory(Skip = "Not yet implemented — FSD-003")]
+    [MemberData(nameof(MedicareBandTestCases))]
+    public void CalculateMonthlyHealthSpend_MedicareBand_KnownInputsMatchExpected(
+        int birthYear, int testYear, decimal cumulativeCpiMultiplier)
     {
         // TODO: implement FSD-003
-        // Person born 1985 → age 45 in 2030 → retired but pre-Medicare.
-        // Source: Spend.cs line 124 returns person.RequiredMonthlySpendHealthCare — must scale.
+        // Signature expected after implementation:
+        //   Spend.CalculateMonthlyHealthSpend(model, person, currentDate, cumulativeCpiMultiplier)
         //
-        // var person = CreatePersonBornIn(1985);
-        // person.RequiredMonthlySpendHealthCare = 800m;
-        // person.IsRetired = true;
-        // var model  = TestDataManager.CreateTestModel();
-        // model.RetirementDate = new LocalDateTime(2025, 1, 1, 0, 0);
-        // var testDate = new LocalDateTime(2030, 1, 1, 0, 0);   // age 45 — retired, pre-Medicare
+        // var person   = CreatePersonBornIn(birthYear);  // RequiredMonthlySpendHealthCare = 800m
+        // var model    = TestDataManager.CreateTestModel();
+        // model.RetirementDate = new LocalDateTime(2025, 1, 1, 0, 0);  // already retired
+        // var testDate = new LocalDateTime(testYear, 1, 1, 0, 0);
+        // var age      = testYear - birthYear;
         //
-        // var result = Spend.CalculateMonthlyHealthSpend(model, person, testDate, 1.05m);
+        // var result   = Spend.CalculateMonthlyHealthSpend(model, person, testDate, cumulativeCpiMultiplier);
+        // var expected = MedicareBandExpected(age, cumulativeCpiMultiplier);
         //
-        // Assert.Equal(800m * 1.05m, result);
+        // Assert.Equal(expected, result);
         Assert.True(false, "Not yet implemented — FSD-003");
     }
 

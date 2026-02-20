@@ -208,12 +208,13 @@ These four files are changed in a single pass because they are tightly coupled i
 - **What changes:**
   - Add `decimal cumulativeCpiMultiplier = 1m` as the fourth parameter in the constructor (line 15). Store it in a private field.
   - In `CalculateTaxLiability` (line 22), at line 29, replace `var line11 = TaxConstants.NcStandardDeduction;` with `var line11 = TaxConstants.NcStandardDeduction * cumulativeCpiMultiplier;`.
+  - **Also update `TaxCalculation.CalculateNorthCarolinaTaxLiabilityForYear` (line 206–210):** Add `decimal cumulativeCpiMultiplier = 1m` as the last parameter, and pass it to the `FormD400` constructor inside this method. Dan's OI-3 decision: "It should also receive the multiplier. I don't want a method in this codebase that contradicts a major premise of the simulation's ideals."
 
-- **Why this step:** `FormD400` is constructed in `TaxCalculation.CalculateTaxLiabilityForYear` (line 189). Step 4 already passes `cumulativeCpiMultiplier` to both form constructors. This step makes `FormD400` ready to receive it.
+- **Why this step:** `FormD400` is constructed in both `TaxCalculation.CalculateTaxLiabilityForYear` (line 189) and `TaxCalculation.CalculateNorthCarolinaTaxLiabilityForYear` (line 206). Both entry points must pass the multiplier through.
 
 - **Tests unlocked:** §16.6 (covers both federal and NC deductions indirectly via `CalculateTaxLiabilityForYear`).
 
-- **Risk:** `TaxCalculation.CalculateNorthCarolinaTaxLiabilityForYear` (line 206–210) also instantiates `FormD400`. See Open Item 3.
+- **Risk:** None — default parameter `= 1m` means existing callers of `CalculateNorthCarolinaTaxLiabilityForYear` (if any) continue to compile unchanged.
 
 ---
 
@@ -427,7 +428,7 @@ The following currently-passing tests are at risk of breaking due to signature c
 *All items must be resolved before implementation begins.*
 
 1. **`CalculateIsIncomeInflection` static cache interaction:** The static fields `_hasCalculatedSpendablePay` and `_spendablePay` (`Simulation.cs` lines 13–14) are computed on the first call and reused. After adding `cumulativeCpiMultiplier`, the cached value will always reflect the multiplier at first call (1.0 at simulation start). The inflection threshold will not increase with inflation over the simulation's lifetime. Should this cache be invalidated each call, or is the approximation acceptable?
-   Dan's decision: ___ if this question is entirely encapsulated in the income inflection feature, I plan to remove that feature in future, so it doesn't matter. If this question is bigger than the income inflection feature, please help me understand the impact better.
+   Dan's decision: **RESOLVED — accept the approximation.** This issue is entirely encapsulated within `CalculateIsIncomeInflection` and nowhere else. Dan plans to remove the income inflection feature in a future work item, so no fix is needed here. Proceed with the cache behavior unchanged; pass `cumulativeCpiMultiplier` as a parameter and ignore it for caching purposes.
 
 2. **`TaxComputationWorksheet.cs` — `subtractions` field scaling:** The `Fed1040TaxComputationWorksheetBrackets` array has a `subtractions` field per bracket (e.g. `9894m` for the 22% bracket). These are derived from bracket structure math. Should they be scaled by `cumulativeCpiMultiplier` (mathematically self-consistent), or remain fixed (simpler but slightly incorrect at high inflation)?
    Dan's decision: ___ the subtractions amount is derived. But, since you only use it when income is above \$100,000 , it's difficult for me to see the derivation. Regardless, it should grow as the min and max grow.
