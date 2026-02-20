@@ -86,6 +86,10 @@ must be recalculated and the VAR model refitted. If no, the current separation o
 CpiGrowth in the VAR already provides the right structure and no change is needed.
 
 *Dan's answer:* ___
+I believe SpGrowth is the correct value to use. The next phase of SDLC should evaluate the fields available in the
+database, using actual data in that table. But that table has 2 fields: sp_growth and inflation_adjusted_growth .
+The former is meant to represent gross growth while the latter is meant to represent gross growth - CPI growth. But I
+want to stress that the technical analysis needs to verify this.
 
 ---
 
@@ -96,7 +100,12 @@ independently apply only the current month's CPI rate to the original base value
 The first approach reflects true inflation compounding; the second does not.
 
 *Dan's answer:* ___
-
+The first approach is correct.
+- month 1 required spend: \$10,000
+- CPI growth month 1: 0.01 (1%)
+- month 2's required spend: \$10,000 * (1 + 0.01) = \$10,100
+- CPI growth month 2: 0.005 (0.5%)
+- month 3's required spend: $10,100 * (1 + 0.005) = \$10,150.50
 
 ---
 
@@ -105,6 +114,7 @@ The first approach reflects true inflation compounding; the second does not.
 Part B monthly premium, etc.). Should those also inflate with CPI under BR-1?
 
 *Dan's answer:* ___
+Yes, they should. Great catch.
 
 
 ---
@@ -116,7 +126,12 @@ What formula should reduce fun points by inflation? Suggested option:
 dollar buys less). Please confirm this formula or describe an alternative.
 
 *Dan's answer:* ___
-
+The "spirit" of this is correct. But I cannot gauge whether your proposed formula is correct because I don't know how
+cumulativeCpiMultiplier is to be derived. My guidance is that, if inflation causes things to be 3% more expensive in
+2030 than they were in 2031 (3% / 12 in a given month), then the 10,000 fun points you might get in that year for
+spending \$10,000 should only get you 97% of 10,000 the next year. I don't know if that will make sense after a 30-year
+simulation will the spending power : fun points ratio stay even to the spending power : dollars ratio? That is the
+intent. But also "fun points" are an entirely fictional concept, so they're not really based in reality to begin with.
 
 ---
 
@@ -125,6 +140,8 @@ Should flat-rate tax constants (standard deduction, SS worksheet thresholds, OAS
 adjust **every month** (compounding CPI monthly) or **once per year on January 1**?
 
 *Dan's answer:* ___
+I believe that monthly is correct and probably easier to code. Otherwise you'd have to "keep track" of all of the 
+monthly movements (which vary month-to-month) and apply them all one after the other.
 
 ---
 
@@ -133,6 +150,7 @@ Tax bracket **thresholds** are flat dollar amounts (e.g., the 12% bracket tops a
 They are not percentage rates, but they are also not "flat fees." Should they also inflate with CPI?
 
 *Dan's answer:* ___
+The amounts that define the brackets' min and max values should grow, but the tax rates in those brackets should not. 
 
 ---
 
@@ -142,6 +160,7 @@ For Social Security COLA, flat-fee payroll deductions (dental, health, life insu
 January 1**?
 
 *Dan's answer:* ___
+Monthly.
 
 ---
 
@@ -150,6 +169,7 @@ Should the simulation model IRS annual contribution limits (which themselves inf
 or simply scale the user's elected contribution amounts by CPI with no limit check?
 
 *Dan's answer:* ___
+Model the contribution limits. Assume they go up equal to CPI.
 
 ---
 
@@ -159,6 +179,9 @@ the method/location that calculates it was not found by the analysis agent. Do y
 it is computed? (A filename or method name hint is enough — the agent can find the rest.)
 
 *Dan's answer:* ___
+take a look at
+- /media/dan/fdrive/codeprojects/PersonalFinance/Lib/MonteCarlo/StaticFunctions/Person.cs line 108
+- /media/dan/fdrive/codeprojects/PersonalFinance/Lib/MonteCarlo/LifeSimulator.cs line 76
 
 ---
 
@@ -169,6 +192,7 @@ initialized to 1.0m and never updated). Should `CurrentCpi` be repurposed as the
 multiplier, or should a new field / struct be used?
 
 *Dan's answer:* ___
+This is a design decision that should be made by whichever agent is creating the FSD
 
 ---
 
