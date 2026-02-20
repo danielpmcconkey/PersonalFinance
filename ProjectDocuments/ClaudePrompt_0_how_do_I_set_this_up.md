@@ -76,11 +76,41 @@ PersonalFinance/
     BRDs/                    ← you write these before starting a session
     FSDs/                    ← FSD sub-agent writes these; you review
     Pipeline/                ← agent-to-agent handoff files (scratch space)
+      [FEATURE_ID]-status.md     ← phase tracker; survives session end (see below)
+      [FEATURE_ID]-brd-analysis.md
+      [FEATURE_ID]-impl-plan.md
   Lib.Tests/
     TestStrategy/
       BusinessOutcomes.md    ← test planning sub-agent updates this
       GapAnalysis.md         ← generated after test planning
 ```
+
+---
+
+## Pipeline Status Tracking
+
+Every phase gate writes a status file to `ProjectDocuments/Pipeline/[FEATURE_ID]-status.md`.
+This file is the single source of truth for where the pipeline stands. Because it lives on
+disk, it survives session ends, context resets, and multi-day interruptions.
+
+**Format:**
+```markdown
+# Pipeline Status: [FEATURE_ID]
+
+BRD: [BRD_FILE_PATH]
+Last updated: YYYY-MM-DD HH:MM
+
+| Phase | Name              | Status      | Artifact                                      |
+|-------|-------------------|-------------|-----------------------------------------------|
+| 0     | BRD Analysis      | COMPLETE    | Pipeline/[FEATURE_ID]-brd-analysis.md         |
+| 1     | FSD               | COMPLETE    | FSDs/[FEATURE_ID]-fsd.md                      |
+| 2     | Test Planning     | IN PROGRESS | Lib.Tests/…/[FeatureName]Tests.cs             |
+| 3     | Implementation    | NOT STARTED |                                               |
+```
+
+**Rule:** The lead agent updates this file at every phase gate — before asking you
+whether to proceed. That way, if you close the session mid-question, the status file
+already reflects what was completed.
 
 ---
 
@@ -208,11 +238,23 @@ explicitly rather than assuming.
 ```
 
 3. Reads the analysis report.
-4. Presents every open question to you in the main chat.
-5. Acts as scribe: updates the BRD's "Open Questions" section with your answers.
-6. Repeats until Unanswered Questions list is empty.
+4. **Immediately** writes all findings and questions into the BRD's "Open Questions" section
+   **before presenting anything to Dan.** This ensures the document has clearly stated loose ends
+   even if the session ends before Dan can respond. Format:
+   - Each CLEAR finding is recorded as a one-line note (e.g., "BR-4 finding: no code change needed — debt payments are already fixed. ✓ RESOLVED")
+   - Each AMBIGUOUS or MISSING_INFO item becomes a numbered question with a `Dan's answer: ___` placeholder
+   - Questions are grouped by BR number
+5. Presents every open question to you in the main chat (drawn from the BRD, which is now the
+   source of truth).
+6. Acts as scribe: fills in each `Dan's answer: ___` placeholder in the BRD as you respond.
+7. Repeats until all placeholders are filled.
 
-**Phase gate:** Lead agent asks:
+**Loose-ends rule:** At no point should an unanswered question exist only in the chat transcript.
+Every open question must be written to either the BRD or the brd-analysis.md artifact before
+being presented to Dan. The pipeline document and chat are ephemeral; the files on disk are not.
+
+**Phase gate:** Lead agent updates `Pipeline/[FEATURE_ID]-status.md` (Phase 0 → COMPLETE),
+then asks:
 > "All BRD questions are resolved. The updated BRD is at [path]. Shall I proceed to FSD?"
 
 You say yes or request further BRD changes.
@@ -251,11 +293,18 @@ Use the FSD template from ProjectDocuments/ClaudePrompt_0_how_do_I_set_this_up.m
 ```
 
 2. Reads the FSD.
-3. Presents a summary and all OPEN DECISION items to you.
-4. Acts as scribe: updates the FSD with your decisions.
-5. Repeats until no OPEN DECISION items remain.
+3. **Immediately** writes all OPEN DECISION items into the FSD's "Unresolved Design Decisions"
+   section **before presenting anything to Dan**, each with a `Dan's decision: ___` placeholder.
+   The FSD is the source of truth; the chat is not.
+4. Presents a summary and all OPEN DECISION items to you (drawn from the FSD).
+5. Acts as scribe: fills in each `Dan's decision: ___` placeholder in the FSD as you respond.
+6. Repeats until all placeholders are filled.
 
-**Phase gate:** Lead agent asks:
+**Loose-ends rule:** Every open design decision must be written to the FSD before being presented
+to Dan. A decision that exists only in the chat transcript is a lost loose end.
+
+**Phase gate:** Lead agent updates `Pipeline/[FEATURE_ID]-status.md` (Phase 1 → COMPLETE),
+then asks:
 > "FSD is complete with no open decisions. Summary: [N] functional specs covering
 > BRD-001 through BRD-NNN. Shall I proceed to test planning?"
 
@@ -304,10 +353,18 @@ Verify the build compiles before finishing: run
 and fix any errors before reporting back.
 ```
 
-2. Reviews the new test file and BusinessOutcomes.md changes.
-3. Presents coverage summary to you: how many FSD items have tests, any gaps.
+2. Reads the new test file and BusinessOutcomes.md changes.
+3. **Immediately** writes any coverage gaps or unresolved test design questions as comments
+   directly in BusinessOutcomes.md (e.g., a row with status `?` and a note explaining what
+   is missing) **before presenting anything to Dan.**
+4. Presents coverage summary to you: how many FSD items have tests, any gaps.
+5. Acts as scribe: resolves gap rows in BusinessOutcomes.md as Dan provides direction.
 
-**Phase gate:** Lead agent asks:
+**Loose-ends rule:** Any coverage gap or ambiguity must appear as an explicit row or note in
+BusinessOutcomes.md before being raised in chat. Do not describe gaps only verbally.
+
+**Phase gate:** Lead agent updates `Pipeline/[FEATURE_ID]-status.md` (Phase 2 → COMPLETE),
+then asks:
 > "[N] test cases written covering all FSD items. Build passes. [M] tests are
 > skipped pending implementation. Shall I proceed to implementation planning?"
 
@@ -341,13 +398,23 @@ Produce a step-by-step implementation plan:
 Write the plan to: ProjectDocuments/Pipeline/[FEATURE_ID]-impl-plan.md
 ```
 
-2. Presents the plan to you and asks: "Does this match your intent? Shall I implement?"
-3. Only after your approval: implements the changes in the main session
+2. Reads the plan.
+3. **Immediately** writes any risks, open architectural choices, or items requiring Dan's input
+   into an "Open Items" section at the bottom of `[FEATURE_ID]-impl-plan.md` — each with a
+   `Dan's decision: ___` placeholder — **before presenting anything to Dan.**
+4. Presents the plan summary and all open items to you.
+5. Acts as scribe: fills in each placeholder in the impl-plan.md as Dan responds.
+6. Only after your approval of the final plan: implements the changes in the main session
    (or spawns targeted sub-agents for large, parallelizable chunks).
-4. Runs `dotnet test` after every logical chunk. Reports results.
-5. Removes `Skip` attributes from tests as each piece is implemented and passing.
+7. Runs `dotnet test` after every logical chunk. Reports results.
+8. Removes `Skip` attributes from tests as each piece is implemented and passing.
 
-**Final gate:** Lead agent asks:
+**Loose-ends rule:** Any risk or open architectural choice must be written to impl-plan.md
+before being raised in chat. Implementation does not begin until all open items are resolved
+and the plan file reflects Dan's decisions.
+
+**Final gate:** Lead agent updates `Pipeline/[FEATURE_ID]-status.md` (Phase 3 → COMPLETE),
+then asks:
 > "All [N] tests pass. Implementation is complete. Shall I commit?"
 
 ---
@@ -366,6 +433,40 @@ Begin at Phase 0. Do not proceed to any phase without my explicit approval.
 ```
 
 That is the entire trigger. Everything else follows from the phase playbook above.
+
+---
+
+## Resuming After a Session Ends
+
+If your session runs out of context, you close your terminal, or you return after a long
+break, start a new Claude Code session and paste this:
+
+```
+Read /media/dan/fdrive/codeprojects/PersonalFinance/Lib/AgentContext.txt and
+/media/dan/fdrive/codeprojects/PersonalFinance/ProjectDocuments/ClaudePrompt_0_how_do_I_set_this_up.md.
+
+I am resuming an in-progress SDLC pipeline. Read the status file at:
+  ProjectDocuments/Pipeline/[FEATURE_ID]-status.md
+
+Then read every artifact listed as COMPLETE in that file so you have full context.
+Resume from the first phase that is IN PROGRESS or NOT STARTED.
+Do not re-run any phase that is already COMPLETE.
+Do not proceed past the next phase gate without my explicit approval.
+```
+
+The lead agent reads the status file, sees exactly where the pipeline stood, reads the
+completed artifacts for context, and picks up without repeating any finished work.
+
+**If a phase was IN PROGRESS when the session ended** (sub-agent was mid-run), the
+output file may be incomplete. The lead agent will detect this by checking whether the
+artifact exists and is well-formed. If it is not, it will re-run that phase from scratch
+and tell you it is doing so.
+
+**If you are unsure what feature IDs exist**, ask the lead agent:
+```
+List all pipeline status files under ProjectDocuments/Pipeline/ and show me their
+current phase status.
+```
 
 ---
 
