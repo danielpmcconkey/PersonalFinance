@@ -427,19 +427,19 @@ The following currently-passing tests are at risk of breaking due to signature c
 *All items must be resolved before implementation begins.*
 
 1. **`CalculateIsIncomeInflection` static cache interaction:** The static fields `_hasCalculatedSpendablePay` and `_spendablePay` (`Simulation.cs` lines 13–14) are computed on the first call and reused. After adding `cumulativeCpiMultiplier`, the cached value will always reflect the multiplier at first call (1.0 at simulation start). The inflection threshold will not increase with inflation over the simulation's lifetime. Should this cache be invalidated each call, or is the approximation acceptable?
-   Dan's decision: ___
+   Dan's decision: ___ if this question is entirely encapsulated in the income inflection feature, I plan to remove that feature in future, so it doesn't matter. If this question is bigger than the income inflection feature, please help me understand the impact better.
 
 2. **`TaxComputationWorksheet.cs` — `subtractions` field scaling:** The `Fed1040TaxComputationWorksheetBrackets` array has a `subtractions` field per bracket (e.g. `9894m` for the 22% bracket). These are derived from bracket structure math. Should they be scaled by `cumulativeCpiMultiplier` (mathematically self-consistent), or remain fixed (simpler but slightly incorrect at high inflation)?
-   Dan's decision: ___
+   Dan's decision: ___ the subtractions amount is derived. But, since you only use it when income is above \$100,000 , it's difficult for me to see the derivation. Regardless, it should grow as the min and max grow.
 
 3. **`TaxCalculation.CalculateNorthCarolinaTaxLiabilityForYear` (line 206):** This second entry point into `FormD400` is not called from the main simulation path, but it is a public method. Should it also receive `cumulativeCpiMultiplier` for completeness?
-   Dan's decision: ___
+   Dan's decision: ___ It should also receive the multiplier. I'm not sure what you mean that it isn't called in the simulation path. Regardless, I don't want a method in this code base that contradicts a major premise of the simulation's ideals.
 
 4. **§16.3 test precision:** `CalculateMonthlyHealthSpend_MedicareBand_MultiplierDoubles` asserts an exact doubling at multiplier=2.0. The hospital admission count formula `1.5 + (yearsOver65/10)` is age-based and does NOT scale — only the per-admission deductible scales. The exact-doubling assertion will fail. Should the test be changed to a directional assertion (result at 2.0× is greater than at 1.0×), or should the admission count formula also scale?
-   Dan's decision: ___
+   Dan's decision: ___ I see what you mean. This test is flawed by design. I believe there should be a test that asserts correct outputs given known inputs (via theories and inline data). Otherwise the test is meaningless. Of course it'll be more expensive if the multiplier is higher. That's not testing anything meaningful to me. It could be that there's already a separate test that tests as I describe here. Please have the test agent review this response and address this concern with an update to the tests and project test documents. 
 
 5. **`BasicBucketsIncomeThreshold` and `BasicBucketsTaxableFirst` call sites:** These two withdrawal strategy files were not in the implementation-plan read list. They almost certainly call `CalculateCashNeedForNMonths` and/or `IncomeThreasholdSellInvestmentsToDollarAmount`. The implementer must inspect these files and apply the same call-site updates as Step 11. No blocking decision needed — just a flag to ensure they are not missed.
-   Dan's decision: ___
+   Dan's decision: ___There appears to be no question for me, but I agree with the assertion that they should be included.
 
 ---
 
