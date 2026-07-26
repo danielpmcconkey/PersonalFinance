@@ -9,14 +9,17 @@ public class FormD400
     private TaxLedger _ledger;
     private int _taxYear;
     private decimal _federalAdjustedGrossIncome;
-    
+    private decimal _cumulativeCpiMultiplier;
+
     public List<ReconciliationMessage> ReconciliationMessages = [];
 
-    public FormD400(TaxLedger ledger, int taxYear, decimal federalAdjustedGrossIncome)
+    public FormD400(TaxLedger ledger, int taxYear, decimal federalAdjustedGrossIncome,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         _ledger = ledger;
         _taxYear = taxYear;
         _federalAdjustedGrossIncome = federalAdjustedGrossIncome;
+        _cumulativeCpiMultiplier = cumulativeCpiMultiplier;
     }
 
     public decimal CalculateTaxLiability()
@@ -26,7 +29,7 @@ public class FormD400
         var line8 = line6 + line7;
         var line9 = 0m;
         var line10 = 0m;
-        var line11 = TaxConstants.NcStandardDeduction;
+        var line11 = TaxConstants.NcStandardDeduction * _cumulativeCpiMultiplier;
         var line12A = line11 + line9 + line10;
         var line12B = line8 - line12A;
         //var line13 = 0m;

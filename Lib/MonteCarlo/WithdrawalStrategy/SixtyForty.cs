@@ -29,7 +29,7 @@ public class SixtyForty : IWithdrawalStrategy
             Model model, PgPerson person)
     {
         var totalInvestmentAmount = SharedWithdrawalFunctions.CalculateExcessCash(
-            currentDate, accounts, model, person);
+            currentDate, accounts, model, person, prices);
 
         if (totalInvestmentAmount <= 0)
         {
@@ -129,7 +129,7 @@ public class SixtyForty : IWithdrawalStrategy
         
         var cashNeededOnHand =
             Spend.CalculateCashNeedForNMonths(model, person, results.accounts, currentDate,
-                model.NumMonthsCashOnHand);
+                model.NumMonthsCashOnHand, currentPrices.CumulativeCpiMultiplier, currentPrices.CurrentCpiGrowthRate);
         var actualCashOnHand = AccountCalculation.CalculateCashBalance(results.accounts);
         var cashStillNeeded = Math.Max(0, cashNeededOnHand - actualCashOnHand);
 

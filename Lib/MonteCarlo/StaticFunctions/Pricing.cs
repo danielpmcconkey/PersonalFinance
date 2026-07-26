@@ -111,6 +111,9 @@ public static class Pricing
         // update bond coupon — additive because TreasuryGrowth is an absolute monthly change
         // in decimal form (e.g. 0.001 = rate rose by 0.1 percentage point), not a percentage change
         result.CurrentTreasuryCoupon += rates.TreasuryGrowth;
+        // compound the cumulative CPI multiplier: multiplier_new = multiplier_old * (1 + CpiGrowth)
+        result.CumulativeCpiMultiplier = prices.CumulativeCpiMultiplier * (1m + rates.CpiGrowth);
+        result.CurrentCpiGrowthRate = rates.CpiGrowth;
         // calculate mid and short-term growth rates based on long-term growth rate
         var midTermGrowthRate   = rates * InvestmentConfig.MidTermGrowthRateModifier;
         var shortTermGrowthRate = rates * InvestmentConfig.ShortTermGrowthRateModifier;
@@ -131,6 +134,8 @@ public static class Pricing
             CurrentMidTermInvestmentPrice   = originalPrices.CurrentMidTermInvestmentPrice,
             CurrentShortTermInvestmentPrice = originalPrices.CurrentShortTermInvestmentPrice,
             CurrentTreasuryCoupon           = originalPrices.CurrentTreasuryCoupon,
+            CumulativeCpiMultiplier         = originalPrices.CumulativeCpiMultiplier,
+            CurrentCpiGrowthRate            = originalPrices.CurrentCpiGrowthRate,
             EquityCostHistory               = originalPrices.EquityCostHistory,
         };
     }

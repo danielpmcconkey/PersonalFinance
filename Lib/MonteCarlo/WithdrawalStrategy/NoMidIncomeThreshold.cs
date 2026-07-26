@@ -62,7 +62,8 @@ public class NoMidIncomeThreshold : IWithdrawalStrategy
        
        // check if we have enough cash already
        var cashNeeded =
-           Spend.CalculateCashNeedForNMonths(model, person, accounts, currentDate, model.NumMonthsCashOnHand);
+           Spend.CalculateCashNeedForNMonths(model, person, accounts, currentDate, model.NumMonthsCashOnHand,
+               currentPrices.CumulativeCpiMultiplier, currentPrices.CurrentCpiGrowthRate);
        var cashWeHave = AccountCalculation.CalculateCashBalance(accounts);
        var cashNeededToBeMoved = cashNeeded - cashWeHave;
        if (cashNeededToBeMoved <= 0)

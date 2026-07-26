@@ -40,19 +40,40 @@ public static class TaxCalculation
     }
     
     /// <summary>
+    /// Returns a new copy of the bracket array with min/max dollar thresholds scaled by
+    /// cumulativeCpiMultiplier. Rate percentages are unchanged. The decimal.MaxValue sentinel
+    /// on the top bracket's max is preserved unchanged.
+    /// </summary>
+    public static (decimal rate, decimal min, decimal max)[] ScaleBracketThresholds(
+        (decimal rate, decimal min, decimal max)[] brackets, decimal cumulativeCpiMultiplier)
+    {
+        var scaled = new (decimal rate, decimal min, decimal max)[brackets.Length];
+        for (int i = 0; i < brackets.Length; i++)
+        {
+            scaled[i] = (
+                brackets[i].rate,
+                brackets[i].min * cumulativeCpiMultiplier,
+                brackets[i].max == decimal.MaxValue ? decimal.MaxValue : brackets[i].max * cumulativeCpiMultiplier
+            );
+        }
+        return scaled;
+    }
+
+    /// <summary>
     /// sets the income target for next year based on this year's social security income. the idea is that, below
     /// $96,950 in adjusted gross income, the tax on ordinary income is only 12%. Anything above that amount is taxed at
     /// 22%. Since long-term capital gains is only 15% (below 0.5MM), it's cheaper to receive income (tax deferred
     /// sales) than it is to receive capital gains (brokerage account sales). So we want to take out just enough to hit
     /// that 12% ceiling from our traditional accounts and then move over to capital gains accounts beyond that point.
     /// </summary>
-    public static decimal CalculateIncomeRoom(TaxLedger ledger, LocalDateTime currentDate)
+    public static decimal CalculateIncomeRoom(TaxLedger ledger, LocalDateTime currentDate,
+        decimal cumulativeCpiMultiplier = 1m)
     {
-        // start with the _incomeTaxBrackets 12% max
-        var maxAtBracket = TaxConstants.Federal1040TaxTableBrackets[1].max;
-        
-        // add the standard deduction 
-        var standardDeduction= TaxConstants.FederalStandardDeduction;
+        // start with the _incomeTaxBrackets 12% max (scaled for inflation)
+        var maxAtBracket = TaxConstants.Federal1040TaxTableBrackets[1].max * cumulativeCpiMultiplier;
+
+        // add the standard deduction (scaled for inflation)
+        var standardDeduction = TaxConstants.FederalStandardDeduction * cumulativeCpiMultiplier;
 
         var spanUntilSsElectionStart = ledger.SocialSecurityElectionStartDate - currentDate;
         var monthsUntilSsElectionStart = (spanUntilSsElectionStart.Years * 12) + spanUntilSsElectionStart.Months;
@@ -172,7 +193,7 @@ public static class TaxCalculation
             .Sum(x => x.amount);
     }
     public static (decimal amount, List<ReconciliationMessage> messages) CalculateTaxLiabilityForYear(
-        TaxLedger ledger, int taxYear)
+        TaxLedger ledger, int taxYear, decimal cumulativeCpiMultiplier = 1m)
     {
         // set up return tuple
         (decimal amount, List<ReconciliationMessage> messages) result = (0m, []);
@@ -180,13 +201,13 @@ public static class TaxCalculation
         {
             result.messages.Add(new ReconciliationMessage(null, null, "Beginning to calculate total outstanding tax liability"));
         }
-        
+
         // federal
-        var form1040 = new Form1040(ledger, taxYear);
+        var form1040 = new Form1040(ledger, taxYear, cumulativeCpiMultiplier);
         var federalLiability = form1040.CalculateTaxLiability();
-        
+
         // NC taxes
-        var formD400 = new FormD400(ledger, taxYear, form1040.AdjustedGrossIncome);
+        var formD400 = new FormD400(ledger, taxYear, form1040.AdjustedGrossIncome, cumulativeCpiMultiplier);
         var stateLiability = formD400.CalculateTaxLiability();
         
         
@@ -204,9 +225,10 @@ public static class TaxCalculation
         return result;
     }
     public static decimal CalculateNorthCarolinaTaxLiabilityForYear(
-        TaxLedger ledger, int taxYear, decimal adjustedGrossIncomeFrom1040)
+        TaxLedger ledger, int taxYear, decimal adjustedGrossIncomeFrom1040,
+        decimal cumulativeCpiMultiplier = 1m)
     {
-        var formD400 = new FormD400(ledger, taxYear, adjustedGrossIncomeFrom1040);
+        var formD400 = new FormD400(ledger, taxYear, adjustedGrossIncomeFrom1040, cumulativeCpiMultiplier);
         return formD400.CalculateTaxLiability();
     }
     public static decimal CalculateTaxableIraDistributionsForYear(TaxLedger ledger, int taxYear)

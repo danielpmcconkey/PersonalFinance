@@ -83,7 +83,8 @@ public class SharedWithdrawalFunctionsTests
         
         
         // Act
-        var actual = SharedWithdrawalFunctions.CalculateExcessCash(currentDate, accounts, model, person);
+        var prices = new CurrentPrices();  // CumulativeCpiMultiplier defaults to 1.0m — preserves pre-inflation test expectations
+        var actual = SharedWithdrawalFunctions.CalculateExcessCash(currentDate, accounts, model, person, prices);
         // Assert
         Assert.Equal(expectedExcessCash, Math.Round(actual,2));
         

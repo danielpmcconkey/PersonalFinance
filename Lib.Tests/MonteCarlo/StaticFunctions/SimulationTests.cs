@@ -318,9 +318,11 @@ public class SimulationTests
         var expectedStateWithholding = person.StateAnnualWithholding / 12;
         var expectedHealthSpend = person.PreTaxHealthDeductions / 12;
         var expectedTaxesPaid = taxWithholdings;
-        var expectedHsaBalance = Math.Round((person.AnnualHsaEmployerContribution / 12) 
-                                 + (person.AnnualHsaContribution / 12)
-                                 , 2);
+        // IRS cap applies: Math.Min(7500 + 1000, 8300) = 8300; 8300/12 = 691.67
+        var expectedHsaBalance = Math.Round(
+            Math.Min(person.AnnualHsaContribution + person.AnnualHsaEmployerContribution,
+                TaxConstants.IrsHsaFamilyContributionLimit) / 12m
+            , 2);
         var expected401KTraditional = Math.Round(
             (person.Annual401KPreTax / 12)
             + (person.AnnualSalary * person.Annual401KMatchPercent / 12)

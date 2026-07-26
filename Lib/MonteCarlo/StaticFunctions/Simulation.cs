@@ -13,7 +13,8 @@ public static class Simulation
     private static bool _hasCalculatedSpendablePay = false;
     private static decimal _spendablePay = 0;
     public static bool CalculateIsIncomeInflection(
-        LocalDateTime currentDate, decimal priorInterestAccrual, decimal currentInterestAccrual, PgPerson person)
+        LocalDateTime currentDate, decimal priorInterestAccrual, decimal currentInterestAccrual, PgPerson person,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         if (priorInterestAccrual <= 0) return false; // it's too early in the sim and some bad months can throw this off
         var interestAccrual = currentInterestAccrual - priorInterestAccrual;
@@ -24,7 +25,7 @@ public static class Simulation
         var grossMonthlyPay = (person.AnnualSalary + person.AnnualBonus) / 12m;
         _spendablePay = grossMonthlyPay;
         _spendablePay -= Payday
-            .WithholdTaxesFromPaycheck(person, currentDate, new TaxLedger(), grossMonthlyPay)
+            .WithholdTaxesFromPaycheck(person, currentDate, new TaxLedger(), grossMonthlyPay, cumulativeCpiMultiplier)
             .amount;
         _spendablePay -= (person.PreTaxHealthDeductions / 12);
         _spendablePay -= (person.AnnualHsaContribution / 12);
@@ -367,13 +368,13 @@ public static class Simulation
     }
 
     // todo: write a UT to make sure that PayForStuff records the health spend
-    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, 
-        List<ReconciliationMessage> messages) PayForStuff(DataTypes.MonteCarlo.Model model, PgPerson person, 
-            LocalDateTime currentDate, RecessionStats recessionStats, TaxLedger ledger, LifetimeSpend spend, 
-            BookOfAccounts accounts)
+    public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
+        List<ReconciliationMessage> messages) PayForStuff(DataTypes.MonteCarlo.Model model, PgPerson person,
+            LocalDateTime currentDate, RecessionStats recessionStats, TaxLedger ledger, LifetimeSpend spend,
+            BookOfAccounts accounts, decimal cumulativeCpiMultiplier = 1m)
     {
-        var funSpend = Spend.CalculateMonthlyFunSpend(model, person, currentDate);
-        var requiredSpendResults = Spend.CalculateMonthlyRequiredSpendWithoutDebt(model, person, currentDate);
+        var funSpend = Spend.CalculateMonthlyFunSpend(model, person, currentDate, cumulativeCpiMultiplier);
+        var requiredSpendResults = Spend.CalculateMonthlyRequiredSpendWithoutDebt(model, person, currentDate, cumulativeCpiMultiplier);
         var notFunSpend = requiredSpendResults.TotalSpend;
         
         // required spend can't move. But your fun spend can go down if we're in a recession or up if we livin' large
@@ -410,7 +411,7 @@ public static class Simulation
         if (!funResult.isSuccessful) return results;
         
         // record the spends
-        var funPointsToRecord = Spend.CalculateFunPointsForSpend(funSpend, person, currentDate);
+        var funPointsToRecord = Spend.CalculateFunPointsForSpend(funSpend, person, currentDate, cumulativeCpiMultiplier);
         var totalSpend = funSpend + notFunSpend;
         var recordResults = Spend.RecordMultiSpend(results.spend, currentDate, totalSpend,
             null, null, null, 
@@ -429,9 +430,9 @@ public static class Simulation
     }
     
     public static (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
-        List<ReconciliationMessage> messages) PayTaxForYear(PgPerson person, LocalDateTime currentDate, 
+        List<ReconciliationMessage> messages) PayTaxForYear(PgPerson person, LocalDateTime currentDate,
             TaxLedger ledger, LifetimeSpend spend, BookOfAccounts accounts, int taxYear,
-            Lib.DataTypes.MonteCarlo.Model model)
+            Lib.DataTypes.MonteCarlo.Model model, decimal cumulativeCpiMultiplier = 1m)
     {
         // set up the return tuple
         (bool isSuccessful, BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend,
@@ -444,7 +445,7 @@ public static class Simulation
         );
         
         // first figure out the liability
-        var taxLiabilityResult = TaxCalculation.CalculateTaxLiabilityForYear(results.ledger, taxYear);
+        var taxLiabilityResult = TaxCalculation.CalculateTaxLiabilityForYear(results.ledger, taxYear, cumulativeCpiMultiplier);
         var taxLiability = taxLiabilityResult.amount;
         results.messages.AddRange(taxLiabilityResult.messages);
         
@@ -486,28 +487,31 @@ public static class Simulation
     }
     
     // todo: unit test ProcessPaycheck
-    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
         ProcessPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
-            LifetimeSpend spend, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
+            LifetimeSpend spend, DataTypes.MonteCarlo.Model model, CurrentPrices prices,
+            decimal cumulativeCpiMultiplier = 1m)
     {
         var paydayResult = Payday.ProcessPreRetirementPaycheck(
-                person, currentDate, accounts, ledger, spend, model, prices);
+                person, currentDate, accounts, ledger, spend, model, prices, cumulativeCpiMultiplier);
         return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
 
     // todo: unit test ProcessSocialSecurityCheck
-    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
+    public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
         ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts,
-            TaxLedger ledger, LifetimeSpend spend, DataTypes.MonteCarlo.Model model)
+            TaxLedger ledger, LifetimeSpend spend, DataTypes.MonteCarlo.Model model,
+            decimal cumulativeCpiMultiplier = 1m)
     {
         var paydayResult = Payday.ProcessSocialSecurityCheck(
-                person, currentDate, accounts, ledger, spend, model);
+                person, currentDate, accounts, ledger, spend, model, cumulativeCpiMultiplier);
         return (paydayResult.bookOfAccounts, paydayResult.ledger, paydayResult.spend, paydayResult.messages);
     }
     
     public static (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
-        ProcessPayday (PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
-            LifetimeSpend spend, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
+        ProcessPayday(PgPerson person, LocalDateTime currentDate, BookOfAccounts accounts, TaxLedger ledger,
+            LifetimeSpend spend, DataTypes.MonteCarlo.Model model, CurrentPrices prices,
+            decimal cumulativeCpiMultiplier = 1m)
     {
         (BookOfAccounts accounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) results = 
             (AccountCopy.CopyBookOfAccounts(accounts),
@@ -521,7 +525,7 @@ public static class Simulation
             if(MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
                 currentDate, null, "processing pre-retirement paycheck"));
             var paydayResult = ProcessPaycheck(
-                person, currentDate, accounts, ledger, spend, model, prices);
+                person, currentDate, accounts, ledger, spend, model, prices, cumulativeCpiMultiplier);
             results.accounts = paydayResult.accounts;
             results.ledger = paydayResult.ledger;
             results.spend = paydayResult.spend;
@@ -535,7 +539,7 @@ public static class Simulation
         if(MonteCarloConfig.DebugMode) results.messages.Add(new ReconciliationMessage(
             currentDate, null, "processing social security check"));
         var ssResult = ProcessSocialSecurityCheck(
-            person, currentDate, accounts, ledger, spend, model);
+            person, currentDate, accounts, ledger, spend, model, cumulativeCpiMultiplier);
         results.accounts = ssResult.accounts;
         results.ledger = ssResult.ledger;
         results.spend = ssResult.spend;
@@ -543,19 +547,19 @@ public static class Simulation
         return results;
     }
     
-    public static  (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunAndAnxiety(
+    public static (LifetimeSpend spend, List<ReconciliationMessage> messages) RecordFunAndAnxiety(
         DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate, RecessionStats recessionStats,
-        LifetimeSpend spend, BookOfAccounts accounts)
+        LifetimeSpend spend, BookOfAccounts accounts, decimal cumulativeCpiMultiplier = 1m)
     {
         // set up the return tuple
         (LifetimeSpend spend, List<ReconciliationMessage> messages) results = (
                 Spend.CopyLifetimeSpend(spend),
                 []
             );
-        
+
         var extraFun = 0.0m;
         var requiredSpend = Spend.CalculateMonthlyRequiredSpend(
-            model, person, currentDate, accounts)
+            model, person, currentDate, accounts, cumulativeCpiMultiplier)
             .TotalSpend;
         
         if (person.IsBankrupt) extraFun += ModelConstants.FunPenaltyBankruptcy;

@@ -9,15 +9,18 @@ public static class TaxComputationWorksheet
      * page 76
      * Section B
      */
-    public static decimal CalculateTaxOwed(decimal amount)
+    public static decimal CalculateTaxOwed(decimal amount, decimal cumulativeCpiMultiplier = 1m)
     {
         foreach (var bracket in TaxConstants.Fed1040TaxComputationWorksheetBrackets)
         {
-            if (amount >= bracket.min && amount <= bracket.max)
-                return (amount * bracket.rate) - bracket.subtractions;
+            var scaledMin = bracket.min * cumulativeCpiMultiplier;
+            var scaledMax = bracket.max == decimal.MaxValue ? decimal.MaxValue : bracket.max * cumulativeCpiMultiplier;
+            var scaledSubtractions = bracket.subtractions * cumulativeCpiMultiplier;
+            if (amount >= scaledMin && amount <= scaledMax)
+                return (amount * bracket.rate) - scaledSubtractions;
         }
-        
-        
+
+
         throw new InvalidDataException(
             "We should never get here, something went wrong with the FederalTaxComputationWorksheet");
     }

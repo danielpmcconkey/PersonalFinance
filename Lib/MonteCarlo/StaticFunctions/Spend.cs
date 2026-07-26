@@ -14,23 +14,25 @@ public static class Spend
     /// used for rebalancing functions to determine how much cash should be on hand. This is always based on current age
     /// </summary>
     public static decimal CalculateCashNeedForNMonths(DataTypes.MonteCarlo.Model model, PgPerson person, BookOfAccounts accounts,
-        LocalDateTime currentDate, int nMonths)
+        LocalDateTime currentDate, int nMonths,
+        decimal cumulativeCpiMultiplier = 1m, decimal currentCpiGrowthRate = 0m)
     {
         var cashNeeded = 0m;
         for (var i = 0; i < nMonths; i++)
         {
             var futureDate = currentDate.PlusMonths(i);
-            var fun = CalculateMonthlyFunSpend(model, person, futureDate);
-            var required = CalculateMonthlyRequiredSpend(model, person, futureDate, accounts);
+            // compound the multiplier forward: month 0 uses current multiplier, month i compounds i times
+            var iterationMultiplier = cumulativeCpiMultiplier * (decimal)Math.Pow((double)(1m + currentCpiGrowthRate), i);
+            var fun = CalculateMonthlyFunSpend(model, person, futureDate, iterationMultiplier);
+            var required = CalculateMonthlyRequiredSpend(model, person, futureDate, accounts, iterationMultiplier);
             var totalThisMonth = fun + required.TotalSpend;
             cashNeeded += totalThisMonth;
-                          
         }
         return cashNeeded;
     }
 
     public static decimal CalculateFunPointsForSpend(decimal funSpend, PgPerson person,
-        LocalDateTime currentDate)
+        LocalDateTime currentDate, decimal cumulativeCpiMultiplier = 1m)
     {
         /*
          * the younger I am, the more I'd enjoy spending money. Start with each dollar equaling 1 fun point and go
@@ -54,9 +56,11 @@ public static class Spend
         var funPoints = funPointsPerDollar * funSpend;
         funPoints = Math.Max(funPoints, minFunPoints); // cap the penalty at 1/2
         funPoints = Math.Min(funPoints, maxFunPoints); // no extra bucks for being younger than 50
-        return funPoints;
+        // discount by accumulated inflation: same dollar buys less fun as prices rise
+        return funPoints / cumulativeCpiMultiplier;
     }
-    public static decimal CalculateMonthlyFunSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyFunSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         /*
          * pre-retirement, just use the DesiredMonthlySpendPreRetirement value.
@@ -66,26 +70,27 @@ public static class Spend
          */
         if (currentDate < model.RetirementDate)
         {
-            return model.DesiredMonthlySpendPreRetirement;
+            return model.DesiredMonthlySpendPreRetirement * cumulativeCpiMultiplier;
         }
-        
+
         var age = currentDate.Year - person.BirthDate.Year;
         if (age < 66)
         {
-            return model.DesiredMonthlySpendPostRetirement;
+            return model.DesiredMonthlySpendPostRetirement * cumulativeCpiMultiplier;
         }
 
         if (age >= 88)
         {
             return 0;
         }
-        
-        var declineAmountPerYear = model.DesiredMonthlySpendPostRetirement / (88 - 65); 
+
+        var declineAmountPerYear = model.DesiredMonthlySpendPostRetirement / (88 - 65);
         var howManyYearsAbove65 = age - 65;
         var declineAmount = declineAmountPerYear * howManyYearsAbove65;
-        return model.DesiredMonthlySpendPostRetirement - declineAmount;
+        return (model.DesiredMonthlySpendPostRetirement - declineAmount) * cumulativeCpiMultiplier;
     }
-    public static decimal CalculateMonthlyHealthSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate)
+    public static decimal CalculateMonthlyHealthSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         /*
          * if we're not yet retired, Dan's primary employer will provide healthcare, so we can return immediately
@@ -117,25 +122,24 @@ public static class Spend
          */
         
         // before retirement, primary employmentt will fund healthcare and doesn't need to be tracked separately
-        if (currentDate < model.RetirementDate) return 0; 
-        
+        if (currentDate < model.RetirementDate) return 0;
+
         // before age 65 (if retired), we have no medicare and need to pay for everything out of pocket
         var age = currentDate.Year - person.BirthDate.Year;
-        if (age < 65) return person .RequiredMonthlySpendHealthCare;
-        
+        if (age < 65) return person.RequiredMonthlySpendHealthCare * cumulativeCpiMultiplier;
+
         // between ages of 88 and 90 we simulate assisted living
-        if (age >= 88) return person.RequiredMonthlySpendHealthCare * 2m;
-        
-        // medicare time, set up the constants
-        
+        if (age >= 88) return person.RequiredMonthlySpendHealthCare * 2m * cumulativeCpiMultiplier;
+
+        // medicare time, set up the constants (scaled for inflation)
         const decimal partAPremiumAnnual = 0m;
-        const decimal partADeductiblePerAdmission = 1676m;
+        var partADeductiblePerAdmission = 1676m * cumulativeCpiMultiplier;
         const decimal age65NumberOfHospitalAdmissionsPerYear = 1.5m;
         const decimal numberOfHospitalAdmissionsIncreaseByDecade = 1m;
-        const decimal partBPremiumMonthly = 370m; // 185 each, assuming we don't go over 220k income;
-        const decimal partBAnnualDeductible = 514m; // 257 each
-        const decimal partDPremiumMonthly = 93m; // 46.5 each based on https://www.nerdwallet.com/article/insurance/medicare/how-much-does-medicare-part-d-cost
-        const decimal partDAverageMonthlyDrugCost = 150m; // total SWAG
+        var partBPremiumMonthly = 370m * cumulativeCpiMultiplier; // 185 each, assuming we don't go over 220k income;
+        var partBAnnualDeductible = 514m * cumulativeCpiMultiplier; // 257 each
+        var partDPremiumMonthly = 93m * cumulativeCpiMultiplier; // 46.5 each based on https://www.nerdwallet.com/article/insurance/medicare/how-much-does-medicare-part-d-cost
+        var partDAverageMonthlyDrugCost = 150m * cumulativeCpiMultiplier; // total SWAG
         
         // calculate medicare part A costs
         var yearsOver65 = age - 65;
@@ -154,16 +158,16 @@ public static class Spend
         
         return totalPartACostPerMonth + totalPartBCostPerMonth + totalPartDCostPerMonth;
     }
-    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) 
+    public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend)
         CalculateMonthlyRequiredSpend(DataTypes.MonteCarlo.Model model, PgPerson person, LocalDateTime currentDate,
-            BookOfAccounts accounts)
+            BookOfAccounts accounts, decimal cumulativeCpiMultiplier = 1m)
     {
-        var standardSpend = person.RequiredMonthlySpend;
-        var healthCareSpend = CalculateMonthlyHealthSpend(model, person, currentDate);
+        var standardSpend = person.RequiredMonthlySpend * cumulativeCpiMultiplier;
+        var healthCareSpend = CalculateMonthlyHealthSpend(model, person, currentDate, cumulativeCpiMultiplier);
         var debtSpend = accounts.DebtAccounts
             .SelectMany(x => x.Positions
                 .Where(y => y.IsOpen))
-            .Sum(x => x.MonthlyPayment);
+            .Sum(x => x.MonthlyPayment); // debt payments are fixed per BR-4 — no CPI adjustment
         return (standardSpend + healthCareSpend + debtSpend, healthCareSpend, debtSpend);
     }
     /// <summary>
@@ -173,14 +177,14 @@ public static class Spend
     /// wants the actual required spend, assuming that PayDownDebt will be taking care of the debt payment
     /// </summary>
     public static (decimal TotalSpend, decimal HealthSpend, decimal debtSpend) CalculateMonthlyRequiredSpendWithoutDebt(DataTypes.MonteCarlo.Model model, PgPerson person,
-        LocalDateTime currentDate)
+        LocalDateTime currentDate, decimal cumulativeCpiMultiplier = 1m)
     {
         // create an empty book of accounts
         var accounts = Account.CreateBookOfAccounts(
-            [], 
+            [],
             [new McDebtAccount(){Id = Guid.NewGuid(), Name = "empty", Positions = []}]
             );
-        return CalculateMonthlyRequiredSpend(model, person, currentDate, accounts);
+        return CalculateMonthlyRequiredSpend(model, person, currentDate, accounts, cumulativeCpiMultiplier);
     }
 
     /// <summary>

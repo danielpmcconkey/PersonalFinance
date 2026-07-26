@@ -54,7 +54,7 @@ public static class SharedWithdrawalFunctions
         
         var cashNeededOnHand =
             Spend.CalculateCashNeedForNMonths(model, person, results.accounts, currentDate,
-                model.NumMonthsCashOnHand);
+                model.NumMonthsCashOnHand, currentPrices.CumulativeCpiMultiplier, currentPrices.CurrentCpiGrowthRate);
 
         if (cashNeededOnHand > 0)
         {
@@ -108,7 +108,7 @@ public static class SharedWithdrawalFunctions
         // figure out how much we want to have in the mid-bucket
         decimal amountOnHand = AccountCalculation.CalculateMidBucketTotalBalance(accounts);
         var totalAmountNeeded = Spend.CalculateCashNeedForNMonths(model, person, accounts,
-            currentDate, numMonths);
+            currentDate, numMonths, prices.CumulativeCpiMultiplier, prices.CurrentCpiGrowthRate);
         decimal amountNeededToMove = totalAmountNeeded - amountOnHand;
         
         
@@ -296,8 +296,9 @@ public static class SharedWithdrawalFunctions
     public static (decimal amountSold, BookOfAccounts accounts, TaxLedger ledger, List<ReconciliationMessage>messages)
         IncomeThreasholdSellInvestmentsToDollarAmount(
             BookOfAccounts accounts, TaxLedger ledger, LocalDateTime currentDate, decimal amountToSell, Model model,
-            LocalDateTime? minDateExclusive, LocalDateTime? maxDateInclusive, 
-            McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null)
+            LocalDateTime? minDateExclusive, LocalDateTime? maxDateInclusive,
+            McInvestmentPositionType? positionTypeOverride = null, McInvestmentAccountType? accountTypeOverride = null,
+            decimal cumulativeCpiMultiplier = 1m)
     {
         if (accounts.InvestmentAccounts is null) throw new InvalidDataException("InvestmentAccounts is null");
         if (accounts.InvestmentAccounts.Count == 0) return (0, accounts, ledger, []);
@@ -312,7 +313,7 @@ public static class SharedWithdrawalFunctions
                 Tax.CopyTaxLedger(ledger), 
                 []
                 );
-        var incomeRoom = TaxCalculation.CalculateIncomeRoom(ledger, currentDate);
+        var incomeRoom = TaxCalculation.CalculateIncomeRoom(ledger, currentDate, cumulativeCpiMultiplier);
         McInvestmentPositionType[] positionTypes = positionTypeOverride is null 
             ? [McInvestmentPositionType.LONG_TERM, McInvestmentPositionType.MID_TERM] 
             : [(McInvestmentPositionType) positionTypeOverride];
@@ -367,14 +368,15 @@ public static class SharedWithdrawalFunctions
     /// <summary>
     /// used for investing excess cash. let's you know how much excess you have to invest
     /// </summary>
-    public static decimal CalculateExcessCash(LocalDateTime currentDate, BookOfAccounts accounts, 
-        Model model, PgPerson person)
+    public static decimal CalculateExcessCash(LocalDateTime currentDate, BookOfAccounts accounts,
+        Model model, PgPerson person, CurrentPrices prices)
     {
         var reserveCashNeeded = 0m;
         if (Rebalance.CalculateWhetherItsCloseEnoughToRetirementToRebalance(currentDate, model))
         {
             reserveCashNeeded = Spend.CalculateCashNeedForNMonths(
-                model, person, accounts, currentDate, model.NumMonthsCashOnHand);
+                model, person, accounts, currentDate, model.NumMonthsCashOnHand,
+                prices.CumulativeCpiMultiplier, prices.CurrentCpiGrowthRate);
         }
         else
         {
@@ -403,7 +405,7 @@ public static class SharedWithdrawalFunctions
         InvestExcessCashIntoLongTermBrokerage(
             LocalDateTime currentDate, BookOfAccounts accounts, CurrentPrices prices, Model model, PgPerson person)
     {
-        var totalInvestmentAmount = CalculateExcessCash(currentDate, accounts, model, person);
+        var totalInvestmentAmount = CalculateExcessCash(currentDate, accounts, model, person, prices);
 
         if (totalInvestmentAmount <= 0)
         {

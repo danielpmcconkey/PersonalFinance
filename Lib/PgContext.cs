@@ -51,7 +51,7 @@ namespace Lib
 
         private string GetConnectionString()
         {
-            string? pgPassHex = Environment.GetEnvironmentVariable("PGPASS");
+            string? pgPassHex =  Environment.GetEnvironmentVariable("PGPASS");
             if(pgPassHex == null) throw new InvalidDataException("PGPASS environment variable not found");
             var converted = Convert.FromHexString(pgPassHex);
             string passNew = System.Text .Encoding.Unicode.GetString(converted);

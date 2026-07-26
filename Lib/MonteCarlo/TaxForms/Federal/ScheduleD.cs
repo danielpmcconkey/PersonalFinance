@@ -13,6 +13,7 @@ public class ScheduleD
 {
     private TaxLedger _ledger;
     private int _taxYear;
+    private decimal _cumulativeCpiMultiplier;
     private decimal _form1040Line7 = 0m;
     private bool _isRequiredToCompleteQualifiedDividendsAndCapitalGainsWorksheet = false;
     private decimal _line16CombinedCapitalGains = 0m;
@@ -23,10 +24,11 @@ public class ScheduleD
     public decimal Line15LongTermCapitalGains => _line15LongTermCapitalGains;
     public decimal Line16CombinedCapitalGains => _line16CombinedCapitalGains;
     
-    public ScheduleD(TaxLedger ledger, int taxYear)
+    public ScheduleD(TaxLedger ledger, int taxYear, decimal cumulativeCpiMultiplier = 1m)
     {
         _ledger = ledger;
         _taxYear = taxYear;
+        _cumulativeCpiMultiplier = cumulativeCpiMultiplier;
     }
 
     public void Complete()
@@ -42,7 +44,7 @@ public class ScheduleD
 
         if (_line16CombinedCapitalGains < 0)
         {
-            var reportedLoss = Math.Max(TaxConstants.ScheduleDMaximumCapitalLoss, _line16CombinedCapitalGains);
+            var reportedLoss = Math.Max(TaxConstants.ScheduleDMaximumCapitalLoss * _cumulativeCpiMultiplier, _line16CombinedCapitalGains);
             _form1040Line7 = reportedLoss;
             CompleteLine22();
             return;

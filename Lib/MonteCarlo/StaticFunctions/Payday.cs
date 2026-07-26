@@ -8,9 +8,10 @@ namespace Lib.MonteCarlo.StaticFunctions;
 
 public static class Payday
 {
-    public static (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages) 
+    public static (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
         ProcessSocialSecurityCheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
-            TaxLedger ledger, LifetimeSpend lifetimeSpend, DataTypes.MonteCarlo.Model model)
+            TaxLedger ledger, LifetimeSpend lifetimeSpend, DataTypes.MonteCarlo.Model model,
+            decimal cumulativeCpiMultiplier = 1m)
     {
         if (currentDate < model.SocialSecurityStart)
         {
@@ -26,7 +27,7 @@ public static class Payday
                 []);
         
         // process the social security check
-        var amount = person.AnnualSocialSecurityWage / 12m;
+        var amount = (person.AnnualSocialSecurityWage / 12m) * cumulativeCpiMultiplier;
         var deposit = AccountCashManagement.DepositCash(results.bookOfAccounts, amount, currentDate);
         results.bookOfAccounts = deposit.accounts;
         
@@ -47,8 +48,9 @@ public static class Payday
         return results;
     }
     public static (BookOfAccounts bookOfAccounts, TaxLedger ledger, LifetimeSpend spend, List<ReconciliationMessage> messages)
-        ProcessPreRetirementPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, 
-            TaxLedger ledger, LifetimeSpend lifetimeSpend, DataTypes.MonteCarlo.Model model, CurrentPrices prices)
+        ProcessPreRetirementPaycheck(PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts,
+            TaxLedger ledger, LifetimeSpend lifetimeSpend, DataTypes.MonteCarlo.Model model, CurrentPrices prices,
+            decimal cumulativeCpiMultiplier = 1m)
     {
         if (person.IsRetired) return (bookOfAccounts, ledger, lifetimeSpend, []);
         // set up return tuple
@@ -67,18 +69,18 @@ public static class Payday
         var taxableMonthlyPay = grossMonthlyPay;
 
         // withholdings
-        var withholding = WithholdTaxesFromPaycheck(person, currentDate, ledger, grossMonthlyPay);
+        var withholding = WithholdTaxesFromPaycheck(person, currentDate, ledger, grossMonthlyPay, cumulativeCpiMultiplier);
         result.ledger = withholding.ledger;
         netMonthlyPay -= withholding.amount;
 
         // pre-tax deductions
-        var preTaxDeductions = DeductPreTax(person, lifetimeSpend, currentDate);
+        var preTaxDeductions = DeductPreTax(person, lifetimeSpend, currentDate, cumulativeCpiMultiplier);
         result.spend = preTaxDeductions.spend;
         netMonthlyPay -= preTaxDeductions.amount;
         taxableMonthlyPay -= preTaxDeductions.amount;
 
         // post-tax deductions
-        var postTaxDeductions = DeductPostTax(person, currentDate);
+        var postTaxDeductions = DeductPostTax(person, currentDate, cumulativeCpiMultiplier);
         netMonthlyPay -= postTaxDeductions.amount;
 
         // record final w2 income (gross, less pre-tax)
@@ -92,7 +94,7 @@ public static class Payday
         
         // add to savings accounts
         var savingsResult = AddPaycheckRelatedRetirementSavings(
-            person, currentDate, result.bookOfAccounts, model, prices);
+            person, currentDate, result.bookOfAccounts, model, prices, cumulativeCpiMultiplier);
         result.bookOfAccounts = savingsResult.accounts;
 
         if (!MonteCarloConfig.DebugMode) return result;
@@ -113,7 +115,8 @@ public static class Payday
     /// that the cash that funds these purchases was already deducted from your paycheck (or is free, like the match)  
     /// </summary>
     public static (BookOfAccounts accounts, List<ReconciliationMessage> messages) AddPaycheckRelatedRetirementSavings(
-        PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, Model model, CurrentPrices prices)
+        PgPerson person, LocalDateTime currentDate, BookOfAccounts bookOfAccounts, Model model, CurrentPrices prices,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         if (person.IsBankrupt || person.IsRetired) return (bookOfAccounts, []);
 
@@ -126,12 +129,13 @@ public static class Payday
         
 
         var roth401KAmount =
-            person.Annual401KPostTax / 12m;
+            Math.Min(person.Annual401KPostTax, TaxConstants.Irs401KElectiveDeferralLimit) * cumulativeCpiMultiplier / 12m;
         var traditional401KAmount =
-            person.Annual401KPreTax / 12m;
-        var monthly401KMatch = (person.AnnualSalary * person.Annual401KMatchPercent) / 12m;
+            Math.Min(person.Annual401KPreTax, TaxConstants.Irs401KElectiveDeferralLimit) * cumulativeCpiMultiplier / 12m;
+        var monthly401KMatch = (person.AnnualSalary * person.Annual401KMatchPercent) / 12m; // per OD-2: not inflated
         var hsaAmount =
-            (person.AnnualHsaContribution + person.AnnualHsaEmployerContribution) / 12m;
+            Math.Min(person.AnnualHsaContribution + person.AnnualHsaEmployerContribution,
+                TaxConstants.IrsHsaFamilyContributionLimit) * cumulativeCpiMultiplier / 12m;
 
         var investRothResults = model.WithdrawalStrategy.InvestFundsWithoutCashWithdrawal(
             results.accounts, currentDate, roth401KAmount, McInvestmentAccountType.ROTH_401_K, prices, model);
@@ -164,10 +168,11 @@ public static class Payday
     }
 
 
-    public static (decimal amount, List<ReconciliationMessage> messages) DeductPostTax(PgPerson person, LocalDateTime currentDate)
+    public static (decimal amount, List<ReconciliationMessage> messages) DeductPostTax(PgPerson person, LocalDateTime currentDate,
+        decimal cumulativeCpiMultiplier = 1m)
     {
-        var annual401KPostTax = person.Annual401KPostTax;
-        var annualInsuranceDeductions = person.PostTaxInsuranceDeductions;
+        var annual401KPostTax = person.Annual401KPostTax * cumulativeCpiMultiplier;
+        var annualInsuranceDeductions = person.PostTaxInsuranceDeductions * cumulativeCpiMultiplier;
         var result = (annual401KPostTax + annualInsuranceDeductions) / 12m;
         if (!MonteCarloConfig.DebugMode) return (result, []);
         List<ReconciliationMessage> messages = [];
@@ -178,25 +183,25 @@ public static class Payday
     }
     
     public static (LifetimeSpend spend, decimal amount, List<ReconciliationMessage> messages) DeductPreTax(
-        PgPerson person, LifetimeSpend spend, LocalDateTime currentDate)
+        PgPerson person, LifetimeSpend spend, LocalDateTime currentDate, decimal cumulativeCpiMultiplier = 1m)
     {
         // set up the return tuple
         (LifetimeSpend spend, decimal amount, List<ReconciliationMessage> messages) result = (
             Spend.CopyLifetimeSpend(spend), 0m, []);
-        
+
         // calculate pre-tax deductions
-        var annualPreTaxHealthDeductions = person.PreTaxHealthDeductions;
-        var annualHsaContribution = person.AnnualHsaContribution;
-        var annual401KPreTax = person.Annual401KPreTax;
+        var annualPreTaxHealthDeductions = person.PreTaxHealthDeductions * cumulativeCpiMultiplier;
+        var annualHsaContribution = person.AnnualHsaContribution * cumulativeCpiMultiplier;
+        var annual401KPreTax = person.Annual401KPreTax * cumulativeCpiMultiplier;
         var preTaxDeductions =
             (annualPreTaxHealthDeductions + annualHsaContribution + annual401KPreTax) / 12m;
         result.amount = preTaxDeductions;
-        
+
         // record the health portion of the spend
         var recordHealthSpend =
-            Spend.RecordMultiSpend(result.spend, currentDate, null, null, 
+            Spend.RecordMultiSpend(result.spend, currentDate, null, null,
                 null, null, null, null,
-                annualPreTaxHealthDeductions / 12, null, 
+                annualPreTaxHealthDeductions / 12, null,
                 null);
         result.spend = recordHealthSpend.spend;
         
@@ -209,7 +214,8 @@ public static class Payday
         return result;
     }
     public static (TaxLedger ledger, decimal amount, List<ReconciliationMessage> messages) WithholdTaxesFromPaycheck(
-        PgPerson person, LocalDateTime currentDate, TaxLedger ledger, decimal grossMonthlyPay)
+        PgPerson person, LocalDateTime currentDate, TaxLedger ledger, decimal grossMonthlyPay,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         // set up return tuple
         (TaxLedger ledger, decimal amount, List<ReconciliationMessage> messages) result = (
@@ -219,11 +225,11 @@ public static class Payday
         var stateWithholding = person.StateAnnualWithholding / 12m;
         var monthlyOasdi = (Math.Min(
                                TaxConstants.OasdiBasePercent * (grossMonthlyPay * 12m),
-                               TaxConstants.OasdiMax))
+                               TaxConstants.OasdiMax * cumulativeCpiMultiplier))
                            / 12m;
         var annualStandardMedicare = TaxConstants.StandardMedicareTaxRate * grossMonthlyPay * 12m;
-        var amountOfSalaryOverMedicareThreshold = 
-            Math.Max(0, (grossMonthlyPay * 12) - TaxConstants.AdditionalMedicareThreshold);
+        var amountOfSalaryOverMedicareThreshold =
+            Math.Max(0, (grossMonthlyPay * 12) - TaxConstants.AdditionalMedicareThreshold * cumulativeCpiMultiplier);
         var annualAdditionalMedicare =
             TaxConstants.AdditionalMedicareTaxRate * amountOfSalaryOverMedicareThreshold;
         var annualTotalMedicare = annualStandardMedicare + annualAdditionalMedicare;

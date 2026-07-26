@@ -247,7 +247,7 @@ public class LifeSimulator
         
         var calcResults = Simulation.CalculateIsIncomeInflection(
             _simData.CurrentDateInSim, _priorInvestmentAccrual, _currentInvestmentAccrual,
-            _simData.PgPerson);
+            _simData.PgPerson, _simData.CurrentPrices.CumulativeCpiMultiplier);
         _incomeInflectionCalculationResults.Add(_simData.CurrentDateInSim, calcResults);
         if (!calcResults) return;
         const int numMonthsToLookBack = 12;
@@ -465,7 +465,8 @@ public class LifeSimulator
             _reconciliationLedger.AddFullReconLine(_simData, "Time to spend the money");
 
         var results = Simulation.PayForStuff(_simData.Model, _simData.PgPerson,
-            _simData.CurrentDateInSim, _simData.RecessionStats, _simData.TaxLedger, _simData.LifetimeSpend, _simData.BookOfAccounts);
+            _simData.CurrentDateInSim, _simData.RecessionStats, _simData.TaxLedger, _simData.LifetimeSpend,
+            _simData.BookOfAccounts, _simData.CurrentPrices.CumulativeCpiMultiplier);
         _simData.BookOfAccounts = results.accounts;
         _simData.TaxLedger = results.ledger;
         _simData.LifetimeSpend = results.spend;
@@ -498,7 +499,8 @@ public class LifeSimulator
 
         var taxResult = Simulation.PayTaxForYear(
             _simData.PgPerson, _simData.CurrentDateInSim, _simData.TaxLedger, _simData.LifetimeSpend,
-            _simData.BookOfAccounts, _simData.CurrentDateInSim.Year - 1, _simData.Model);
+            _simData.BookOfAccounts, _simData.CurrentDateInSim.Year - 1, _simData.Model,
+            _simData.CurrentPrices.CumulativeCpiMultiplier);
         _simData.BookOfAccounts = taxResult.accounts;
         _simData.TaxLedger = taxResult.ledger;
         _simData.LifetimeSpend = taxResult.spend;
@@ -523,7 +525,8 @@ public class LifeSimulator
             _reconciliationLedger.AddFullReconLine(_simData, "processing payday");
 
         var results = Simulation.ProcessPayday(_simData.PgPerson, _simData.CurrentDateInSim,
-            _simData.BookOfAccounts, _simData.TaxLedger, _simData.LifetimeSpend, _simData.Model, _simData.CurrentPrices);
+            _simData.BookOfAccounts, _simData.TaxLedger, _simData.LifetimeSpend, _simData.Model, _simData.CurrentPrices,
+            _simData.CurrentPrices.CumulativeCpiMultiplier);
         _simData.BookOfAccounts = results.accounts;
         _simData.TaxLedger = results.ledger;
         _simData.LifetimeSpend = results.spend;
@@ -581,8 +584,9 @@ public class LifeSimulator
         if (MonteCarloConfig.DebugMode && MonteCarloConfig.ShouldReconcilePayDay && _isReconcilingTime)
             _reconciliationLedger.AddFullReconLine(_simData, "Recording fun and anxiety");
 
-        var results = Simulation.RecordFunAndAnxiety(_simData.Model, _simData.PgPerson, 
-            _simData.CurrentDateInSim, _simData.RecessionStats, _simData.LifetimeSpend, _simData.BookOfAccounts);
+        var results = Simulation.RecordFunAndAnxiety(_simData.Model, _simData.PgPerson,
+            _simData.CurrentDateInSim, _simData.RecessionStats, _simData.LifetimeSpend, _simData.BookOfAccounts,
+            _simData.CurrentPrices.CumulativeCpiMultiplier);
         _simData.LifetimeSpend = results.spend;
         
 #if PERFORMANCEPROFILING

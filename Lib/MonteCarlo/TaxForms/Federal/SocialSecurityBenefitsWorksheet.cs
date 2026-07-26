@@ -14,7 +14,8 @@ public static class SocialSecurityBenefitsWorksheet
     }
    
     public static decimal CalculateTaxableSocialSecurityBenefits(
-        TaxLedger ledger, int taxYear, decimal combinedIncomeFrom1040, decimal line2AFrom1040)
+        TaxLedger ledger, int taxYear, decimal combinedIncomeFrom1040, decimal line2AFrom1040,
+        decimal cumulativeCpiMultiplier = 1m)
     {
         // Social Security Benefits Worksheet
         // https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
@@ -33,7 +34,7 @@ public static class SocialSecurityBenefitsWorksheet
         if ((line6 < line5) == false) return 0m; 
         
         var line7 = line5 - line6;
-        var line8 = TaxConstants.SocialSecurityWorksheetCreditLine8;
+        var line8 = TaxConstants.SocialSecurityWorksheetCreditLine8 * cumulativeCpiMultiplier;
         
         // Is the amount on line 8 less than the amount on line 7?
         // No.STOP None of your social security benefits are taxable. Enter -0- on Form 1040 or
@@ -41,7 +42,7 @@ public static class SocialSecurityBenefitsWorksheet
         if ((line8 < line7) == false) return 0m; 
         
         var line9 = line7 - line8;
-        var line10 = TaxConstants.SocialSecurityWorksheetCreditLine10;
+        var line10 = TaxConstants.SocialSecurityWorksheetCreditLine10 * cumulativeCpiMultiplier;
         var line11 = line9 - line10;
         if (line11 < 0) line11 = 0m;
         var line12 = Math.Min(line9, line10);

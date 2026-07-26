@@ -97,6 +97,8 @@ public static class TaxConstants
     public const decimal StandardMedicareTaxRate = 0.0145m; // 1.45 of your W2 income // https://www.retireguide.com/medicare/costs-and-coverage/tax/additional-medicare-tax/
     public const decimal AdditionalMedicareTaxRate = 0.009m; // 0.9% on W2 income above $250k // https://www.retireguide.com/medicare/costs-and-coverage/tax/additional-medicare-tax/
     public const decimal AdditionalMedicareThreshold = 250000m; // 0.9% on W2 income above $250k // https://www.retireguide.com/medicare/costs-and-coverage/tax/additional-medicare-tax/
+    public const decimal Irs401KElectiveDeferralLimit = 23000m;  // combined pre+post-tax annual elective deferral limit (base year, inflated at runtime)
+    public const decimal IrsHsaFamilyContributionLimit = 8300m;  // annual HSA family contribution limit (base year, inflated at runtime)
 
     #endregion
 

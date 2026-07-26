@@ -8,9 +8,9 @@ public static class TaxTable
      * https://www.irs.gov/pub/irs-pdf/i1040gi.pdf?os=wtmbzegmu5hwrefapp&ref=app
      * page 64
      */
-    public static decimal CalculateTaxOwed(decimal amount)
+    public static decimal CalculateTaxOwed(decimal amount, decimal cumulativeCpiMultiplier = 1m)
     {
-        if (amount > TaxConstants.FederalWorksheetVsTableThreshold) throw new InvalidDataException("can't use the tax table with income over 100k");
+        if (amount > TaxConstants.FederalWorksheetVsTableThreshold * cumulativeCpiMultiplier) throw new InvalidDataException("can't use the tax table with income over 100k");
         
         /*
          * very small amounts won't be calculated. just use hard-wired constants. These numbers aren't likely to change
@@ -42,24 +42,26 @@ public static class TaxTable
             // between it and $50 higher
             ceiling += 1;
         }
-        var liabilityAtFloor = CalculatePreciseLiability(floor * tableGrain);
-        var liabilityAtCeiling = CalculatePreciseLiability(ceiling * tableGrain);
+        var liabilityAtFloor = CalculatePreciseLiability(floor * tableGrain, cumulativeCpiMultiplier);
+        var liabilityAtCeiling = CalculatePreciseLiability(ceiling * tableGrain, cumulativeCpiMultiplier);
         // round between the two values, but use AwayFromZero mode to match the IRS's table (standard dot net seems to
         // use banker's rounding)
         return Math.Round((liabilityAtFloor + liabilityAtCeiling) / 2m, 0, MidpointRounding.AwayFromZero);
         
     }
-    public static decimal CalculatePreciseLiability(decimal amount)
+    public static decimal CalculatePreciseLiability(decimal amount, decimal cumulativeCpiMultiplier = 1m)
     {
         // this calculates the to-the-penny amount.
         var totalLiability = 0m;
-        // tax on ordinary income
+        // tax on ordinary income using inflation-scaled bracket thresholds
         foreach (var bracket in TaxConstants.Federal1040TaxTableBrackets)
         {
-            if(amount < bracket.min) continue;
+            var scaledMin = bracket.min * cumulativeCpiMultiplier;
+            var scaledMax = bracket.max == decimal.MaxValue ? decimal.MaxValue : bracket.max * cumulativeCpiMultiplier;
+            if (amount < scaledMin) continue;
             var amountInBracket = 0m;
-            if(amount >= bracket.max) amountInBracket = bracket.max - bracket.min;
-            else amountInBracket = amount - bracket.min;
+            if (amount >= scaledMax) amountInBracket = scaledMax - scaledMin;
+            else amountInBracket = amount - scaledMin;
             totalLiability += (amountInBracket * bracket.rate);
         }
         return totalLiability;

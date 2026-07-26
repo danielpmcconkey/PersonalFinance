@@ -4,7 +4,7 @@ using Lib.StaticConfig;
 
 namespace Lib.MonteCarlo.TaxForms.Federal;
 
-public class Form1040(TaxLedger ledger, int taxYear)
+public class Form1040(TaxLedger ledger, int taxYear, decimal cumulativeCpiMultiplier = 1m)
 {
     public decimal AdjustedGrossIncome { get; private set; } = 0m;
 
@@ -12,7 +12,7 @@ public class Form1040(TaxLedger ledger, int taxYear)
     public readonly List<ReconciliationMessage> ReconciliationMessages = [];
 
 
-    private readonly ScheduleD _scheduleD = new(ledger, taxYear);
+    private readonly ScheduleD _scheduleD = new(ledger, taxYear, cumulativeCpiMultiplier);
     private decimal _line15TaxableIncome = 0m;
     private decimal _line3AQualifiedDividends = 0m;
     private decimal _line16TaxLiability = 0m;
@@ -51,13 +51,13 @@ public class Form1040(TaxLedger ledger, int taxYear)
         // revisit line 6B now that you know all the inputs
         var combinedIncome = line1Z + line2B + line3B + line4B + line5B + line7 + line8;
         line6B = SocialSecurityBenefitsWorksheet.CalculateTaxableSocialSecurityBenefits(
-            ledger, taxYear, combinedIncome, line2A);
+            ledger, taxYear, combinedIncome, line2A, cumulativeCpiMultiplier);
         var line9TotalIncome =  combinedIncome + line6B; // This is your total income
         const decimal line10 = 0m; // Adjustments to income from Schedule 1, line 26 
         AdjustedGrossIncome = line9TotalIncome - line10;
-        const decimal line12 = TaxConstants.FederalStandardDeduction;
-        const decimal line13 = 0m; // Qualified business income deduction from Form 8995 or Form 8995-A 
-        const decimal line14 = line12 + line13;
+        var line12 = TaxConstants.FederalStandardDeduction * cumulativeCpiMultiplier;
+        const decimal line13 = 0m; // Qualified business income deduction from Form 8995 or Form 8995-A
+        var line14 = line12 + line13;
         _line15TaxableIncome = Math.Max(AdjustedGrossIncome - line14, 0);
         _line16TaxLiability = CalculateTax();
         const decimal line17 = 0m; // we won't model additional taxes and the AMT only kicks in above 1.2MM in income
@@ -107,16 +107,17 @@ public class Form1040(TaxLedger ledger, int taxYear)
         {
             // big boy form
             return QualifiedDividendsAndCapitalGainTaxWorksheet.CalculateTaxOwed(
-                _scheduleD.Line15LongTermCapitalGains, _scheduleD.Line16CombinedCapitalGains, 
-                _line3AQualifiedDividends, _line15TaxableIncome);
+                _scheduleD.Line15LongTermCapitalGains, _scheduleD.Line16CombinedCapitalGains,
+                _line3AQualifiedDividends, _line15TaxableIncome, cumulativeCpiMultiplier);
         }
 
-        if (_line15TaxableIncome >= TaxConstants.FederalWorksheetVsTableThreshold)
+        var scaledThreshold = TaxConstants.FederalWorksheetVsTableThreshold * cumulativeCpiMultiplier;
+        if (_line15TaxableIncome >= scaledThreshold)
         {
             // basic tax worksheet
-            return TaxComputationWorksheet.CalculateTaxOwed(_line15TaxableIncome);
+            return TaxComputationWorksheet.CalculateTaxOwed(_line15TaxableIncome, cumulativeCpiMultiplier);
         }
         // basic table
-        return TaxTable.CalculateTaxOwed(_line15TaxableIncome);
+        return TaxTable.CalculateTaxOwed(_line15TaxableIncome, cumulativeCpiMultiplier);
     }
 }
