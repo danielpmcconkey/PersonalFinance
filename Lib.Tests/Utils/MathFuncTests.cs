@@ -6,6 +6,11 @@ namespace Lib.Tests.Utils;
 public class MathFuncTests
 {
     [Fact]
+    public void ThisIsAnIntentionalError()
+    {
+        this is here to keep the test project from building. I have good reason to believe that I don't have proper database hygiene, and I don't want to hit the prod database.
+    }
+    [Fact]
     public void FlipACoin_ShouldReturnApproximately50PercentHeadsAndTails()
     {
         // Arrange
